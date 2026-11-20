@@ -1,0 +1,12 @@
+node_modules/
+.run/
+*.log
+__pycache__/
+!*.json
+!*.html
+.tools/
+.venv-sitl/
+!requirements-sitl.txt
+!docs/integration-*.log
+
+!docs/*.png

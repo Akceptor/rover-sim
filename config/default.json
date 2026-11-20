@@ -1,0 +1,8 @@
+{
+  "httpHost":"127.0.0.1", "httpPort":8090,
+  "udpHost":"127.0.0.1", "udpPort":9002,
+  "timeoutMs":2000,
+  "steering":{"channel":2,"min":1000,"trim":1500,"max":2000,"reversed":false},
+  "throttle":{"channel":4,"min":1000,"trim":1500,"max":2000,"reversed":false},
+  "vehicle":{"mass":3,"length":0.48,"width":0.24,"height":0.12,"wheelbase":0.30,"track":0.26,"wheelRadius":0.065,"suspension":0.07,"maxSteer":0.52,"engineForce":9,"maxSpeed":3,"rollingResistance":0.5,"brakeImpulse":0.08}
+}

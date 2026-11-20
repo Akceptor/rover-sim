@@ -1,0 +1,24 @@
+{
+  "name": "rover-sim",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "start": "node src/server.js",
+    "standalone": "node src/server.js --standalone",
+    "test": "node --test test/*.test.js",
+    "test:sitl": "python3 scripts/integration.py",
+    "test:browser": "node scripts/browser-smoke.mjs"
+  },
+  "engines": {
+    "node": ">=22"
+  },
+  "dependencies": {
+    "@dimforge/rapier3d-compat": "0.19.3",
+    "three": "0.183.2",
+    "ws": "8.21.0"
+  },
+  "devDependencies": {
+    "playwright": "1.65.1"
+  }
+}

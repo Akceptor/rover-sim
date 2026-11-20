@@ -1,0 +1,8 @@
+import {test} from 'node:test';
+import assert from 'node:assert/strict';
+import {Physics} from '../src/physics.js';
+import {loadConfig} from '../src/config.js';
+const c=loadConfig();
+test('settles with consistent gravity, forward, reverse and right steering',async()=>{const p=await Physics.create(c.vehicle,false);for(let i=0;i<400;i++)p.step(.01,0,0);let s=p.state();assert.ok(Math.abs(s.sensor.imu.accel_body[2]+9.80665)<.15);assert.ok(s.position.y>.1);assert.ok(Math.abs(s.sensor.velocity[2])<.001, JSON.stringify(s.sensor));for(let i=0;i<200;i++)p.step(.01,1,0);assert.ok(p.state().position.x>1,JSON.stringify(p.state()));p.reset();for(let i=0;i<300;i++)p.step(.01,-1,0);assert.ok(p.state().position.x< -1);p.reset();for(let i=0;i<200;i++)p.step(.01,.3,0.5);assert.ok(p.state().sensor.quaternion[3]>0);assert.ok(p.state().position.z>0);assert.ok(p.state().heading>0&&p.state().heading<180);p.free();});
+test('barrier stops chassis and no-drive slows rover',async()=>{const p=await Physics.create(c.vehicle);for(let i=0;i<1000;i++)p.step(.01,1,0);assert.ok(p.state().position.x<9);p.reset();for(let i=0;i<200;i++)p.step(.01,1,0);const speed=p.state().speed;for(let i=0;i<400;i++)p.step(.01,0,0);assert.ok(Math.abs(p.state().speed)<Math.abs(speed)*.2);p.free();});
+test('ramp supports all wheels, tilts body and rotates stationary gravity',async()=>{const p=await Physics.create(c.vehicle);p.body.setTranslation({x:2,y:.65,z:-6},true);for(let i=0;i<300;i++)p.step(.01,0,0);const s=p.state();assert.ok(s.position.y>.35);assert.ok(s.wheels.every(w=>w.contact));assert.ok(s.sensor.quaternion[2]>.05);assert.ok(Math.abs(Math.hypot(...s.sensor.imu.accel_body)-9.80665)<.2);p.free();});

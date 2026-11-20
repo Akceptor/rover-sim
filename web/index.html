@@ -1,0 +1,10 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Crawler Lab · Rover SITL</title><link rel="stylesheet" href="/style.css"></head><body>
+<canvas id="view" aria-label="Rover camera view"></canvas>
+<header><div><strong>CRAWLER LAB</strong><span id="mode">CONNECTING</span></div><div id="connection">Backend offline</div></header>
+<section id="telemetry"><div><b id="speed">0.00</b><span>m/s</span></div><div><b id="heading">000°</b><span>heading</span></div><div><b id="time">0.0</b><span>sim seconds</span></div><div><b id="rate">—</b><span>Hz physics</span></div></section>
+<aside><label>Camera <select id="camera"><option value="fpv">Onboard FPV</option><option value="chase">Chase</option></select></label>
+<label>Field of view <input id="fov" type="range" min="40" max="120" value="85"><output id="fovValue">85°</output></label>
+<details><summary>FPV mount · metres from chassis</summary><label>Forward <input id="mountX" type="number" step="0.01" value="0.15"></label><label>Height <input id="mountY" type="number" step="0.01" value="0.16"></label><label>Right <input id="mountRight" type="number" step="0.01" value="0"></label></details>
+<div class="actuator"><label>Steering <output id="steer">0</output></label><meter id="steerMeter" min="-1" max="1" value="0"></meter><label>Throttle <output id="throttle">0</output></label><meter id="throttleMeter" min="-1" max="1" value="0"></meter></div>
+<button id="run">Stop physics</button><button id="reset">Reset vehicle</button><p id="help">SITL mode: drive using Mission Planner or your MAVLink companion.</p><p id="diagnostics"></p></aside>
+<div id="reticle">+</div><footer><span id="status">Waiting for backend</span><span>North +X · playground 100 × 100 m</span></footer><div id="notice" role="status"></div><script type="module" src="/app.js"></script></body></html>

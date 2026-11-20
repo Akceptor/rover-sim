@@ -1,0 +1,22 @@
+{
+  "heartbeat": true,
+  "simultaneous_mavlink_endpoints": true,
+  "ekf_absolute_position": true,
+  "stationary_accel": [
+    0,
+    0,
+    -9.80665
+  ],
+  "forward_metres": 2.529651165008545,
+  "reverse_metres": -2.529653489589691,
+  "right_turn_deg": 35.484297449509256,
+  "mission_uploaded": true,
+  "mission_item_reached": true,
+  "mission_final_state": {
+    "x": 4.851578235626221,
+    "y": 0.1053701788187027,
+    "z": 3.7699928283691406
+  },
+  "real_sitl_restart_reconnected": true,
+  "passed": true
+}
