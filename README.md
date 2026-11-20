@@ -77,6 +77,19 @@ checkout's local config. See [launcher setup and options](docs/launcher.md) for
 alternate configs, ports and camera options. The separate service commands below
 remain available for development.
 
+## Landscape
+
+The default world is now a **960 × 960 m real terrain patch near Feofaniya, Kyiv**,
+using Google GEM-15 elevation and Copernicus Sentinel-2 ground colour. It is bundled
+locally and loads offline. Trees, rocks and close-up ground grain are generated;
+the 15 m elevation source cannot reproduce small ruts or kerbs. Rendering and
+wheel collisions share the same terrain mesh, and the launcher sets SITL's GPS
+home to the map's origin. Replace old mission waypoints when switching regions.
+
+Use `npm.cmd run sim -- --playground` for the original obstacle course, or
+`--flat` for an empty flat world. See [terrain setup, importer and attribution](docs/terrain.md)
+for other locations and the distinction between measured and generated detail.
+
 ## Quick start: standalone
 
 Install Node.js 22 or later (ARM64 on the M3; ARM64 or emulated x64 on Windows).
@@ -122,8 +135,8 @@ npm.cmd ci
 npm.cmd run standalone
 ```
 
-The first release models a small generic crawler; dimensions are starting values,
-not measured MN168 specifications. Obstacles are fixed objects; wheel contact uses
+The simulator models a small generic crawler; dimensions are starting values,
+not measured MN168 specifications. Trees and rocks are generated scenery with fixed colliders; wheel contact uses
 ray casts, not tyre meshes. This is not an MN168 performance calibration.
 
 ## Alternative deployment: native Mac SITL and backend, Windows Mission Planner
@@ -159,7 +172,7 @@ Terminal 1:
 
 ```sh
 npm ci
-npm start
+node src/server.js --playground
 ```
 
 Terminal 2 (first run, or whenever changing defaults):
@@ -253,7 +266,7 @@ For one-terminal startup, use `npm.cmd run sim` as described above. The followin
 commands are the manual alternative; run each in its own PowerShell window:
 
 ```powershell
-npm.cmd start
+node src/server.js --playground
 # Only with an actual runnable JSON-capable Windows SITL executable:
 .\scripts\start-sitl.ps1 -SitlExe "C:\path\to\ardurover.exe" -Wipe
 ```
@@ -279,6 +292,10 @@ MAVLink port numbers separate. This mixed variant is untested; colocating backen
 and SITL avoids that cross-machine physics configuration.
 
 ## Configuration, controls and reset
+
+The backend `terrain` setting selects `"feofaniya"` (bundled default), a custom
+terrain JSON path, or `null` (original playground). `--playground` and `--flat`
+override terrain selection. See [terrain configuration](docs/terrain.md).
 
 For the combined launcher, set `backendConfig` in `config/launcher.local.json`
 to the backend config you want to use. To start the backend separately, copy
@@ -393,8 +410,8 @@ are visual cues; collision geometry and the vehicle model stay the same.
 `src/physics.js` owns Rapier and four suspension ray wheels, front steering,
 reversible four-wheel traction, speed-limited engine force, neutral/opposite-input
 braking, rolling resistance and rigid chassis contacts. `src/world.js` shares
-obstacle dimensions with the renderer. Terrain is fixed boxes, ramps and bumps;
-cones use cone geometry. This is a compact first implementation with no drivetrain
+obstacle dimensions with the renderer. The default terrain is a fixed triangle mesh shared with the renderer. The
+optional playground uses fixed boxes, ramps, bumps and cone geometry. This is a compact first implementation with no drivetrain
 gearing, articulated axles, tyre deformation or movable obstacles.
 
 `src/protocol.js` validates official little-endian UDP layouts: 40 bytes with
@@ -449,6 +466,7 @@ Official references verified before implementation:
 npm test
 # Installed Chrome needed, no downloaded Playwright browser required:
 npm run test:browser
+npm run test:terrain
 npm run test:video
 # Built native SITL plus installed Chrome/Edge; disposable EEPROM and isolated ports:
 npm run test:launcher
@@ -472,7 +490,9 @@ checks the displayed Mission Planner pipeline through a BGRA appsink. No tests
 contact a real flight controller. Launcher smoke reserves HTTP 8095, UDP
 9005/14563 and TCP 5774/5776. It checks combined startup, MJPEG delivery, shutdown
 and port release, missing executables, busy ports and startup cancellation; it
-uses a disposable EEPROM and does not read your local launcher config.
+uses a disposable EEPROM and does not read your local launcher config. Terrain
+browser smoke reserves HTTP 8096 and validates the real terrain rendering,
+geometry match, attribution and driving/reset controls.
 
 ## Troubleshooting
 

@@ -12,9 +12,9 @@ export function loadLauncherConfig(file){
  return Object.fromEntries(Object.entries(config).map(([key,value])=>[key,path.resolve(path.dirname(file),value)]));
 }
 export const localHost=host=>['0.0.0.0','::'].includes(host)?'127.0.0.1':host;
-export function sitlArguments(config,{defaults,mavlinkPort=5760,wipe=false}={}){
+export function sitlArguments(config,{defaults,mavlinkPort=5760,wipe=false,home={lat:50.4501,lon:30.5234,alt:100}}={}){
  const telemetry=config.mavlink??{host:'127.0.0.1',port:14560};
- return ['--model',`JSON:${localHost(config.udpHost)}`,'--sim-port-out',String(config.udpPort),'--rate','100','--speedup','1','--home','50.4501,30.5234,100,0','--defaults',defaults,'--serial0',`tcp:${mavlinkPort}`,'--serial1',`tcp:${mavlinkPort+2}`,'--serial2',`udpclient:${localHost(telemetry.host)}:${telemetry.port}`,...(wipe?['--wipe']:[])];
+ return ['--model',`JSON:${localHost(config.udpHost)}`,'--sim-port-out',String(config.udpPort),'--rate','100','--speedup','1','--home',`${home.lat},${home.lon},${home.alt},0`,'--defaults',defaults,'--serial0',`tcp:${mavlinkPort}`,'--serial1',`tcp:${mavlinkPort+2}`,'--serial2',`udpclient:${localHost(telemetry.host)}:${telemetry.port}`,...(wipe?['--wipe']:[])];
 }
 export async function checkPorts(ports){
  const results=await Promise.allSettled(ports.map(({kind,host,port,name})=>new Promise((resolve,reject)=>{

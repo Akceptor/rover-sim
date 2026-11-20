@@ -11,6 +11,7 @@ import {setTimeout as delay} from 'node:timers/promises';
 import {parseArgs} from 'node:util';
 import net from 'node:net';
 import {checkPorts} from '../src/launcher.js';
+import {loadEnvironment} from '../src/environment.js';
 const root=path.resolve(path.dirname(fileURLToPath(import.meta.url)),'..');
 const {values}=parseArgs({options:{sitl:{type:'string'},'no-video':{type:'boolean'}}});
 const dir=await fs.mkdtemp(path.join(os.tmpdir(),'rover-launcher-smoke-'));
@@ -42,6 +43,9 @@ try{
   start(args);await waitFor(()=>output.includes('[launcher] READY'));
   const state=await fetch('http://127.0.0.1:8095/api/state').then(r=>r.json());
   assert.equal(state.connected,true);assert.ok(state.simTime>0);
+  const environment=loadEnvironment(config);assert.deepEqual(state.home,environment.home);
+  assert.equal(state.environment,environment.terrain?.name??'Test playground');
+  assert.match(output,new RegExp(`Home: ${state.home.lat.toFixed(6).replaceAll('.','\\.')} ${state.home.lon.toFixed(6).replaceAll('.','\\.')}`));
   if(!values['no-video']){
    const video=await fetch('http://127.0.0.1:8095/api/video').then(r=>r.json());assert.equal(video.state,'streaming');
    const response=await fetch('http://127.0.0.1:8095/camera.mjpg',{signal:AbortSignal.timeout(5000)});

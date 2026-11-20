@@ -6,6 +6,7 @@ export function loadConfig(path=new URL('../config/default.json',import.meta.url
   for(const [k,v]of Object.entries(c.vehicle))if(!Number.isFinite(v)||v<=0)throw Error(`invalid vehicle ${k}`);
   for(const k of ['httpPort','udpPort'])if(!Number.isInteger(c[k])||c[k]<1||c[k]>65535)throw Error(`invalid ${k}`);
   if(!(c.timeoutMs>=100&&c.timeoutMs<=30000))throw Error('invalid timeout');
+  if(c.terrain!==undefined&&c.terrain!==null&&(typeof c.terrain!=='string'||!c.terrain.trim()))throw Error('invalid terrain configuration');
   if(c.mavlink){const m=c.mavlink;
     if(typeof m.host!=='string'||!m.host||!Number.isInteger(m.port)||m.port<1||m.port>65535||!Number.isInteger(m.systemId)||m.systemId<1||m.systemId>255||!Number.isFinite(m.timeoutMs)||m.timeoutMs<100||m.timeoutMs>30000)throw Error('invalid mavlink configuration');
   }

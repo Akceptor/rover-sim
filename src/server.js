@@ -9,13 +9,14 @@ import {loadConfig} from './config.js';
 import {Physics} from './physics.js';
 import {Session} from './session.js';
 import {decodeActuators} from './protocol.js';
-import {playground} from './world.js';
+import {loadEnvironment} from './environment.js';
 import {HeartbeatTelemetry} from './mavlink.js';
 import {VideoRelay} from './video.js';
 const args=process.argv.slice(2),configIndex=args.indexOf('--config');
 const config=loadConfig(configIndex>=0?args[configIndex+1]:undefined);
 const mode=args.includes('--standalone')?'standalone':'sitl';
-const physics=await Physics.create(config.vehicle,!args.includes('--flat'));
+const environment=loadEnvironment(config,configIndex>=0?args[configIndex+1]:undefined,{flat:args.includes('--flat'),playground:args.includes('--playground')});
+const physics=await Physics.create(config.vehicle,!args.includes('--flat'),environment.terrain);
 const session=new Session(physics,config);
 const root=path.resolve(path.dirname(fileURLToPath(import.meta.url)),'..');
 const log=(event,data={})=>console.log(JSON.stringify({time:new Date().toISOString(),event,...data}));
@@ -34,7 +35,7 @@ const server=http.createServer(async(req,res)=>{
   if(video.handleHttp(req,res))return;
   const url=new URL(req.url,'http://localhost');
   if(url.pathname==='/api/state'){res.setHeader('Content-Type','application/json');res.end(JSON.stringify(snapshot()));return;}
-  const files={'/':'web/index.html','/app.js':'web/app.js','/style.css':'web/style.css','/video.js':'web/video.js','/scenery.js':'web/scenery.js','/three.js':'node_modules/three/build/three.module.js','/three.core.js':'node_modules/three/build/three.core.js'};
+  const files={'/':'web/index.html','/app.js':'web/app.js','/style.css':'web/style.css','/video.js':'web/video.js','/scenery.js':'web/scenery.js','/terrain.js':'src/terrain.js','/terrain-view.js':'web/terrain-view.js','/three.js':'node_modules/three/build/three.module.js','/three.core.js':'node_modules/three/build/three.core.js'};
   try{const file=files[url.pathname];if(!file){res.writeHead(404);res.end();return;}res.setHeader('Content-Type',file.endsWith('.js')?'text/javascript':file.endsWith('.css')?'text/css':'text/html');res.end(await fs.readFile(path.join(root,file)));}catch{res.writeHead(500);res.end('asset unavailable');}
 });
 // Browser control is local, same-origin only; no MAVLink proxy on this socket.
@@ -46,7 +47,7 @@ server.on('upgrade',(req,socket,head)=>{
   else socket.destroy();
 });
 wss.on('connection',ws=>{
-  ws.send(JSON.stringify({type:'init',mode,config,world:args.includes('--flat')?playground.slice(0,1):playground}));
+  ws.send(JSON.stringify({type:'init',mode,config,world:environment.world,terrain:environment.terrain}));
   ws.on('message',data=>{try{
     const m=JSON.parse(data);let error;
     if(m.type==='keys'&&mode==='standalone'){
@@ -90,7 +91,7 @@ const tick=setInterval(()=>{const now=performance.now();if(mode==='standalone'){
 }previous=now;
 const connected=mode==='sitl'&&now-session.last<config.timeoutMs;if(connected!==lastConnected){log(connected?'sitl-connected':'sitl-timeout',{peer:session.peer});lastConnected=connected;}
 },5);
-function snapshot(){const state=physics.state();return {type:'state',mode,running,autopilot:mode==='sitl'?telemetry.snapshot(performance.now()):null,connected:mode==='standalone'||performance.now()-session.last<config.timeoutMs,resetPending,...state,simTime:mode==='sitl'?session.time:physics.time,rate:session.rate??100,ageMs:Number.isFinite(session.last)?Math.round(performance.now()-session.last):null,raw:session.raw??[],stats:{...session.stats,malformed,lagDropped},wallTime:performance.now()/1000};}
+function snapshot(){const state=physics.state();return {type:'state',mode,running,environment:environment.terrain?.name??'Test playground',home:environment.home,autopilot:mode==='sitl'?telemetry.snapshot(performance.now()):null,connected:mode==='standalone'||performance.now()-session.last<config.timeoutMs,resetPending,...state,simTime:mode==='sitl'?session.time:physics.time,rate:session.rate??100,ageMs:Number.isFinite(session.last)?Math.round(performance.now()-session.last):null,raw:session.raw??[],stats:{...session.stats,malformed,lagDropped},wallTime:performance.now()/1000};}
 const broadcast=setInterval(()=>{const msg=JSON.stringify(snapshot());for(const ws of wss.clients)if(ws.readyState===WebSocket.OPEN&&ws.bufferedAmount<65536)ws.send(msg);},50);
 wss.on('error',e=>{log('websocket-error',{message:e.message});process.exitCode=1;});
 server.on('error',e=>{log('http-error',{message:e.message});process.exitCode=1;shutdown();});

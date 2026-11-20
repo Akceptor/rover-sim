@@ -15,7 +15,7 @@
 </header>
 <main class="cockpit">
   <div class="viewbar">
-    <div><span class="view-title">ROVER CAMERA</span><span class="muted secondary">100 × 100 m playground</span></div>
+    <div><span class="view-title">ROVER CAMERA</span><span id="landscape" class="muted secondary">Loading landscape</span></div>
     <div class="seg" role="group" aria-label="Camera view"><button id="fpv" aria-pressed="true">FPV</button><button id="chase" aria-pressed="false">Chase</button></div>
   </div>
   <section id="viewport" tabindex="0" aria-label="Rover viewport. Focus to drive in standalone mode.">
@@ -32,6 +32,7 @@
     </div>
     <div id="notice" role="status"></div>
   </section>
+  <p id="terrainAttribution" class="terrain-attribution"></p>
   <div class="timing"><span><b id="rate">—</b> Hz physics</span><span><b id="time">0.0</b> s simulated</span><span id="diagnostics">Waiting for timing data</span></div>
   <section class="controls" aria-label="Simulator controls">
     <div class="drive-help"><div id="keyLegend" aria-hidden="true"><kbd>W</kbd><span><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd></span></div><p id="help">Drive using Mission Planner or your MAVLink companion.</p></div>

@@ -5,11 +5,12 @@ import {fileURLToPath} from 'node:url';
 import {parseArgs} from 'node:util';
 import {setTimeout as delay} from 'node:timers/promises';
 import {loadConfig} from '../src/config.js';
+import {loadEnvironment} from '../src/environment.js';
 import {ProcessGroup} from '../src/process-group.js';
 import {sitlArguments,checkPorts,localHost,loadLauncherConfig} from '../src/launcher.js';
 const root=path.resolve(path.dirname(fileURLToPath(import.meta.url)),'..');
-const {values}=parseArgs({options:{sitl:{type:'string'},'launcher-config':{type:'string'},config:{type:'string'},'extra-params':{type:'string'},'mavlink-port':{type:'string',default:'5760'},'run-dir':{type:'string'},'no-video':{type:'boolean'},standalone:{type:'boolean'},flat:{type:'boolean'},wipe:{type:'boolean'},camera:{type:'string',default:'fpv'},fov:{type:'string',default:'85'},browser:{type:'string',default:'auto'},help:{type:'boolean'}}});
-if(values.help){console.log(`npm run sim -- [--launcher-config config/launcher.local.json] [--no-video] [--standalone] [--flat] [--wipe]
+const {values}=parseArgs({options:{sitl:{type:'string'},'launcher-config':{type:'string'},config:{type:'string'},'extra-params':{type:'string'},'mavlink-port':{type:'string',default:'5760'},'run-dir':{type:'string'},'no-video':{type:'boolean'},standalone:{type:'boolean'},flat:{type:'boolean'},playground:{type:'boolean'},wipe:{type:'boolean'},camera:{type:'string',default:'fpv'},fov:{type:'string',default:'85'},browser:{type:'string',default:'auto'},help:{type:'boolean'}}});
+if(values.help){console.log(`npm run sim -- [--launcher-config config/launcher.local.json] [--no-video] [--standalone] [--flat] [--playground] [--wipe]
 Set sitlExe and backendConfig in config/launcher.local.json (copy launcher.example.json).
 Overrides: --sitl "path/to/ArduRover.exe" --config path/to/backend.json
 Camera: --camera fpv|chase --fov 40..120 --browser auto|chrome|msedge
@@ -31,6 +32,7 @@ try{
  const hasSettings=await fs.stat(settingsFile).then(()=>true,error=>{if(error.code==='ENOENT')return false;throw error;});
  const settings=(hasSettings||values['launcher-config']||(!values.standalone&&!values.sitl))?loadLauncherConfig(settingsFile):{};
  const configPath=values.config?path.resolve(values.config):(settings.backendConfig??path.join(root,'config/default.json')),config=loadConfig(configPath);
+ const environment=loadEnvironment(config,configPath,{flat:values.flat,playground:values.playground});
  const mavlinkPort=Number(values['mavlink-port']);
  if(!Number.isInteger(mavlinkPort)||mavlinkPort<1||mavlinkPort>65533)throw Error('--mavlink-port must be between 1 and 65533');
  if(!['fpv','chase'].includes(values.camera)||!Number.isFinite(Number(values.fov))||Number(values.fov)<40||Number(values.fov)>120||!['auto','chrome','msedge'].includes(values.browser))throw Error('Invalid camera options. Use --help for accepted values.');
@@ -46,19 +48,19 @@ try{
  const extra=values['extra-params']?path.resolve(values['extra-params']):null;if(extra)await fs.access(extra);
  const url=`http://${localHost(config.httpHost)}:${config.httpPort}`;
  const state=async()=>{const response=await fetch(url+'/api/state',{signal:AbortSignal.timeout(1000)});if(!response.ok)throw Error('backend not ready');return response.json();};
- group.start('backend',process.execPath,[path.join(root,'src/server.js'),'--config',configPath,...(values.standalone?['--standalone']:[]),...(values.flat?['--flat']:[])],{cwd:root,ipc:true});
+ group.start('backend',process.execPath,[path.join(root,'src/server.js'),'--config',configPath,...(values.standalone?['--standalone']:[]),...(values.flat?['--flat']:[]),...(values.playground?['--playground']:[])],{cwd:root,ipc:true});
  await waitFor('backend',state);
  if(!values.standalone){
   const runDir=path.resolve(values['run-dir']??path.join(root,'.run',process.platform==='win32'?'sitl-windows':'sitl'));await fs.mkdir(runDir,{recursive:true});
   const defaults=path.join(root,'config/rover.parm')+(extra?','+extra:'');
-  group.start('sitl',executable,sitlArguments(config,{defaults,mavlinkPort,wipe:values.wipe}),{cwd:runDir});
+  group.start('sitl',executable,sitlArguments(config,{defaults,mavlinkPort,wipe:values.wipe,home:environment.home}),{cwd:runDir});
   await waitFor('SITL JSON connection',async()=>(await state()).connected,40000);
  }
  if(!values['no-video']){
   group.start('video',process.execPath,[path.join(root,'scripts/camera-stream.mjs'),'--url',url,'--camera',values.camera,'--fov',values.fov,'--browser',values.browser],{cwd:root,ipc:true});
   await waitFor('background camera',async()=>{const response=await fetch(url+'/api/video',{signal:AbortSignal.timeout(1000)});return (await response.json()).state==='streaming';},30000);
  }
- console.log(`\n[launcher] READY · ${url}\n[launcher] Video: ${values['no-video']?'disabled':url+'/camera.mjpg'}\n[launcher] ${values.standalone?'Standalone keyboard mode':`Mission Planner TCP ${mavlinkPort} · companion ${mavlinkPort+2}`}\n[launcher] Ctrl+C stops video, SITL and backend. Saved parameters are ${values.wipe?'being reset for this run':'preserved'}.\n`);
+ console.log(`\n[launcher] READY · ${url}\n[launcher] Terrain: ${environment.terrain?.name??'Test playground'}\n[launcher] Video: ${values['no-video']?'disabled':url+'/camera.mjpg'}\n[launcher] ${values.standalone?'Standalone keyboard mode':`Mission Planner TCP ${mavlinkPort} · companion ${mavlinkPort+2}`}\n[launcher] Ctrl+C stops video, SITL and backend. Saved parameters are ${values.wipe?'being reset for this run':'preserved'}.\n`);
  process.exitCode=await group.finished;
 }catch(error){if(!group.stopping){console.error(`[launcher] ${error.message}`);process.exitCode=await group.stop(1);}else process.exitCode=await group.finished;}
 finally{if(process.connected)process.disconnect();}

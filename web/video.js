@@ -32,6 +32,7 @@ export class CameraVideo {
   // Letterbox instead of stretching a resized or narrow viewport.
   const scale=Math.min(960/source.width,540/source.height),width=source.width*scale,height=source.height*scale;
   this.context.fillStyle='#000';this.context.fillRect(0,0,960,540);this.context.drawImage(source,(960-width)/2,(540-height)/2,width,height);
+  if(this.attribution){this.context.font='10px sans-serif';this.context.fillStyle='#000a';this.context.fillRect(0,523,960,17);this.context.fillStyle='#fff';this.context.fillText(this.attribution,6,535,948);}
   this.canvas.toBlob(blob=>{
    this.busy=false;
    if(!blob||blob.size>512*1024||this.ws!==ws||!this.ready||!this.wanted||document.hidden||ws.readyState!==WebSocket.OPEN)return;

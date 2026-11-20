@@ -70,10 +70,16 @@ Append options after `--`:
 npm run sim -- --no-video
 npm run sim -- --standalone
 npm run sim -- --flat
+npm run sim -- --playground
 npm run sim -- --launcher-config config/another-machine.json
 npm run sim -- --wipe
 npm run sim -- --help
 ```
+
+The default backend config loads offline Feofaniya terrain. SITL home follows
+the selected terrain; `--playground` restores the old obstacle course and `--flat`
+restores an empty flat world. See [real terrain](terrain.md) for data sources,
+other locations, attribution and mission-coordinate changes.
 
 `--standalone` starts the backend and camera for keyboard driving without SITL
 and does not require a local launcher config. `--no-video` skips the browser.

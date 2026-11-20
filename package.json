@@ -8,7 +8,9 @@
     "sim": "node scripts/launch.mjs",
     "standalone": "node src/server.js --standalone",
     "video": "node scripts/camera-stream.mjs",
+    "terrain:import": "node scripts/import-terrain.mjs",
     "test": "node --test test/*.test.js",
+    "test:terrain": "node scripts/terrain-smoke.mjs",
     "test:launcher": "node scripts/launcher-smoke.mjs",
     "test:sitl": "python3 scripts/integration.py",
     "test:browser": "node scripts/browser-smoke.mjs",
@@ -19,7 +21,9 @@
   },
   "dependencies": {
     "@dimforge/rapier3d-compat": "0.19.3",
+    "geotiff": "3.0.5",
     "playwright": "1.65.1",
+    "proj4": "2.23.0",
     "three": "0.183.2",
     "ws": "8.21.0"
   }

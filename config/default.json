@@ -1,4 +1,5 @@
 {
+  "terrain":"feofaniya",
   "httpHost":"127.0.0.1", "httpPort":8090,
   "udpHost":"127.0.0.1", "udpPort":9002,
   "timeoutMs":2000,

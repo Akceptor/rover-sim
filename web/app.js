@@ -1,6 +1,7 @@
 import * as T from '/three.js';
 import {CameraVideo} from '/video.js';
 import {createScenery} from '/scenery.js';
+import {addTerrain,addTreeCrown} from '/terrain-view.js';
 if(new URLSearchParams(location.search).has('camera-output'))document.documentElement.dataset.cameraOutput='true';
 const cameraVideo=new CameraVideo();
 const $=id=>document.getElementById(id),canvas=$('view'),viewport=$('viewport'),settingsDialog=$('settingsDialog');
@@ -21,10 +22,14 @@ function setup(m){config=m.config;mode=m.mode;const c=config.vehicle;$('mode').t
   for(const z of [-c.width*.34,c.width*.34]){const light=box([.01,.025,.035],0xfff5bd,rover);light.position.set(c.length/2+.01,.025,z);}
   for(let i=0;i<4;i++){const steer=new T.Group(),spin=new T.Group();steer.add(spin);rover.add(steer);const mesh=new T.Mesh(new T.CylinderGeometry(c.wheelRadius,c.wheelRadius,.045,20),new T.MeshStandardMaterial({color:0x202426}));mesh.rotation.x=Math.PI/2;mesh.castShadow=true;spin.add(mesh);const hub=new T.Mesh(new T.CylinderGeometry(c.wheelRadius*.5,c.wheelRadius*.5,.048,12),new T.MeshStandardMaterial({color:0xa3a9aa}));hub.rotation.x=Math.PI/2;spin.add(hub);wheels.push({steer,spin});}
   // Init is resent on reconnect; replace world instead of duplicating objects.
-  if(scene.userData.world){scene.remove(scene.userData.world);}const world=new T.Group();scene.userData.world=world;scene.add(world);
-  for(const o of m.world){const mesh=o.kind==='cone'?new T.Mesh(new T.ConeGeometry(o.size[0]/2,o.size[1],16),new T.MeshStandardMaterial({color:o.color})):box(o.size,o.color,world);if(o.kind==='cone'){world.add(mesh);mesh.castShadow=true;}mesh.position.fromArray(o.position);mesh.rotation.z=o.angle??0;}
-  scenery.decorate(world);
-  const grid=new T.GridHelper(100,100,0x7c8a69,0x718361);grid.position.y=.002;world.add(grid);
+  if(scene.userData.world){const old=scene.userData.world;scene.remove(old);old.traverse(o=>{o.geometry?.dispose();if(o.material){for(const m of Array.isArray(o.material)?o.material:[o.material]){if(o.name==='real-terrain')m.map?.dispose();m.dispose();}}});}const world=new T.Group();scene.userData.world=world;scene.add(world);
+  scenery.sky.scale.setScalar(m.terrain?10:1);
+  if(m.terrain){addTerrain(world,m.terrain,renderer);scene.fog.near=70;scene.fog.far=650;for(const c of [camera,chase]){c.far=1500;c.updateProjectionMatrix();}}else{scene.fog.near=35;scene.fog.far=95;for(const c of [camera,chase]){c.far=150;c.updateProjectionMatrix();}}
+  $('landscape').textContent=m.terrain?`${m.terrain.name} · ${(m.terrain.size-1)*m.terrain.spacing} m`:'100 × 100 m playground';
+  $('terrainAttribution').textContent=m.terrain?.attribution??'';cameraVideo.attribution=m.terrain?.attribution??'';
+  for(const o of m.world){const mesh=o.kind==='cone'?new T.Mesh(new T.ConeGeometry(o.size[0]/2,o.size[1],16),new T.MeshStandardMaterial({color:o.color})):box(o.size,o.color,world);if(o.kind==='cone'){world.add(mesh);mesh.castShadow=true;}mesh.position.fromArray(o.position);mesh.rotation.z=o.angle??0;if(o.kind==='tree')addTreeCrown(world,o);}
+  if(!m.terrain){scenery.decorate(world);
+  const grid=new T.GridHelper(100,100,0x7c8a69,0x718361);grid.position.y=.002;world.add(grid);}
 }
 function send(m){if(ws?.readyState===WebSocket.OPEN)ws.send(JSON.stringify(m));}
 function connect(){ws=new WebSocket(`${location.protocol==='https:'?'wss':'ws'}://${location.host}`);ws.onmessage=e=>{const m=JSON.parse(e.data);if(m.type==='init')setup(m);if(m.type==='error')notice(m.message);if(m.type==='state'){state=m;lastReceive=performance.now();}};ws.onclose=()=>{keys.clear();$('connection').textContent='Backend offline · reconnecting';$('connection').dataset.state='offline';setTimeout(connect,1000);};}
