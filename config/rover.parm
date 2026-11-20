@@ -34,6 +34,8 @@ RC3_TRIM 1500
 RC3_MAX 2000
 RCMAP_ROLL 1
 RCMAP_THROTTLE 3
+# RC5 is the simulator's arm/disarm switch. Existing EEPROM assignments take precedence.
+RC5_OPTION 153
 FS_THR_ENABLE 0
 FS_GCS_ENABLE 0
 # Keep EKF3 and simulated GPS/IMUs; do not use truth AHRS to conceal bad sensors.

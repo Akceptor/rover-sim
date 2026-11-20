@@ -43,6 +43,22 @@ Existing EEPROM settings can override defaults. If start detection remains at
 waiting, set `SERIAL2_PROTOCOL = 2`, `SR2_EXTRA1 = 2` and `SR2_POSITION = 2` in
 Mission Planner, save and restart SITL. For camera control also retain
 `SR2_RC_CHAN = 10`. Do not reset other RC assignments or wipe EEPROM.
+On newer builds (including Rover 4.8-dev), those SERIAL2 stream parameters are
+named `MAV3_EXTRA1`, `MAV3_POSITION` and `MAV3_RC_CHAN` respectively; use the names
+present in your parameter list. See [ArduPilot parameter renames](https://docs.ardupilot.org/rover/docs/common-param-name-changes.html).
+
+Mission Planner owns a separate simulation EEPROM from the normal launcher's
+`.run/sitl-windows` directory. Switching to this mode therefore does not carry
+over that directory's saved RC assignments. Fresh simulator defaults assign
+`RC5_OPTION = 153` (ArmDisarm). If RC5 no longer arms after switching modes, read
+that parameter in Mission Planner and write `153` if it is `0` (unassigned).
+Keep the throttle centred, use MANUAL mode, and move the switch low before high.
+The actual RC5 PWM must go below 1200 µs for low and **above** 1800 µs for high;
+exactly 1800 µs is still the middle position. Use 1100/1900 or 1000/2000 switch
+outputs. Adjust the transmitter/joystick output endpoints, not just `RC5_MAX`.
+Check the actual input on Mission Planner's Radio Calibration screen.
+An existing EEPROM value overrides the defaults file; updating the repo alone
+does not change that saved value. Do not wipe EEPROM to restore one assignment.
 
 Start selection is a startup operation. To choose a different start, stop SITL
 in Mission Planner and restart the Node launcher before starting the next
