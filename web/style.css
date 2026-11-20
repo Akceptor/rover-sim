@@ -146,3 +146,7 @@ html[data-camera-output] #viewport{width:100vw;height:100vh;min-height:0;max-hei
 .environment-status a{color:#aac5ff}
 #weatherStatus[data-state=stale]{color:var(--warn)}
 html[data-camera-output] .environment-status{display:none}
+.terrain-load{display:flex;align-items:center;gap:12px}
+.terrain-load[hidden],html[data-camera-output] .terrain-load{display:none}
+.terrain-load p{flex:1;min-width:0}
+button:disabled{opacity:.5;cursor:default}

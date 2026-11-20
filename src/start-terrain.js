@@ -5,8 +5,12 @@ import {execFile} from 'node:child_process';
 import {promisify} from 'node:util';
 import {validateTerrain} from './terrain.js';
 const root=fileURLToPath(new URL('..',import.meta.url)),run=promisify(execFile);
+export function terrainImportArguments(home,out){
+ // Node treats a separate negative value as another option; inline coordinates work in every hemisphere.
+ return [path.join(root,'scripts/import-terrain.mjs'),`--lat=${home.lat}`,`--lon=${home.lon}`,'--name',`Mission Planner ${home.lat.toFixed(5)}, ${home.lon.toFixed(5)}`,'--out',out];
+}
 async function importPatch(home,out,signal){
- await run(process.execPath,[path.join(root,'scripts/import-terrain.mjs'),'--lat',String(home.lat),'--lon',String(home.lon),'--name',`Mission Planner ${home.lat.toFixed(5)}, ${home.lon.toFixed(5)}`,'--out',out],{cwd:root,signal,timeout:180000,maxBuffer:4*1024*1024});
+ await run(process.execPath,terrainImportArguments(home,out),{cwd:root,signal,timeout:180000,maxBuffer:4*1024*1024});
 }
 export async function loadStartTerrain(home,{cacheDir=path.join(root,'.run/terrain-cache'),importer=importPatch,signal}={}){
  if(!home||!Number.isFinite(home.lat)||Math.abs(home.lat)>85||!Number.isFinite(home.lon)||Math.abs(home.lon)>180)throw Error('Invalid start coordinates');

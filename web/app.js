@@ -34,6 +34,7 @@ function send(m){if(ws?.readyState===WebSocket.OPEN)ws.send(JSON.stringify(m));}
 function connect(){ws=new WebSocket(`${location.protocol==='https:'?'wss':'ws'}://${location.host}`);ws.onmessage=e=>{const m=JSON.parse(e.data);if(m.type==='init')setup(m);if(m.type==='error')notice(m.message);if(m.type==='state'){state=m;lastReceive=performance.now();}};ws.onclose=()=>{keys.clear();$('connection').textContent='Backend offline · reconnecting';$('connection').dataset.state='offline';setTimeout(connect,1000);};}
 connect();
 $('run').onclick=()=>send({type:'running',value:!state?.running});$('reset').onclick=()=>send({type:'reset'});
+$('retryTerrain').onclick=()=>send({type:'retryTerrain'});
 $('fov').oninput=()=>{camera.fov=+$('fov').value;camera.updateProjectionMatrix();$('fovValue').textContent=`${camera.fov}°`;};
 function selectCamera(value){$('camera').value=value;for(const id of ['fpv','chase'])$(id).setAttribute('aria-pressed',String(id===value));$('cameraLabel').textContent=value==='fpv'?'ONBOARD FPV':'CHASE CAMERA';}
 $('fpv').onclick=()=>selectCamera('fpv');$('chase').onclick=()=>selectCamera('chase');$('camera').onchange=()=>selectCamera($('camera').value);
@@ -57,6 +58,7 @@ function render(){requestAnimationFrame(render);const width=viewport.clientWidth
     $('armState').dataset.state=autopilot?autopilot.armed?'armed':'disarmed':'unknown';$('flightMode').dataset.state=autopilot?.flightMode?'known':'unknown';
     if(s.wallTime!==previousWall){ratio=(s.simTime-previousTime)/(s.wallTime-previousWall);previousTime=s.simTime;previousWall=s.wallTime;}
     const terrainMessage=s.startTerrain?.message??'';if($('startTerrainStatus').textContent!==terrainMessage)$('startTerrainStatus').textContent=terrainMessage;$('run').disabled=!!s.startTerrain&&s.startTerrain.status!=='ready';
+    $('terrainLoad').hidden=!s.startTerrain;$('retryTerrain').hidden=s.startTerrain?.status==='ready';$('retryTerrain').disabled=!online||s.autopilot?.armed!==false||['loading','ready'].includes(s.startTerrain?.status);$('retryTerrain').textContent=s.startTerrain?.status==='loading'?'Loading terrain…':'Retry terrain';
     $('run').textContent=s.running?'Stop physics':'Start physics';$('diagnostics').textContent=`RTF ${ratio.toFixed(2)} · packet age ${s.ageMs??'—'} ms · duplicates ${s.stats.duplicates} · skipped ${s.stats.skipped} · malformed ${s.stats.malformed}`;$('status').textContent=s.running?`${$('camera').value==='fpv'?'ONBOARD FPV':'CHASE'} · ${mode==='sitl'?'SITL actuator authority':'keyboard test mode'}`:'PHYSICS STOPPED · sensor time continues in SITL';
   }const activeCamera=$('camera').value==='fpv'?camera:chase;weatherView.update(state?.weather,state?.home,activeCamera,lastReceive);scenery.sky.position.copy(activeCamera.position);renderer.render(scene,activeCamera);cameraVideo.capture(canvas,performance.now());
 }render();

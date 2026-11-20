@@ -27,14 +27,18 @@ then follow that location. The normal `npm run sim` bundled-map workflow is unch
    Use the actual printed path for your checkout. Run the launcher and Mission
    Planner together in Windows for these loopback addresses to work.
 
-3. Pick the start location on the Simulation map, set heading to **0**, choose
+3. Drag the **H / home marker** to the desired start on the Simulation map;
+   panning the map alone does not move the start. Set heading to **0**, choose
    Rover and start its simulation. Keep **Wipe unchecked** to preserve parameters.
    The downloaded ArduRover binary must support the JSON backend; its console
    should say `Starting SITL: JSON`.
 4. Remain disarmed. The simulator cockpit reports waiting, loading, ready, or a
    download error below the view. The first download needs internet and can take
    up to three minutes. Exact cached starts and the bundled Feofaniya start work
-   offline. The rover remains frozen while sensor time continues.
+   offline. The rover remains frozen while sensor time continues. If a download
+   fails, use **Retry terrain** below the view after fixing the connection or
+   telemetry issue. The backend and SITL stay running; no restart is needed for
+   retries. The button is disabled while loading or without disarmed telemetry.
 5. When **Terrain ready** appears, click **Start physics** in the browser, then
    arm/drive through Mission Planner as usual. The camera stream remains
    `http://127.0.0.1:8090/camera.mjpg`.
@@ -78,6 +82,11 @@ Imported terrain heights remain relative to its level centre pad, so loading
 does not move the held rover or change its local sensor origin. Source DTM
 elevation is retained separately in terrain metadata.
 
+Successful patches are cached by exact latitude/longitude at seven decimal places;
+returning to that start reuses the validated file offline. Failed or incomplete
+downloads are removed, so Retry makes a fresh attempt. It does not force a
+redownload of an already valid cached patch.
+
 The loader validates the exact origin and mesh before publishing the cache or
 replacing the held physics world. Failed downloads, invalid patches, a changed
 start or lost disarmed telemetry keep physics held and report an error. Existing
@@ -89,6 +98,8 @@ not a live aerial image.
 held state. With native SITL built, `npm run test:position` runs an external SITL
 with a selected home through the new launcher mode and verifies terrain, sensor
 clock, and wheel contacts. It reserves HTTP 8100, UDP 9007/14565 and TCP 5786/5788.
+`npm run test:terrain-retry` uses Chrome on HTTP 8102, UDP 9009/14567 to verify
+the error display and Retry button through a real backend without restarting it.
 Windows Mission Planner GUI clicks have not been automated here.
 
 Mission Planner's [Simulation documentation](https://ardupilot.org/planner/docs/mission-planner-simulation.html)

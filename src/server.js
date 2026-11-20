@@ -64,6 +64,13 @@ wss.on('connection',ws=>{
       if(keyboard.owner&&keyboard.owner!==ws&&performance.now()-keyboard.time<300)return;
       const steering=Math.max(-1,Math.min(1,Number(m.steering)||0)),throttle=Math.max(-1,Math.min(1,Number(m.throttle)||0));
       keyboard={steering,throttle,time:performance.now(),owner:steering||throttle?ws:null};
+    } else if(m.type==='retryTerrain'){
+      if(!externalStart)error='Terrain retry is available in Mission Planner start-selection mode.';
+      else if(startTerrain.status==='loading')error='Terrain is already loading.';
+      else if(startTerrain.status==='ready')error='Terrain is already loaded.';
+      else if(telemetry.snapshot(performance.now()).armed!==false)error='Disarm SITL and wait for fresh telemetry before retrying terrain.';
+      else if(!telemetry.positionSnapshot(performance.now()))error='Waiting for fresh start coordinates from SITL.';
+      else{running=false;session.running=false;startTerrain={status:'waiting',message:'Retrying selected start terrain'};void loadPickedStart();}
     } else if(m.type==='running'){if(externalStart&&startTerrain.status!=='ready')error='Wait for the selected start terrain to finish loading.';else{running=!!m.value;session.running=running;log('running',{running});}}
     else if(m.type==='reset'){
       if(mode==='standalone'){physics.reset();keyboard.throttle=0;keyboard.steering=0;}
@@ -117,16 +124,19 @@ async function loadPickedStart(){
   const {terrain,cached}=await loadStartTerrain(home,{signal:terrainAbort.signal});
   if(shuttingDown)return;
   const safe=()=>{const now=performance.now(),p=telemetry.positionSnapshot(now);return telemetry.snapshot(now).armed===false&&p&&Math.abs(p.lat-home.lat)<1e-7&&Math.abs(p.lon-home.lon)<1e-7;};
-  if(!safe())throw Error('Start changed or disarmed telemetry lost during loading. Disarm and restart the backend.');
+  if(!safe())throw Error('Start changed or disarmed telemetry lost during loading. Disarm and retry.');
   const replacement=await Physics.create(config.vehicle,true,terrain);
-  if(shuttingDown||!safe()){replacement.free();if(shuttingDown)return;throw Error('Disarm and restart the backend before loading terrain.');}
+  if(shuttingDown||!safe()){replacement.free();if(shuttingDown)return;throw Error('Disarm and retry loading terrain.');}
   physics.free();physics=replacement;session.physics=physics;
   environment={terrain,world:terrainObjects(terrain),home,timeZone:config.timeZone??terrain.timeZone??null};
   weather.close();weather=new LiveWeather(home,{timeZone:environment.timeZone});weather.start();
   startTerrain={status:'ready',message:'Terrain ready · start physics when ready',home,cached};
   const init=JSON.stringify(initialState());for(const ws of wss.clients)if(ws.readyState===WebSocket.OPEN)ws.send(init);
   log('terrain-start-ready',{home,cached});
- }catch(error){if(!shuttingDown){startTerrain={status:'error',message:`Terrain load failed: ${error.message}. Restart the backend to retry.`,home};log('terrain-start-error',{message:error.message});}}
+ }catch(error){if(!shuttingDown){
+  const reason=error.stderr?.match(/(?:^|\n)[A-Za-z]*Error(?: \[[^\]]+\])?: ([^\n]+)/)?.[1]??error.message.split('\n')[0];
+  startTerrain={status:'error',message:`Terrain load failed: ${reason}. Use Retry terrain when ready.`,home};log('terrain-start-error',{message:error.message});
+ }}
 }
 function shutdown(){if(shuttingDown)return;shuttingDown=true;terrainAbort.abort();weather.close();video.close();clearInterval(tick);clearInterval(broadcast);if(pending)clearTimeout(pending.timer);for(const ws of wss.clients)ws.terminate();wss.close();server.close();if(mode==='sitl')udp.close();telemetrySocket?.close();physics.free();if(process.connected)process.disconnect();}
 process.on('SIGINT',()=>{shutdown();});process.on('SIGTERM',()=>{shutdown();});

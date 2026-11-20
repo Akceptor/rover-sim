@@ -32,6 +32,30 @@ test('Mission Planner selected start waits for disarm, loads matching terrain an
   assert.equal(state.startTerrain.status,'ready');assert.equal(state.startTerrain.cached,true);assert.equal(state.home.lat,50.3375);assert.equal(state.home.alt,184.16);assert.equal(state.running,false);assert.match(state.environment,/Feofaniya/);
  }finally{udp.close();await s.close();}
 });
+test('failed terrain can be retried through the browser without restarting the backend',async()=>{
+ const s=await launch('mission-planner'),udp=dgram.createSocket('udp4');let ws;
+ const send=hex=>new Promise((resolve,reject)=>udp.send(Buffer.from(hex,'hex'),s.config.mavlink.port,'127.0.0.1',e=>e?reject(e):resolve()));
+ const waitFor=async status=>{let state;for(let i=0;i<100;i++){state=await s.state();if(state.startTerrain.status===status)return state;await delay(25);}assert.fail(JSON.stringify(state.startTerrain));};
+ try{
+  // Latitude 84 is outside the importer's coverage: deterministic failure before any network request.
+  await send('fd2c0000000101a400000000000000000000000000000000000000000000c3f51cc100000000000000000000000000621132b01d2a1201a2');
+  await send('fd0f0000000101210000e803000000621132b01d2a12a086014e9b');
+  await send('fd0900000001010000000f0000000a030104037547');
+  const failed=await waitFor('error');assert.equal(failed.running,false);
+  ws=await s.socket();
+  await send('fe0900010100000000000a038104035d04');
+  for(let i=0;i<100&&(await s.state()).autopilot.armed!==true;i++)await delay(10);
+  assert.equal((await s.state()).autopilot.armed,true);
+  ws.send(JSON.stringify({type:'retryTerrain'}));await delay(75);assert.equal((await s.state()).startTerrain.status,'error','armed retry must be refused');
+  await send('fd2c0000000101a400000000000000000000000000000000000000000000c3f51cc100000000000000000000000098e4001eb01d2a1253ae');
+  await send('fd0f0000000101210000e803000098e4001eb01d2a1260cf026c8f');
+  await send('fd0900000001010000000f0000000a030104037547');
+  for(let i=0;i<100&&(await s.state()).autopilot.armed!==false;i++)await delay(10);
+  assert.equal((await s.state()).startTerrain.status,'error','failure must remain visible until explicit retry');
+  ws.send(JSON.stringify({type:'retryTerrain'}));
+  const ready=await waitFor('ready');assert.equal(ready.home.lat,50.3375);assert.equal(ready.running,false);
+ }finally{ws?.terminate();udp.close();await s.close();}
+});
 test('UDP cached duplicates, malformed packets, timeout and counter restart without browser',async()=>{
  const s=await launch('sitl'),udp=dgram.createSocket('udp4');udp.bind(0,'127.0.0.1');await once(udp,'listening');
  const packet=n=>{const b=Buffer.alloc(40);b.writeUInt16LE(18458);b.writeUInt16LE(100,2);b.writeUInt32LE(n,4);b.writeUInt16LE(1500,10);b.writeUInt16LE(1750,14);return b;};
