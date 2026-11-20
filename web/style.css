@@ -150,3 +150,7 @@ html[data-camera-output] .environment-status{display:none}
 .terrain-load[hidden],html[data-camera-output] .terrain-load{display:none}
 .terrain-load p{flex:1;min-width:0}
 button:disabled{opacity:.5;cursor:default}
+.location-picker{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:12px;padding:12px;background:var(--panel);border:1px solid var(--line);border-radius:8px;font-size:.875rem}
+.location-picker[hidden],html[data-camera-output] .location-picker{display:none}
+.location-picker select{flex:1;min-width:0;max-width:100%}
+.location-picker p{width:100%;margin:0;font-size:.75rem}

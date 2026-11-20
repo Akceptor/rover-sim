@@ -7,7 +7,7 @@ import {once} from 'node:events';import dgram from 'node:dgram';
 import {WebSocket} from 'ws';
 async function launch(mode){
  const dir=await fs.mkdtemp(path.join(os.tmpdir(),'rover-test-'));const config=JSON.parse(await fs.readFile(new URL('../config/default.json',import.meta.url)));config.httpPort=22000+Math.floor(Math.random()*10000);config.udpPort=32000+Math.floor(Math.random()*10000);config.timeoutMs=150;if(mode==='mission-planner')config.mavlink.port=42000+Math.floor(Math.random()*10000);else config.mavlink=null;await fs.writeFile(path.join(dir,'config.json'),JSON.stringify(config));
- const proc=spawn(process.execPath,['src/server.js',...(mode==='mission-planner'?['--mission-planner']:['--flat']),'--config',path.join(dir,'config.json'),...(mode==='standalone'?['--standalone']:[])],{cwd:new URL('..',import.meta.url),stdio:['ignore','pipe','pipe']});let logs='';proc.stdout.on('data',v=>logs+=v);proc.stderr.on('data',v=>logs+=v);
+ const proc=spawn(process.execPath,['src/server.js',...(mode==='mission-planner'?['--mission-planner']:mode==='location-picker'?['--location-picker']:['--flat']),'--config',path.join(dir,'config.json'),...(mode==='standalone'?['--standalone']:[])],{cwd:new URL('..',import.meta.url),stdio:['ignore','pipe','pipe']});let logs='';proc.stdout.on('data',v=>logs+=v);proc.stderr.on('data',v=>logs+=v);
  const url=`http://127.0.0.1:${config.httpPort}`;
  const state=async()=>{const r=await fetch(url+'/api/state');return r.json();};
  for(let i=0;i<100;i++){if(proc.exitCode!==null)throw Error(logs);try{await state();break;}catch{await delay(30);}}
@@ -17,6 +17,22 @@ async function launch(mode){
 test('standalone neutral tab releases ownership; disconnect clears driving',async()=>{
  const s=await launch('standalone');let a,b;
  try{a=await s.socket();b=await s.socket();a.send(JSON.stringify({type:'keys',steering:0,throttle:0}));await delay(20);b.send(JSON.stringify({type:'keys',steering:0,throttle:1}));await delay(70);assert.equal((await s.state()).inputs.throttle,1);a.send(JSON.stringify({type:'keys',steering:0,throttle:0}));await delay(30);assert.equal((await s.state()).inputs.throttle,1);b.close();await delay(50);assert.equal((await s.state()).inputs.throttle,0);}finally{a?.terminate();b?.terminate();await s.close();}
+});
+test('startup dropdown loads a preset before SITL connects and keeps it locked after selection',async()=>{
+ const s=await launch('location-picker'),unexpectedSITL=dgram.createSocket('udp4');let ws;
+ try{
+  const initial=await s.state();assert.equal(initial.startTerrain.status,'selecting');assert.equal(initial.running,false);assert.equal(initial.connected,false);
+  ws=await s.socket();ws.send(JSON.stringify({type:'selectLocation',id:'invalid'}));await delay(75);assert.equal((await s.state()).startTerrain.status,'selecting');
+  unexpectedSITL.bind(0,'127.0.0.1');await once(unexpectedSITL,'listening');
+  const packet=Buffer.alloc(40);packet.writeUInt16LE(18458);packet.writeUInt16LE(100,2);packet.writeUInt32LE(1,4);
+  const reply=once(unexpectedSITL,'message',{signal:AbortSignal.timeout(2000)});unexpectedSITL.send(packet,s.config.udpPort,'127.0.0.1');await reply;
+  ws.send(JSON.stringify({type:'selectLocation',id:'kyiv'}));await delay(50);assert.equal((await s.state()).startTerrain.status,'selecting','a live SITL cannot be relocated by the picker');
+  await delay(s.config.timeoutMs);
+  ws.send(JSON.stringify({type:'selectLocation',id:'kyiv'}));
+  let ready;for(let i=0;i<100;i++){ready=await s.state();if(ready.startTerrain.status==='ready')break;await delay(20);}
+  assert.equal(ready.startTerrain.status,'ready');assert.equal(ready.selectedLocation,'kyiv');assert.equal(ready.home.lat,50.3375);assert.equal(ready.weather.timeZone,'Europe/Kyiv');assert.equal(ready.running,false);
+  ws.send(JSON.stringify({type:'selectLocation',id:'lima'}));await delay(50);assert.equal((await s.state()).selectedLocation,'kyiv','selected origin cannot change while launcher may be starting SITL');
+ }finally{ws?.terminate();unexpectedSITL.close();await s.close();}
 });
 test('Mission Planner selected start waits for disarm, loads matching terrain and keeps physics held',async()=>{
  const s=await launch('mission-planner'),udp=dgram.createSocket('udp4');

@@ -6,6 +6,10 @@ Run `npm ci` after updating because the importer adds GeoTIFF/projection package
 No account, API key, Python installation or network access is needed to drive.
 The source patch is about 272 KiB of local JSON.
 
+Five [bundled location presets](locations.md) are available with
+`npm run sim -- --choose-location`: Kyiv, Lviv, Lima, Cusco and an Andes ravine.
+Their complete elevation/colour assets are committed and load offline.
+
 ![Imported Feofaniya landscape](terrain.png)
 
 ## What is measured and what is generated

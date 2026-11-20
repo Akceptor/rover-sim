@@ -4,6 +4,7 @@ import {fileURLToPath} from 'node:url';
 import {execFile} from 'node:child_process';
 import {promisify} from 'node:util';
 import {validateTerrain} from './terrain.js';
+import {locationPresets} from './locations.js';
 const root=fileURLToPath(new URL('..',import.meta.url)),run=promisify(execFile);
 export function terrainImportArguments(home,out){
  // Node treats a separate negative value as another option; inline coordinates work in every hemisphere.
@@ -20,8 +21,9 @@ export async function loadStartTerrain(home,{cacheDir=path.join(root,'.run/terra
   return terrain;
  };
  signal?.throwIfAborted();
- // The bundled patch is already an offline cache for its exact origin.
- if(Math.abs(home.lat-50.3375)<1e-7&&Math.abs(home.lon-30.475)<1e-7)return {terrain:await read(path.join(root,'assets/terrain/feofaniya.json')),cached:true};
+ // Bundled presets are an offline cache for their exact origins.
+ const bundled=locationPresets.find(p=>Math.abs(home.lat-p.lat)<1e-7&&Math.abs(home.lon-p.lon)<1e-7);
+ if(bundled)return {terrain:await read(path.join(root,'assets/terrain',bundled.terrain)),cached:true};
  const file=path.join(cacheDir,`${home.lat.toFixed(7)}_${home.lon.toFixed(7)}.json`);
  try{return {terrain:await read(file),cached:true};}catch(error){if(error.name==='AbortError')throw error;}
  await fs.mkdir(cacheDir,{recursive:true});const temp=`${file}.${process.pid}.tmp`;

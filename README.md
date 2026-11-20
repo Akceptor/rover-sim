@@ -491,6 +491,14 @@ command line into Mission Planner and start Rover there. The simulator loads or
 reuses the selected terrain while disarmed, then holds until you click **Start
 physics**. See [setup, cache behavior and limitations](docs/mission-planner-start.md).
 
+## Location dropdown
+
+Run `npm.cmd run sim -- --choose-location` or double-click
+`start-location-picker.cmd` to select **Kyiv, Lviv, Lima, Cusco, or an Andes
+ravine** in the browser before SITL starts. All terrain and satellite colours
+are bundled in the repository and work offline. The steeper presets span up to
+206 m vertically across a 960 m map. See [presets, startup and data sources](docs/locations.md).
+
 ## Tests
 
 ```sh
@@ -500,6 +508,7 @@ npm run test:browser
 npm run test:terrain
 npm run test:weather
 npm run test:crawler
+npm run test:locations
 # Native SITL required; exercises the selected-start telemetry bridge:
 npm run test:position
 npm run test:video

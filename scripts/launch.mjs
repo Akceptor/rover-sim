@@ -9,12 +9,13 @@ import {loadEnvironment} from '../src/environment.js';
 import {ProcessGroup} from '../src/process-group.js';
 import {sitlArguments,missionPlannerArguments,checkPorts,localHost,loadLauncherConfig} from '../src/launcher.js';
 const root=path.resolve(path.dirname(fileURLToPath(import.meta.url)),'..');
-const {values}=parseArgs({options:{sitl:{type:'string'},'launcher-config':{type:'string'},config:{type:'string'},'extra-params':{type:'string'},'mavlink-port':{type:'string',default:'5760'},'run-dir':{type:'string'},'no-video':{type:'boolean'},standalone:{type:'boolean'},'mission-planner':{type:'boolean'},flat:{type:'boolean'},playground:{type:'boolean'},wipe:{type:'boolean'},camera:{type:'string',default:'fpv'},fov:{type:'string',default:'85'},browser:{type:'string',default:'auto'},help:{type:'boolean'}}});
-if(values.help){console.log(`npm run sim -- [--launcher-config config/launcher.local.json] [--no-video] [--standalone] [--mission-planner] [--flat] [--playground] [--wipe]
+const {values}=parseArgs({options:{sitl:{type:'string'},'launcher-config':{type:'string'},config:{type:'string'},'extra-params':{type:'string'},'mavlink-port':{type:'string',default:'5760'},'run-dir':{type:'string'},'no-video':{type:'boolean'},standalone:{type:'boolean'},'mission-planner':{type:'boolean'},'choose-location':{type:'boolean'},flat:{type:'boolean'},playground:{type:'boolean'},wipe:{type:'boolean'},camera:{type:'string',default:'fpv'},fov:{type:'string',default:'85'},browser:{type:'string',default:'auto'},help:{type:'boolean'}}});
+if(values.help){console.log(`npm run sim -- [--launcher-config config/launcher.local.json] [--no-video] [--standalone] [--mission-planner] [--choose-location] [--flat] [--playground] [--wipe]
 Set sitlExe and backendConfig in config/launcher.local.json (copy launcher.example.json).
 Overrides: --sitl "path/to/ArduRover.exe" --config path/to/backend.json
 Camera: --camera fpv|chase --fov 40..120 --browser auto|chrome|msedge
 Advanced: --extra-params path --mavlink-port 5760 --run-dir path
+Preset dropdown: --choose-location waits for a browser selection before starting SITL.
 Mission Planner Simulation map: --mission-planner starts backend/camera only; see docs/mission-planner-start.md.
 Config paths are relative to the config file; command-line paths are relative to the current directory.
 --wipe is NEVER saved. Ctrl+C stops all services.`);process.exit(0);}
@@ -32,9 +33,10 @@ try{
  // Standalone and explicit --sitl work without a local file; an explicitly selected file must exist.
  const hasSettings=await fs.stat(settingsFile).then(()=>true,error=>{if(error.code==='ENOENT')return false;throw error;});
  const settings=(hasSettings||values['launcher-config']||(!values.standalone&&!values['mission-planner']&&!values.sitl))?loadLauncherConfig(settingsFile):{};
+ if(values['choose-location']&&(values['mission-planner']||values.flat||values.playground))throw Error('--choose-location cannot be combined with mission-planner/flat/playground');
  if(values['mission-planner']&&(values.standalone||values.flat||values.playground||values.wipe))throw Error('--mission-planner cannot be combined with standalone/flat/playground/wipe');
  const configPath=values.config?path.resolve(values.config):(settings.backendConfig??path.join(root,'config/default.json')),config=loadConfig(configPath);
- const environment=loadEnvironment(config,configPath,{flat:values.flat,playground:values.playground});
+ const environment=loadEnvironment(values['choose-location']?{...config,terrain:null}:config,configPath,{flat:values.flat,playground:values.playground});
  const mavlinkPort=Number(values['mavlink-port']);
  if(!Number.isInteger(mavlinkPort)||mavlinkPort<1||mavlinkPort>65533)throw Error('--mavlink-port must be between 1 and 65533');
  if(!['fpv','chase'].includes(values.camera)||!Number.isFinite(Number(values.fov))||Number(values.fov)<40||Number(values.fov)>120||!['auto','chrome','msedge'].includes(values.browser))throw Error('Invalid camera options. Use --help for accepted values.');
@@ -51,19 +53,20 @@ try{
  if(values['mission-planner'])console.log(`[launcher] Mission Planner Simulation → Extra command line:\n${missionPlannerArguments(config,path.join(root,'config/rover.parm')+(extra?','+extra:'')).map(a=>/\s/.test(a)?`"${a}"`:a).join(' ')}\n[launcher] Pick the start on its map; keep heading 0 and Wipe unchecked.\n`);
  const url=`http://${localHost(config.httpHost)}:${config.httpPort}`;
  const state=async()=>{const response=await fetch(url+'/api/state',{signal:AbortSignal.timeout(1000)});if(!response.ok)throw Error('backend not ready');return response.json();};
- group.start('backend',process.execPath,[path.join(root,'src/server.js'),'--config',configPath,...(values.standalone?['--standalone']:[]),...(values['mission-planner']?['--mission-planner']:[]),...(values.flat?['--flat']:[]),...(values.playground?['--playground']:[])],{cwd:root,ipc:true});
+ group.start('backend',process.execPath,[path.join(root,'src/server.js'),'--config',configPath,...(values.standalone?['--standalone']:[]),...(values['mission-planner']?['--mission-planner']:[]),...(values['choose-location']?['--location-picker']:[]),...(values.flat?['--flat']:[]),...(values.playground?['--playground']:[])],{cwd:root,ipc:true});
  await waitFor('backend',state);
+ if(values['choose-location']){console.log(`[launcher] Open ${url} and choose a location. All presets are bundled for offline use.`);await waitFor('location selection',async()=>(await state()).startTerrain?.status==='ready',Infinity);}
  if(!values.standalone&&!values['mission-planner']){
   const runDir=path.resolve(values['run-dir']??path.join(root,'.run',process.platform==='win32'?'sitl-windows':'sitl'));await fs.mkdir(runDir,{recursive:true});
   const defaults=path.join(root,'config/rover.parm')+(extra?','+extra:'');
-  group.start('sitl',executable,sitlArguments(config,{defaults,mavlinkPort,wipe:values.wipe,home:environment.home}),{cwd:runDir});
+  group.start('sitl',executable,sitlArguments(config,{defaults,mavlinkPort,wipe:values.wipe,home:values['choose-location']?(await state()).home:environment.home}),{cwd:runDir});
   await waitFor('SITL JSON connection',async()=>(await state()).connected,40000);
  }
  if(!values['no-video']){
   group.start('video',process.execPath,[path.join(root,'scripts/camera-stream.mjs'),'--url',url,'--camera',values.camera,'--fov',values.fov,'--browser',values.browser],{cwd:root,ipc:true});
   await waitFor('background camera',async()=>{const response=await fetch(url+'/api/video',{signal:AbortSignal.timeout(1000)});return (await response.json()).state==='streaming';},30000);
  }
- console.log(`\n[launcher] READY · ${url}\n[launcher] Terrain: ${values['mission-planner']?'waiting for selected start':environment.terrain?.name??'Test playground'}\n[launcher] Video: ${values['no-video']?'disabled':url+'/camera.mjpg'}\n[launcher] ${values['mission-planner']?'Waiting for Mission Planner Simulation start; see docs/mission-planner-start.md':values.standalone?'Standalone keyboard mode':`Mission Planner TCP ${mavlinkPort} · companion ${mavlinkPort+2}`}\n[launcher] Ctrl+C stops ${values['mission-planner']?'backend and video; stop SITL in Mission Planner':'video, SITL and backend'}. Saved parameters are ${values.wipe?'being reset for this run':'preserved'}.\n`);
+ console.log(`\n[launcher] READY · ${url}\n[launcher] Terrain: ${values['mission-planner']?'waiting for selected start':values['choose-location']?(await state()).environment:environment.terrain?.name??'Test playground'}\n[launcher] Video: ${values['no-video']?'disabled':url+'/camera.mjpg'}\n[launcher] ${values['mission-planner']?'Waiting for Mission Planner Simulation start; see docs/mission-planner-start.md':values.standalone?'Standalone keyboard mode':`Mission Planner TCP ${mavlinkPort} · companion ${mavlinkPort+2}`}\n[launcher] Ctrl+C stops ${values['mission-planner']?'backend and video; stop SITL in Mission Planner':'video, SITL and backend'}. Saved parameters are ${values.wipe?'being reset for this run':'preserved'}.\n`);
  process.exitCode=await group.finished;
 }catch(error){if(!group.stopping){console.error(`[launcher] ${error.message}`);process.exitCode=await group.stop(1);}else process.exitCode=await group.finished;}
 finally{if(process.connected)process.disconnect();}
