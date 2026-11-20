@@ -295,7 +295,14 @@ PWM 0/outside 800–2200 is neutral. Values within that envelope clip to calibra
 limits; each side is normalised separately around trim. Invalid calibrations fail
 at startup. `vehicle` sets metres, kilograms, radians, newtons and m/s: dimensions,
 wheelbase/track, suspension, steering limit, engine force, speed and resistance.
-`brakeImpulse` is per-wheel impulse per physics substep. Adjust both servo
+The default `engineForce` is 4.5 N and `maxSpeed` is 1.2 m/s for gentler
+acceleration and slower forward/reverse driving with either RC sticks or standalone
+keys. `maxSpeed` controls drive-force falloff rather than a hard speed clamp;
+slopes and impacts can push the vehicle faster. Custom backend configs retain
+their own values. For autonomous driving with this slower model, lower saved
+`CRUISE_SPEED` and `WP_SPEED` to about 0.7 m/s in Mission Planner if the controller
+cannot reach its requested speed; saved SITL parameters are not changed by a Git
+update. `brakeImpulse` is per-wheel impulse per physics substep. Adjust both servo
 calibration in SITL and the physical mapping intentionally to avoid accidental
 double reversal. Configuration changes require backend and SITL restart.
 
