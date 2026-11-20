@@ -51,7 +51,7 @@ Windows PowerShell:
 
 ```powershell
 npm.cmd ci
-.\scripts\start-backend.ps1 -Standalone
+npm.cmd run standalone
 ```
 
 The first release models a small generic crawler; dimensions are starting values,
@@ -177,10 +177,23 @@ simpler option. UDP fanout and Mission Planner UI were not tested here.
 ### Optional Windows backend / SITL
 
 ```powershell
-.\scripts\start-backend.ps1
+npm.cmd start
 # Only with an actual runnable JSON-capable Windows SITL executable:
-.\scripts\start-sitl.ps1 -SitlExe C:\path\to\ardurover.exe -Wipe
+.\scripts\start-sitl.ps1 -SitlExe "C:\path\to\ardurover.exe" -Wipe
 ```
+
+Run the backend and SITL in separate PowerShell windows from the `rover-sim`
+directory. If the SITL launcher fails with **running scripts is disabled on this
+system**, use a process-only execution-policy override:
+
+```powershell
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File ".\scripts\start-sitl.ps1" -SitlExe "C:\path\to\ardurover.exe" -Wipe
+```
+
+Replace the executable path with your Mission Planner SITL executable; keep the
+quotes for paths containing spaces. This override applies only to the launched
+PowerShell process and does not change the saved user or system policy. See
+[Microsoft's execution-policy documentation](https://learn.microsoft.com/en-us/powershell/module/microsoft.powershell.core/about/about_execution_policies).
 
 The script does not download or assume an ARM Windows SITL binary exists.
 Cygwin runtime requirements and x64 emulation must be checked for that executable.
