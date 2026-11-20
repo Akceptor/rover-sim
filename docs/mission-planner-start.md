@@ -14,8 +14,14 @@ then follow that location. The normal `npm run sim` bundled-map workflow is unch
    npm.cmd run sim -- --mission-planner
    ```
 
-2. Copy the line printed below **Mission Planner Simulation → Extra command
-   line** into that box on Mission Planner's Simulation tab. It supplies the JSON
+2. Open `http://localhost:8090` (or the URL printed by your launcher). Above the
+   location selector, find **Mission Planner · Extra command line** and click
+   **Copy command**. Paste it into **Extra command line** on Mission Planner's
+   Simulation tab. The read-only field includes your actual ports, checkout path
+   and any `--extra-params` file. If clipboard access is denied, the command is
+   selected for manual copying with Ctrl+C. The same command is also printed in
+   the terminal below **Mission Planner Simulation → Extra command line**.
+   It supplies the JSON
    backend, physics port, SERIAL2 telemetry destination, and this checkout's rover
    defaults. It deliberately leaves Mission Planner's map-selected home and its
    own GCS connection intact. For default ports it resembles:

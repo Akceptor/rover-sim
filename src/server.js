@@ -17,6 +17,7 @@ import {loadStartTerrain} from './start-terrain.js';
 import {terrainObjects} from './terrain.js';
 import {locationPresets,findLocation} from './locations.js';
 import {VideoRelay} from './video.js';
+import {missionPlannerCommand} from './launcher.js';
 const args=process.argv.slice(2),configIndex=args.indexOf('--config');
 const config=loadConfig(configIndex>=0?args[configIndex+1]:undefined);
 const externalStart=args.includes('--mission-planner'),locationPicker=args.includes('--location-picker'),pendingLocation=externalStart||locationPicker;
@@ -28,6 +29,8 @@ let physics=await Physics.create(config.vehicle,!pendingLocation&&!args.includes
 const session=new Session(physics,config);
 let weather=new LiveWeather(environment.home,{timeZone:environment.timeZone});if(!pendingLocation)weather.start();
 const root=path.resolve(path.dirname(fileURLToPath(import.meta.url)),'..');
+const defaultsIndex=args.indexOf('--mission-planner-defaults');
+const plannerCommand=externalStart?missionPlannerCommand(config,defaultsIndex>=0?args[defaultsIndex+1]:path.join(root,'config/rover.parm')):null;
 const log=(event,data={})=>console.log(JSON.stringify({time:new Date().toISOString(),event,...data}));
 let selectedLocation=externalStart?'custom':null;
 let startTerrain=locationPicker?{status:'selecting',message:'Choose a starting location below'}:externalStart?{status:'waiting',message:'Waiting for Mission Planner start coordinates and disarmed telemetry'}:null;
@@ -134,7 +137,7 @@ wss.on('error',e=>{log('websocket-error',{message:e.message});process.exitCode=1
 server.on('error',e=>{log('http-error',{message:e.message});process.exitCode=1;shutdown();});
 server.listen(config.httpPort,config.httpHost,()=>log('ready',{url:`http://${config.httpHost}:${config.httpPort}`,mode}));
 let shuttingDown=false;
-function initialState(){return {type:'init',mode,config,locations:externalStart?[...locationPresets,{id:'custom',name:'Custom · Mission Planner',description:'Fetch terrain at Mission Planner’s selected start'}]:locationPicker?locationPresets:[],selectedLocation,locationMode:externalStart?'mission-planner':locationPicker?'launcher':null,world:environment.world,terrain:environment.terrain};}
+function initialState(){return {type:'init',mode,config,missionPlannerCommand:plannerCommand,locations:externalStart?[...locationPresets,{id:'custom',name:'Custom · Mission Planner',description:'Fetch terrain at Mission Planner’s selected start'}]:locationPicker?locationPresets:[],selectedLocation,locationMode:externalStart?'mission-planner':locationPicker?'launcher':null,world:environment.world,terrain:environment.terrain};}
 function sitlActive(){return performance.now()-session.last<config.timeoutMs||telemetry.snapshot(performance.now()).connected;}
 function selectCustom(){
  selectedLocation='custom';running=false;session.running=false;

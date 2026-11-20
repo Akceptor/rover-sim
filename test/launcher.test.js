@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import net from 'node:net';
 import {once} from 'node:events';
 import {sitlArguments,missionPlannerArguments,checkPorts} from '../src/launcher.js';
+import * as launcher from '../src/launcher.js';
 test('launcher preserves parameters by default and passes paths with spaces as single arguments',()=>{
  const config={udpHost:'0.0.0.0',udpPort:9005,mavlink:{host:'127.0.0.1',port:14563}};
  const defaults='C:\\My Simulator\\config\\rover.parm';
@@ -41,4 +42,9 @@ test('Mission Planner arguments preserve its map-selected home and GCS connectio
  assert.ok(args.includes('JSON:127.0.0.1'));assert.ok(args.includes('udpclient:127.0.0.1:14560'));
  for(const flag of ['--home','--serial0','--wipe'])assert.equal(args.includes(flag),false);
  assert.equal(args.at(-1),'C:/My Simulator/config/rover.parm');
+});
+test('Mission Planner copyable command preserves custom ports and quoted Windows defaults including extra parameters',()=>{
+ const config={udpHost:'0.0.0.0',udpPort:9012,mavlink:{host:'0.0.0.0',port:14570}};
+ const defaults='C:\\My Simulator\\config\\rover.parm,C:\\Tuning Files\\drive.parm';
+ assert.equal(launcher.missionPlannerCommand(config,defaults),'--model JSON:127.0.0.1 --sim-port-out 9012 --rate 100 --speedup 1 --serial2 udpclient:127.0.0.1:14570 --defaults "'+defaults+'"');
 });
