@@ -1,6 +1,7 @@
 import * as T from '/three.js';
 import {CameraVideo} from '/video.js';
 import {createScenery} from '/scenery.js';
+if(new URLSearchParams(location.search).has('camera-output'))document.documentElement.dataset.cameraOutput='true';
 const cameraVideo=new CameraVideo();
 const $=id=>document.getElementById(id),canvas=$('view'),viewport=$('viewport'),settingsDialog=$('settingsDialog');
 const renderer=new T.WebGLRenderer({canvas,antialias:true});renderer.setPixelRatio(Math.min(devicePixelRatio,2));renderer.shadowMap.enabled=true;renderer.setClearColor(0xa4c8db);

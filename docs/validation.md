@@ -34,7 +34,9 @@
   MAVLink TCP clients, manual driving, mission completion and restart passed.
 - Camera video: real Chrome WebGL capture decoded as a 960 × 540 JPEG with
   distinct sky/ground pixels; start/stop/restart, tab visibility pause/resume and
-  reload cleanup pass. Independent HTTP/WebSocket tests cover multipart framing,
+  reload cleanup pass. A dedicated background renderer keeps publishing fresh
+  frames for longer than the relay timeout after the visible HUD is closed;
+  terminating it releases the publisher. Independent HTTP/WebSocket tests cover multipart framing,
   missing/stale source, a second publisher and same-origin enforcement.
 - The exact displayed Mission Planner GStreamer pipeline decoded the live HTTP
   MJPEG stream through `souphttpsrc`, `multipartdemux`, `jpegdec`, BGRA conversion
@@ -67,8 +69,10 @@ See `integration-result.json`, `integration-sitl.log`, `integration-backend.log`
 - Collision, ramp and terrain geometry are implemented. Barrier collisions and stationary ramp support/tilt are
   automated; a terrain mission and rollover recovery have not been validated.
   The closed-loop mission deliberately used flat ground to isolate integration.
-- No WebRTC, server-side renderer, calibrated MN168 handling model or tyre
-  deformation. Video is browser-encoded MJPEG and needs the publisher tab visible.
+- No WebRTC, calibrated MN168 handling model or tyre deformation. Video is
+  browser-encoded MJPEG. The dedicated background command runs a headless
+  Chrome/Edge renderer; manual tab publishing requires a visible tab. Background
+  rendering was checked on macOS Chrome; Windows/Edge remains a manual check.
 - Browser-disconnected progression is tested via backend UDP without any browser.
   A long-duration endurance test, host sleep/resume, resource saturation and
   packet-fault injection against real SITL remain untested.

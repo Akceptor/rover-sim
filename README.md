@@ -288,11 +288,14 @@ additional defaults-file mechanism. This does not calibrate the physics model.
 
 ### Simulated camera in Mission Planner
 
-Start **Settings → Mission Planner video → Start video** in the simulator, then
-copy the GStreamer source shown there. In Mission Planner, right-click its HUD
-and select **Video → Set GStreamer Source** to paste it. Keep the simulator tab
-visible while watching. This streams the selected FPV/Chase camera as 960 × 540
-MJPEG at up to 10 fps; no extra backend encoder is required. See
+After updating, run `npm.cmd ci`, then start `npm.cmd run video` in another
+PowerShell terminal alongside the backend and SITL. This publishes from a
+dedicated headless Chrome/Edge window and keeps working when the visible HUD is
+minimised or closed. Connect Mission Planner's MJPEG receiver to
+`http://127.0.0.1:8090/camera.mjpg`, or paste the GStreamer pipeline from Settings
+into **Video → Set GStreamer Source**. The output is 960 × 540 at up to 10 fps.
+The optional **Start video** button in Settings publishes from the visible tab
+instead and requires that tab to stay visible. See
 [video setup and troubleshooting](docs/video.md) for the pipeline, VM networking,
 pause/restart behavior and receiver requirements.
 
@@ -343,8 +346,9 @@ long missions. Browser disconnect has no effect on SITL actuator authority.
 
 `web/app.js` isolates `fpvOutput` (scene/camera/renderer/canvas). `web/video.js`
 encodes JPEG frames after rendering and `src/video.js` relays them as HTTP MJPEG.
-There is no WebRTC or headless/server-side renderer. Video requires a visible
-browser tab; minimising it pauses video while physics and SITL continue.
+There is no WebRTC. `npm run video` runs the same renderer in a dedicated
+headless browser; the manual Settings publisher pauses when its tab is hidden.
+Physics and SITL continue in either case.
 
 Official references verified before implementation:
 

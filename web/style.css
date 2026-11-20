@@ -133,3 +133,8 @@ footer .muted{display:none}
 .video-settings textarea{resize:vertical;min-height:100px}
 #videoToggle{border-color:var(--accent);color:#aac5ff}
 #videoStatus{font-size:.8125rem;color:var(--muted)}
+
+/* Dedicated headless camera uses a full 16:9 viewport without browser HUD chrome. */
+html[data-camera-output] .top,html[data-camera-output] .viewbar,html[data-camera-output] .timing,html[data-camera-output] .controls,html[data-camera-output] footer,html[data-camera-output] .osd{display:none}
+html[data-camera-output] .cockpit{width:100vw;height:100vh;max-width:none;padding:0;margin:0;display:block}
+html[data-camera-output] #viewport{width:100vw;height:100vh;min-height:0;max-height:none;border:0;border-radius:0}

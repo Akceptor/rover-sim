@@ -20,7 +20,7 @@ export class CameraVideo {
   ws.onerror=()=>{};
   ws.onclose=e=>{
    if(this.ws!==ws)return;this.ws=null;this.ready=false;
-   if(e.code===1008){this.wanted=false;this.button.textContent='Start video';this.setStatus('Another browser tab is streaming');return;}
+   if(e.code===1008){this.wanted=false;this.button.textContent='Start video';this.setStatus('Another camera renderer is streaming');return;}
    if(this.wanted&&!document.hidden){this.setStatus('Video disconnected · reconnecting…');this.timer=setTimeout(()=>this.connect(),1000);}
   };
  }

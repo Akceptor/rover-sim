@@ -7,7 +7,7 @@ export class VideoRelay {
   this.wss=new WebSocketServer({noServer:true,maxPayload:MAX_FRAME});
   this.wss.on('connection',ws=>{
    ws.on('error',()=>{});
-   if(this.publisher){ws.close(1008,'Another browser tab is streaming');return;}
+   if(this.publisher){ws.close(1008,'Another camera renderer is streaming');return;}
    this.publisher=ws;this.latest=null;this.last=null;this.frames=0;
    ws.send(JSON.stringify({type:'ready',width:960,height:540,fps:10}));
    ws.on('message',(bytes,binary)=>{

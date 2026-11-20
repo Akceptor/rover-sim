@@ -6,6 +6,7 @@
   "scripts": {
     "start": "node src/server.js",
     "standalone": "node src/server.js --standalone",
+    "video": "node scripts/camera-stream.mjs",
     "test": "node --test test/*.test.js",
     "test:sitl": "python3 scripts/integration.py",
     "test:browser": "node scripts/browser-smoke.mjs",
@@ -16,10 +17,8 @@
   },
   "dependencies": {
     "@dimforge/rapier3d-compat": "0.19.3",
+    "playwright": "1.65.1",
     "three": "0.183.2",
     "ws": "8.21.0"
-  },
-  "devDependencies": {
-    "playwright": "1.65.1"
   }
 }
