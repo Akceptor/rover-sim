@@ -286,6 +286,20 @@ parameters are listed in `src/parameters.js`; selected unavailable parameters
 are not silently invented. `start-sitl.ps1 -ExtraParams ...` provides the same
 additional defaults-file mechanism. This does not calibrate the physics model.
 
+### Simulated camera in Mission Planner
+
+Start **Settings → Mission Planner video → Start video** in the simulator, then
+copy the GStreamer source shown there. In Mission Planner, right-click its HUD
+and select **Video → Set GStreamer Source** to paste it. Keep the simulator tab
+visible while watching. This streams the selected FPV/Chase camera as 960 × 540
+MJPEG at up to 10 fps; no extra backend encoder is required. See
+[video setup and troubleshooting](docs/video.md) for the pipeline, VM networking,
+pause/restart behavior and receiver requirements.
+
+The playground now includes procedural grass/gravel, tyre-track ground paint,
+compass markings and clouds to make motion and heading easier to judge. These
+are visual cues; collision geometry and the vehicle model stay the same.
+
 ## Architecture and protocol
 
 `src/physics.js` owns Rapier and four suspension ray wheels, front steering,
@@ -327,9 +341,10 @@ and CPU overload cannot guarantee real time. HUD RTF and packet age show this.
 Close/minimise the browser: SITL and physics continue. Disable host sleep during
 long missions. Browser disconnect has no effect on SITL actuator authority.
 
-`web/app.js` isolates `fpvOutput` (scene/camera/renderer/canvas) as a future camera
-capture seam. No WebRTC, video encoding, server rendering or headless video
-capture pipeline is implemented. Displaying video still requires an open browser.
+`web/app.js` isolates `fpvOutput` (scene/camera/renderer/canvas). `web/video.js`
+encodes JPEG frames after rendering and `src/video.js` relays them as HTTP MJPEG.
+There is no WebRTC or headless/server-side renderer. Video requires a visible
+browser tab; minimising it pauses video while physics and SITL continue.
 
 Official references verified before implementation:
 
@@ -345,6 +360,9 @@ Official references verified before implementation:
 npm test
 # Installed Chrome needed, no downloaded Playwright browser required:
 npm run test:browser
+npm run test:video
+# With a GStreamer receiver installed:
+npm run test:video -- --gstreamer
 # After build; no browser needed, starts its own backend/SITL on isolated ports:
 .venv-sitl/bin/python scripts/integration.py \
   --sitl .tools/ardupilot/build/sitl/bin/ardurover
@@ -355,7 +373,10 @@ and log directory. It checks stationary IMU, two MAVLink clients, EKF readiness,
 normal arm, manual forward/reverse/right steering, mission upload and waypoint
 reach. Artifacts go to `docs/integration-result.json` and `docs/integration-*.log`.
 Browser smoke reserves HTTP 8092/8093 and UDP 9004/14561 and checks real Chrome WebGL rendering, keys, pause
-and reset, producing screenshots. No tests contact a real flight controller.
+and reset, producing screenshots. Video smoke reserves HTTP 8094 and checks
+real WebGL JPEG capture, HTTP MJPEG and stream lifecycle; `--gstreamer` also
+checks the displayed Mission Planner pipeline through a BGRA appsink. No tests
+contact a real flight controller.
 
 ## Troubleshooting
 

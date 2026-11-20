@@ -18,7 +18,7 @@
   pinned Python dependencies; native ARM64 binary is available under `.tools`.
 - Stationary acceleration [0,0,-9.80665] m/s². Stationary velocity consistency
   and transformed attitude signs checked with tests.
-- 17 focused automated tests: 16/32 channel packet layouts, bad lengths/magic/rate,
+- 20 focused automated tests: 16/32 channel packet layouts, bad lengths/magic/rate,
   PWM calibration/clipping/reversal, NED/body/quaternion signs, duplicate/gap/wrap/
   restart handling, pause timestamps, ground settling, forward/reverse/turn,
   collision barrier, ramp contact/tilt, neutral slowing, parameter import protection, MAVLink heartbeat CRC/source/freshness decoding, actual UDP/
@@ -32,6 +32,18 @@
   The full native ArduRover integration was also rerun: receive-only SERIAL2
   heartbeats reported disarmed, ARMED/MANUAL and AUTO in the backend while both
   MAVLink TCP clients, manual driving, mission completion and restart passed.
+- Camera video: real Chrome WebGL capture decoded as a 960 × 540 JPEG with
+  distinct sky/ground pixels; start/stop/restart, tab visibility pause/resume and
+  reload cleanup pass. Independent HTTP/WebSocket tests cover multipart framing,
+  missing/stale source, a second publisher and same-origin enforcement.
+- The exact displayed Mission Planner GStreamer pipeline decoded the live HTTP
+  MJPEG stream through `souphttpsrc`, `multipartdemux`, `jpegdec`, BGRA conversion
+  and a bounded `appsink`. A finite EOS test element ended the receiver after
+  six frames. Homebrew GStreamer 1.28.9 was isolated from a local radioconda
+  library conflict for this check. Windows Mission Planner's own UI was not
+  exercised; the user still needs to paste the supplied pipeline there.
+- Updated FPV/chase/mobile previews show procedural grass/gravel, ground tyre
+  tracks/compass marks and clouds. These add no collision or physics changes.
 - JavaScript syntax checks, POSIX launcher syntax, Python compile check.
 - npm production dependency audit: zero known vulnerabilities at validation time.
 - Read-only review found a neutral-input ownership bug across standalone tabs;
@@ -55,8 +67,8 @@ See `integration-result.json`, `integration-sitl.log`, `integration-backend.log`
 - Collision, ramp and terrain geometry are implemented. Barrier collisions and stationary ramp support/tilt are
   automated; a terrain mission and rollover recovery have not been validated.
   The closed-loop mission deliberately used flat ground to isolate integration.
-- No WebRTC, server-side video encoder, calibrated MN168 handling model or tyre
-  deformation. Camera output is currently the browser canvas.
+- No WebRTC, server-side renderer, calibrated MN168 handling model or tyre
+  deformation. Video is browser-encoded MJPEG and needs the publisher tab visible.
 - Browser-disconnected progression is tested via backend UDP without any browser.
   A long-duration endurance test, host sleep/resume, resource saturation and
   packet-fault injection against real SITL remain untested.

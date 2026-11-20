@@ -1,4 +1,4 @@
-// Shared visual/collision geometry. No scenery exists only in the renderer.
+// Shared solid visual/collision geometry. Sky and ground paint are renderer-only.
 export const playground=[
  {kind:'ground',size:[100,.2,100],position:[0,-.1,0],color:0x596f48},
  {kind:'barrier',size:[.3,.5,6],position:[8,.25,0],color:0xe0e4df},

@@ -127,3 +127,9 @@ footer .muted{display:none}
 #armState[data-state=disarmed]{color:var(--ok);border-color:#315c45}
 #flightMode[data-state=known]{color:#9bbaff;border-color:#4b689e}
 .vehicle-state[data-state=unknown]{color:var(--muted)}
+
+.video-settings label{display:block;margin:16px 0 8px}
+.video-settings input,.video-settings textarea{display:block;width:100%;background:var(--bg);color:var(--text);border:1px solid var(--line);border-radius:6px;padding:8px;font:.75rem/1.5 ui-monospace,monospace}
+.video-settings textarea{resize:vertical;min-height:100px}
+#videoToggle{border-color:var(--accent);color:#aac5ff}
+#videoStatus{font-size:.8125rem;color:var(--muted)}

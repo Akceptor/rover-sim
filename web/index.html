@@ -49,6 +49,14 @@
     <label for="mountY">Height <input id="mountY" type="number" step="0.01" value="0.16"></label>
     <label for="mountRight">Right <input id="mountRight" type="number" step="0.01" value="0"></label>
   </fieldset>
+  <fieldset class="video-settings"><legend>Mission Planner video</legend>
+    <p class="muted">Stream the selected camera view. Keep this browser tab visible while watching in Mission Planner.</p>
+    <button id="videoToggle" type="button">Start video</button>
+    <p id="videoStatus" role="status">Video stopped</p>
+    <label for="videoUrl">Stream URL</label><input id="videoUrl" type="text" readonly>
+    <label for="videoPipeline">Mission Planner GStreamer source</label><textarea id="videoPipeline" rows="6" readonly spellcheck="false"></textarea>
+    <p class="muted">Right-click Mission Planner’s HUD → Video → Set GStreamer Source, then paste the pipeline above.</p>
+  </fieldset>
   <p class="drawer-note">Driving keys are released while settings are open. In SITL mode, ArduRover retains actuator control.</p>
 </dialog>
 <script type="module" src="/app.js"></script>

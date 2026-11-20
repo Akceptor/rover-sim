@@ -1,10 +1,13 @@
 import * as T from '/three.js';
+import {CameraVideo} from '/video.js';
+import {createScenery} from '/scenery.js';
+const cameraVideo=new CameraVideo();
 const $=id=>document.getElementById(id),canvas=$('view'),viewport=$('viewport'),settingsDialog=$('settingsDialog');
 const renderer=new T.WebGLRenderer({canvas,antialias:true});renderer.setPixelRatio(Math.min(devicePixelRatio,2));renderer.shadowMap.enabled=true;renderer.setClearColor(0xa4c8db);
 const scene=new T.Scene();scene.fog=new T.Fog(0xa4c8db,35,95);scene.add(new T.HemisphereLight(0xcfeeff,0x3b4529,2.5));const sun=new T.DirectionalLight(0xfff2d1,3);sun.position.set(10,25,10);sun.castShadow=true;sun.shadow.mapSize.set(2048,2048);sun.shadow.camera.left=-20;sun.shadow.camera.right=20;sun.shadow.camera.top=20;sun.shadow.camera.bottom=-20;sun.shadow.normalBias=.02;scene.add(sun);
+const scenery=createScenery(renderer);scene.add(scenery.sky);
 const rover=new T.Group();scene.add(rover);const camera=new T.PerspectiveCamera(85,1,.015,150),chase=new T.PerspectiveCamera(65,1,.03,150);
-// Camera ownership is isolated here: future video integration can render this
-// camera into a target/canvas without touching the backend or MAVLink transport.
+// Rendering and video capture do not own physics or MAVLink control.
 export const fpvOutput={camera,canvas,renderer,scene};
 function box(size,color,parent=scene){const m=new T.Mesh(new T.BoxGeometry(...size),new T.MeshStandardMaterial({color,roughness:.85}));m.castShadow=true;m.receiveShadow=true;parent.add(m);return m;}
 let state=null,config=null,wheels=[],ws,mode='sitl',lastReceive=0,wasRunning=true;
@@ -19,6 +22,7 @@ function setup(m){config=m.config;mode=m.mode;const c=config.vehicle;$('mode').t
   // Init is resent on reconnect; replace world instead of duplicating objects.
   if(scene.userData.world){scene.remove(scene.userData.world);}const world=new T.Group();scene.userData.world=world;scene.add(world);
   for(const o of m.world){const mesh=o.kind==='cone'?new T.Mesh(new T.ConeGeometry(o.size[0]/2,o.size[1],16),new T.MeshStandardMaterial({color:o.color})):box(o.size,o.color,world);if(o.kind==='cone'){world.add(mesh);mesh.castShadow=true;}mesh.position.fromArray(o.position);mesh.rotation.z=o.angle??0;}
+  scenery.decorate(world);
   const grid=new T.GridHelper(100,100,0x7c8a69,0x718361);grid.position.y=.002;world.add(grid);
 }
 function send(m){if(ws?.readyState===WebSocket.OPEN)ws.send(JSON.stringify(m));}
@@ -48,5 +52,5 @@ function render(){requestAnimationFrame(render);const width=viewport.clientWidth
     $('armState').dataset.state=autopilot?autopilot.armed?'armed':'disarmed':'unknown';$('flightMode').dataset.state=autopilot?.flightMode?'known':'unknown';
     if(s.wallTime!==previousWall){ratio=(s.simTime-previousTime)/(s.wallTime-previousWall);previousTime=s.simTime;previousWall=s.wallTime;}
     $('run').textContent=s.running?'Stop physics':'Start physics';$('diagnostics').textContent=`RTF ${ratio.toFixed(2)} · packet age ${s.ageMs??'—'} ms · duplicates ${s.stats.duplicates} · skipped ${s.stats.skipped} · malformed ${s.stats.malformed}`;$('status').textContent=s.running?`${$('camera').value==='fpv'?'ONBOARD FPV':'CHASE'} · ${mode==='sitl'?'SITL actuator authority':'keyboard test mode'}`:'PHYSICS STOPPED · sensor time continues in SITL';
-  }renderer.render(scene,$('camera').value==='fpv'?camera:chase);
+  }const activeCamera=$('camera').value==='fpv'?camera:chase;scenery.sky.position.copy(activeCamera.position);renderer.render(scene,activeCamera);cameraVideo.capture(canvas,performance.now());
 }render();

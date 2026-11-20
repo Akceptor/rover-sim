@@ -8,7 +8,8 @@
     "standalone": "node src/server.js --standalone",
     "test": "node --test test/*.test.js",
     "test:sitl": "python3 scripts/integration.py",
-    "test:browser": "node scripts/browser-smoke.mjs"
+    "test:browser": "node scripts/browser-smoke.mjs",
+    "test:video": "node scripts/video-smoke.mjs"
   },
   "engines": {
     "node": ">=22"
