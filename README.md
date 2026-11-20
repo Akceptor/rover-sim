@@ -1,6 +1,6 @@
 # Crawler Lab — local ArduRover FPV simulator
 
-A four-wheel yellow crawler driven by **real ArduRover SITL** through its JSON
+A four-wheel tan crawler driven by **real ArduRover SITL** through its JSON
 external physics interface. Node runs Rapier WASM; Three.js displays the onboard
 camera and chase view. Browser rendering never advances physics. No WebRTC in v1.
 
@@ -335,7 +335,7 @@ double reversal. Configuration changes require backend and SITL restart.
   offsets in metres from chassis centre. Mount height is above the chassis origin,
   not ground. Camera values affect rendering only.
 - **RC camera:** in SITL, RC4 pans ±30° and RC2 tilts ±15°. At 1500 µs the
-  camera is centred; high PWM looks right/up. Missing, invalid or stale inputs
+  camera is centred; high PWM looks left/down. Missing, invalid or stale inputs
   return to centre. These are RC inputs, independent of steering/throttle servo
   outputs. For existing saved parameters, set `SR2_RC_CHAN = 10` in Mission Planner
   if RC telemetry is slow; preserve your other settings, including `RC5_OPTION`.
@@ -469,6 +469,18 @@ Official references verified before implementation:
 - [Native macOS build setup](https://ardupilot.org/dev/docs/building-setup-mac.html)
 - [Rapier vehicle controller](https://rapier.rs/docs/user_guides/javascript/character_controller/)
 
+## Crawler model
+
+The tan MN-168-style crawler is an original procedural approximation of the
+provided reference photo: boxy three-door body, sloped glazing, round headlights,
+fender mirrors, black bumpers, silver rims and chunky tread. Its local source is
+[`assets/MN-168.js`](assets/MN-168.js), replacing the electronics-tray-only
+`MN-168.txt`. It follows the existing chassis dimensions and physics; steering,
+wheel spin and suspension position are animated from backend state. No external
+models or textures are downloaded.
+
+![Tan crawler preview](docs/mn168.png)
+
 ## Tests
 
 ```sh
@@ -477,6 +489,7 @@ npm test
 npm run test:browser
 npm run test:terrain
 npm run test:weather
+npm run test:crawler
 npm run test:video
 # Built native SITL plus installed Chrome/Edge; disposable EEPROM and isolated ports:
 npm run test:launcher

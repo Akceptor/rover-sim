@@ -1,5 +1,6 @@
 import * as T from '/three.js';
 import {CameraVideo} from '/video.js';
+import {createCrawler} from '/assets/MN-168.js';
 import {createWeatherView} from '/weather-view.js';
 import {createScenery} from '/scenery.js';
 import {addTerrain,addTreeCrown} from '/terrain-view.js';
@@ -14,15 +15,11 @@ const weatherView=createWeatherView(scene,renderer,sun,ambient,scenery);const ca
 // Rendering and video capture do not own physics or MAVLink control.
 export const fpvOutput={camera,canvas,renderer,scene};
 function box(size,color,parent=scene){const m=new T.Mesh(new T.BoxGeometry(...size),new T.MeshStandardMaterial({color,roughness:.85}));m.castShadow=true;m.receiveShadow=true;parent.add(m);return m;}
-let state=null,config=null,wheels=[],ws,mode='sitl',lastReceive=0,wasRunning=true;
+let state=null,config=null,wheels=[],ws,mode='sitl',lastReceive=0,crawler=null;
 function notice(message){$('notice').textContent=message;$('notice').style.display='block';setTimeout(()=>$('notice').style.display='none',7000);}
 function setup(m){config=m.config;mode=m.mode;const c=config.vehicle;$('mode').textContent=mode==='sitl'?'ARDUROVER SITL':'STANDALONE · NO AUTOPILOT';$('help').textContent=mode==='sitl'?'Drive using Mission Planner or your MAVLink companion. Browser keys do not control physics.':'W/S or ↑/↓: forward / brake / reverse. A/D or ←/→: steer. Release to stop. Click the view to focus.';$('keyLegend').hidden=mode!=='standalone';for(const id of ['armState','flightMode'])$(id).hidden=mode!=='sitl';
-  while(rover.children.length)rover.remove(rover.children[0]);wheels=[];
-  const body=box([c.length,c.height,c.width],0xe8bd24,rover);body.position.y=.03;
-  const cabin=box([c.length*.43,c.height*.9,c.width*.85],0xf4d14a,rover);cabin.position.set(-.03,c.height*.9,0);
-  const glass=box([.008,c.height*.6,c.width*.72],0x273f45,rover);glass.position.set(c.length*.15,c.height*.95,0);
-  for(const z of [-c.width*.34,c.width*.34]){const light=box([.01,.025,.035],0xfff5bd,rover);light.position.set(c.length/2+.01,.025,z);}
-  for(let i=0;i<4;i++){const steer=new T.Group(),spin=new T.Group();steer.add(spin);rover.add(steer);const mesh=new T.Mesh(new T.CylinderGeometry(c.wheelRadius,c.wheelRadius,.045,20),new T.MeshStandardMaterial({color:0x202426}));mesh.rotation.x=Math.PI/2;mesh.castShadow=true;spin.add(mesh);const hub=new T.Mesh(new T.CylinderGeometry(c.wheelRadius*.5,c.wheelRadius*.5,.048,12),new T.MeshStandardMaterial({color:0xa3a9aa}));hub.rotation.x=Math.PI/2;spin.add(hub);wheels.push({steer,spin});}
+  if(crawler){rover.remove(crawler.model);crawler.dispose();}
+  crawler=createCrawler(c);rover.add(crawler.model);wheels=crawler.wheels;
   // Init is resent on reconnect; replace world instead of duplicating objects.
   if(scene.userData.world){const old=scene.userData.world;scene.remove(old);old.traverse(o=>{o.geometry?.dispose();if(o.material){for(const m of Array.isArray(o.material)?o.material:[o.material]){if(o.name==='real-terrain')m.map?.dispose();m.dispose();}}});}const world=new T.Group();scene.userData.world=world;scene.add(world);
   scenery.sky.scale.setScalar(m.terrain?10:1);

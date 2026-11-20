@@ -10,6 +10,7 @@
     "video": "node scripts/camera-stream.mjs",
     "terrain:import": "node scripts/import-terrain.mjs",
     "test": "node --test test/*.test.js",
+    "test:crawler": "node scripts/crawler-smoke.mjs",
     "test:weather": "node scripts/weather-smoke.mjs",
     "test:terrain": "node scripts/terrain-smoke.mjs",
     "test:launcher": "node scripts/launcher-smoke.mjs",

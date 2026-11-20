@@ -114,7 +114,7 @@ try {
   // Real MAVLink RC inputs, separate from SERVO outputs, rotate the FPV camera.
   await page.getByRole('button',{name:'FPV',exact:true}).click();
   udp.send(Buffer.from('fd2a000000010141000001000000dc05e803dc05d007dc05dc05dc05dc05dc05dc05dc05dc05dc05dc05dc05dc05dc05dc0508ff021c','hex'),config.mavlink.port,'127.0.0.1');
-  await page.waitForFunction(async()=>{const state=await fetch('/api/state').then(r=>r.json());return state.camera.panDeg===30&&state.camera.tiltDeg===-15;});
+  await page.waitForFunction(async()=>{const state=await fetch('/api/state').then(r=>r.json());return state.camera.panDeg===-30&&state.camera.tiltDeg===15;});
   await delay(100);
   const aim=await page.evaluate(async()=>{
     const T=await import('/three.js'),{fpvOutput}=await import('/app.js');
@@ -123,7 +123,7 @@ try {
     const v=fpvOutput.camera.getWorldDirection(new T.Vector3()).applyQuaternion(q);
     return {pan:Math.atan2(v.z,v.x)*180/Math.PI,tilt:Math.atan2(v.y,Math.hypot(v.x,v.z))*180/Math.PI,throttle:s.inputs.throttle};
   });
-  assert.ok(Math.abs(aim.pan-30)<.2,JSON.stringify(aim));assert.ok(Math.abs(aim.tilt+15)<.2,JSON.stringify(aim));
+  assert.ok(Math.abs(aim.pan+30)<.2,JSON.stringify(aim));assert.ok(Math.abs(aim.tilt-15)<.2,JSON.stringify(aim));
   assert.equal(aim.throttle,0,'camera sticks do not drive the vehicle');
   await page.waitForFunction(async()=>{const s=await fetch('/api/state').then(r=>r.json());return s.camera.panDeg===0&&s.camera.tiltDeg===0;});
   udp.send(Buffer.from('fd0900000001010000000f0000000a030104037547','hex'),config.mavlink.port,'127.0.0.1');

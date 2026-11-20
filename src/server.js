@@ -38,7 +38,7 @@ const server=http.createServer(async(req,res)=>{
   if(video.handleHttp(req,res))return;
   const url=new URL(req.url,'http://localhost');
   if(url.pathname==='/api/state'){res.setHeader('Content-Type','application/json');res.end(JSON.stringify(snapshot()));return;}
-  const files={'/':'web/index.html','/app.js':'web/app.js','/style.css':'web/style.css','/video.js':'web/video.js','/scenery.js':'web/scenery.js','/weather-view.js':'web/weather-view.js','/weather-model.js':'src/weather-model.js','/terrain.js':'src/terrain.js','/terrain-view.js':'web/terrain-view.js','/three.js':'node_modules/three/build/three.module.js','/three.core.js':'node_modules/three/build/three.core.js'};
+  const files={'/':'web/index.html','/app.js':'web/app.js','/assets/MN-168.js':'assets/MN-168.js','/style.css':'web/style.css','/video.js':'web/video.js','/scenery.js':'web/scenery.js','/weather-view.js':'web/weather-view.js','/weather-model.js':'src/weather-model.js','/terrain.js':'src/terrain.js','/terrain-view.js':'web/terrain-view.js','/three.js':'node_modules/three/build/three.module.js','/three.core.js':'node_modules/three/build/three.core.js'};
   try{const file=files[url.pathname];if(!file){res.writeHead(404);res.end();return;}res.setHeader('Content-Type',file.endsWith('.js')?'text/javascript':file.endsWith('.css')?'text/css':'text/html');res.end(await fs.readFile(path.join(root,file)));}catch{res.writeHead(500);res.end('asset unavailable');}
 });
 // Browser control is local, same-origin only; no MAVLink proxy on this socket.
