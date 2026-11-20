@@ -11,6 +11,8 @@ import {Session} from './session.js';
 import {decodeActuators} from './protocol.js';
 import {loadEnvironment} from './environment.js';
 import {HeartbeatTelemetry} from './mavlink.js';
+import {cameraAim} from './camera.js';
+import {LiveWeather} from './weather.js';
 import {VideoRelay} from './video.js';
 const args=process.argv.slice(2),configIndex=args.indexOf('--config');
 const config=loadConfig(configIndex>=0?args[configIndex+1]:undefined);
@@ -18,6 +20,7 @@ const mode=args.includes('--standalone')?'standalone':'sitl';
 const environment=loadEnvironment(config,configIndex>=0?args[configIndex+1]:undefined,{flat:args.includes('--flat'),playground:args.includes('--playground')});
 const physics=await Physics.create(config.vehicle,!args.includes('--flat'),environment.terrain);
 const session=new Session(physics,config);
+const weather=new LiveWeather(environment.home,{timeZone:environment.timeZone});weather.start();
 const root=path.resolve(path.dirname(fileURLToPath(import.meta.url)),'..');
 const log=(event,data={})=>console.log(JSON.stringify({time:new Date().toISOString(),event,...data}));
 const telemetry=new HeartbeatTelemetry(config.mavlink??{});
@@ -35,7 +38,7 @@ const server=http.createServer(async(req,res)=>{
   if(video.handleHttp(req,res))return;
   const url=new URL(req.url,'http://localhost');
   if(url.pathname==='/api/state'){res.setHeader('Content-Type','application/json');res.end(JSON.stringify(snapshot()));return;}
-  const files={'/':'web/index.html','/app.js':'web/app.js','/style.css':'web/style.css','/video.js':'web/video.js','/scenery.js':'web/scenery.js','/terrain.js':'src/terrain.js','/terrain-view.js':'web/terrain-view.js','/three.js':'node_modules/three/build/three.module.js','/three.core.js':'node_modules/three/build/three.core.js'};
+  const files={'/':'web/index.html','/app.js':'web/app.js','/style.css':'web/style.css','/video.js':'web/video.js','/scenery.js':'web/scenery.js','/weather-view.js':'web/weather-view.js','/weather-model.js':'src/weather-model.js','/terrain.js':'src/terrain.js','/terrain-view.js':'web/terrain-view.js','/three.js':'node_modules/three/build/three.module.js','/three.core.js':'node_modules/three/build/three.core.js'};
   try{const file=files[url.pathname];if(!file){res.writeHead(404);res.end();return;}res.setHeader('Content-Type',file.endsWith('.js')?'text/javascript':file.endsWith('.css')?'text/css':'text/html');res.end(await fs.readFile(path.join(root,file)));}catch{res.writeHead(500);res.end('asset unavailable');}
 });
 // Browser control is local, same-origin only; no MAVLink proxy on this socket.
@@ -91,13 +94,13 @@ const tick=setInterval(()=>{const now=performance.now();if(mode==='standalone'){
 }previous=now;
 const connected=mode==='sitl'&&now-session.last<config.timeoutMs;if(connected!==lastConnected){log(connected?'sitl-connected':'sitl-timeout',{peer:session.peer});lastConnected=connected;}
 },5);
-function snapshot(){const state=physics.state();return {type:'state',mode,running,environment:environment.terrain?.name??'Test playground',home:environment.home,autopilot:mode==='sitl'?telemetry.snapshot(performance.now()):null,connected:mode==='standalone'||performance.now()-session.last<config.timeoutMs,resetPending,...state,simTime:mode==='sitl'?session.time:physics.time,rate:session.rate??100,ageMs:Number.isFinite(session.last)?Math.round(performance.now()-session.last):null,raw:session.raw??[],stats:{...session.stats,malformed,lagDropped},wallTime:performance.now()/1000};}
+function snapshot(){const state=physics.state();return {type:'state',mode,running,environment:environment.terrain?.name??'Test playground',home:environment.home,weather:weather.snapshot(),camera:cameraAim(mode==='sitl'?telemetry.rcSnapshot(performance.now()):null),autopilot:mode==='sitl'?telemetry.snapshot(performance.now()):null,connected:mode==='standalone'||performance.now()-session.last<config.timeoutMs,resetPending,...state,simTime:mode==='sitl'?session.time:physics.time,rate:session.rate??100,ageMs:Number.isFinite(session.last)?Math.round(performance.now()-session.last):null,raw:session.raw??[],stats:{...session.stats,malformed,lagDropped},wallTime:performance.now()/1000};}
 const broadcast=setInterval(()=>{const msg=JSON.stringify(snapshot());for(const ws of wss.clients)if(ws.readyState===WebSocket.OPEN&&ws.bufferedAmount<65536)ws.send(msg);},50);
 wss.on('error',e=>{log('websocket-error',{message:e.message});process.exitCode=1;});
 server.on('error',e=>{log('http-error',{message:e.message});process.exitCode=1;shutdown();});
 server.listen(config.httpPort,config.httpHost,()=>log('ready',{url:`http://${config.httpHost}:${config.httpPort}`,mode}));
 let shuttingDown=false;
-function shutdown(){if(shuttingDown)return;shuttingDown=true;video.close();clearInterval(tick);clearInterval(broadcast);if(pending)clearTimeout(pending.timer);for(const ws of wss.clients)ws.terminate();wss.close();server.close();if(mode==='sitl')udp.close();telemetrySocket?.close();physics.free();if(process.connected)process.disconnect();}
+function shutdown(){if(shuttingDown)return;shuttingDown=true;weather.close();video.close();clearInterval(tick);clearInterval(broadcast);if(pending)clearTimeout(pending.timer);for(const ws of wss.clients)ws.terminate();wss.close();server.close();if(mode==='sitl')udp.close();telemetrySocket?.close();physics.free();if(process.connected)process.disconnect();}
 process.on('SIGINT',()=>{shutdown();});process.on('SIGTERM',()=>{shutdown();});
 
 process.on('message',m=>{if(m?.type==='shutdown')shutdown();});

@@ -41,5 +41,8 @@ AHRS_EKF_TYPE 3
 EK3_ENABLE 1
 LOG_DISARMED 1
 
-# Dedicated receive-only HUD heartbeat feed over SERIAL2.
+# Dedicated receive-only HUD heartbeat and RC camera feed over SERIAL2.
 SERIAL2_PROTOCOL 2
+
+# RC2 tilt / RC4 pan telemetry at 10 Hz (existing EEPROM rates may override).
+SR2_RC_CHAN 10

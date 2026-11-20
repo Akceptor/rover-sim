@@ -1,14 +1,16 @@
 import * as T from '/three.js';
 import {CameraVideo} from '/video.js';
+import {createWeatherView} from '/weather-view.js';
 import {createScenery} from '/scenery.js';
 import {addTerrain,addTreeCrown} from '/terrain-view.js';
 if(new URLSearchParams(location.search).has('camera-output'))document.documentElement.dataset.cameraOutput='true';
 const cameraVideo=new CameraVideo();
 const $=id=>document.getElementById(id),canvas=$('view'),viewport=$('viewport'),settingsDialog=$('settingsDialog');
 const renderer=new T.WebGLRenderer({canvas,antialias:true});renderer.setPixelRatio(Math.min(devicePixelRatio,2));renderer.shadowMap.enabled=true;renderer.setClearColor(0xa4c8db);
-const scene=new T.Scene();scene.fog=new T.Fog(0xa4c8db,35,95);scene.add(new T.HemisphereLight(0xcfeeff,0x3b4529,2.5));const sun=new T.DirectionalLight(0xfff2d1,3);sun.position.set(10,25,10);sun.castShadow=true;sun.shadow.mapSize.set(2048,2048);sun.shadow.camera.left=-20;sun.shadow.camera.right=20;sun.shadow.camera.top=20;sun.shadow.camera.bottom=-20;sun.shadow.normalBias=.02;scene.add(sun);
+const scene=new T.Scene();scene.fog=new T.Fog(0xa4c8db,35,95);const ambient=new T.HemisphereLight(0xcfeeff,0x3b4529,2.5);scene.add(ambient);const sun=new T.DirectionalLight(0xfff2d1,3);sun.position.set(10,25,10);sun.castShadow=true;sun.shadow.mapSize.set(2048,2048);sun.shadow.camera.left=-20;sun.shadow.camera.right=20;sun.shadow.camera.top=20;sun.shadow.camera.bottom=-20;sun.shadow.normalBias=.02;scene.add(sun);
 const scenery=createScenery(renderer);scene.add(scenery.sky);
-const rover=new T.Group();scene.add(rover);const camera=new T.PerspectiveCamera(85,1,.015,150),chase=new T.PerspectiveCamera(65,1,.03,150);
+const rover=new T.Group();scene.add(rover);scene.userData.roverPosition=rover.position;
+const weatherView=createWeatherView(scene,renderer,sun,ambient,scenery);const camera=new T.PerspectiveCamera(85,1,.015,150),chase=new T.PerspectiveCamera(65,1,.03,150);
 // Rendering and video capture do not own physics or MAVLink control.
 export const fpvOutput={camera,canvas,renderer,scene};
 function box(size,color,parent=scene){const m=new T.Mesh(new T.BoxGeometry(...size),new T.MeshStandardMaterial({color,roughness:.85}));m.castShadow=true;m.receiveShadow=true;parent.add(m);return m;}
@@ -26,7 +28,7 @@ function setup(m){config=m.config;mode=m.mode;const c=config.vehicle;$('mode').t
   scenery.sky.scale.setScalar(m.terrain?10:1);
   if(m.terrain){addTerrain(world,m.terrain,renderer);scene.fog.near=70;scene.fog.far=650;for(const c of [camera,chase]){c.far=1500;c.updateProjectionMatrix();}}else{scene.fog.near=35;scene.fog.far=95;for(const c of [camera,chase]){c.far=150;c.updateProjectionMatrix();}}
   $('landscape').textContent=m.terrain?`${m.terrain.name} · ${(m.terrain.size-1)*m.terrain.spacing} m`:'100 × 100 m playground';
-  $('terrainAttribution').textContent=m.terrain?.attribution??'';cameraVideo.attribution=m.terrain?.attribution??'';
+  $('terrainAttribution').textContent=m.terrain?.attribution??'';cameraVideo.attribution=[m.terrain?.attribution,'Weather: open-meteo.com (CC BY 4.0)'].filter(Boolean).join(' · ');
   for(const o of m.world){const mesh=o.kind==='cone'?new T.Mesh(new T.ConeGeometry(o.size[0]/2,o.size[1],16),new T.MeshStandardMaterial({color:o.color})):box(o.size,o.color,world);if(o.kind==='cone'){world.add(mesh);mesh.castShadow=true;}mesh.position.fromArray(o.position);mesh.rotation.z=o.angle??0;if(o.kind==='tree')addTreeCrown(world,o);}
   if(!m.terrain){scenery.decorate(world);
   const grid=new T.GridHelper(100,100,0x7c8a69,0x718361);grid.position.y=.002;world.add(grid);}
@@ -47,7 +49,7 @@ setInterval(()=>{if(mode==='standalone')send({type:'keys',throttle:Number(keys.h
 const mount=new T.Vector3(),target=new T.Vector3(),chasePosition=new T.Vector3();let previousTime=0,previousWall=0,ratio=0;
 function render(){requestAnimationFrame(render);const width=viewport.clientWidth,height=viewport.clientHeight;if(canvas.width!==Math.floor(width*renderer.getPixelRatio())||canvas.height!==Math.floor(height*renderer.getPixelRatio())){renderer.setSize(width,height,false);for(const c of [camera,chase]){c.aspect=width/height;c.updateProjectionMatrix();}}
   if(state&&config){const s=state;rover.position.copy(s.position);rover.quaternion.copy(s.rotation);for(let i=0;i<4;i++){const w=s.wheels[i];wheels[i].steer.position.set(w.x,w.y,w.z);wheels[i].steer.rotation.y=i<2?-s.inputs.steering*config.vehicle.maxSteer:0;wheels[i].spin.rotation.z=w.rotation;}
-    mount.set(+$('mountX').value||0,+$('mountY').value||0,(+$('mountRight').value||0)).applyQuaternion(rover.quaternion).add(rover.position);camera.position.copy(mount);target.set(1,0,0).applyQuaternion(rover.quaternion).add(mount);camera.up.set(0,1,0).applyQuaternion(rover.quaternion);camera.lookAt(target);
+    mount.set(+$('mountX').value||0,+$('mountY').value||0,(+$('mountRight').value||0)).applyQuaternion(rover.quaternion).add(rover.position);camera.position.copy(mount);const pan=(s.camera?.panDeg??0)*Math.PI/180,tilt=(s.camera?.tiltDeg??0)*Math.PI/180;target.set(Math.cos(tilt)*Math.cos(pan),Math.sin(tilt),Math.cos(tilt)*Math.sin(pan)).applyQuaternion(rover.quaternion).add(mount);camera.up.set(0,1,0).applyQuaternion(rover.quaternion);camera.lookAt(target);
     chasePosition.set(-1.8,1.05,.5).applyQuaternion(rover.quaternion).add(rover.position);chase.position.lerp(chasePosition,.12);chase.lookAt(rover.position.clone().add(new T.Vector3(0,.1,0)));
     $('speed').textContent=s.speed.toFixed(2);$('heading').textContent=`${Math.round(s.heading).toString().padStart(3,'0')}°`;$('time').textContent=s.simTime.toFixed(1);$('rate').textContent=s.rate;
     for(const [id,value,index]of [['steer',s.inputs.steering,config.steering.channel-1],['throttle',s.inputs.throttle,config.throttle.channel-1]]){$(id).textContent=`${value.toFixed(2)}${s.raw[index]?` · ${s.raw[index]} µs`:''}`;$(id+'Meter').value=value;}
@@ -58,5 +60,5 @@ function render(){requestAnimationFrame(render);const width=viewport.clientWidth
     $('armState').dataset.state=autopilot?autopilot.armed?'armed':'disarmed':'unknown';$('flightMode').dataset.state=autopilot?.flightMode?'known':'unknown';
     if(s.wallTime!==previousWall){ratio=(s.simTime-previousTime)/(s.wallTime-previousWall);previousTime=s.simTime;previousWall=s.wallTime;}
     $('run').textContent=s.running?'Stop physics':'Start physics';$('diagnostics').textContent=`RTF ${ratio.toFixed(2)} · packet age ${s.ageMs??'—'} ms · duplicates ${s.stats.duplicates} · skipped ${s.stats.skipped} · malformed ${s.stats.malformed}`;$('status').textContent=s.running?`${$('camera').value==='fpv'?'ONBOARD FPV':'CHASE'} · ${mode==='sitl'?'SITL actuator authority':'keyboard test mode'}`:'PHYSICS STOPPED · sensor time continues in SITL';
-  }const activeCamera=$('camera').value==='fpv'?camera:chase;scenery.sky.position.copy(activeCamera.position);renderer.render(scene,activeCamera);cameraVideo.capture(canvas,performance.now());
+  }const activeCamera=$('camera').value==='fpv'?camera:chase;weatherView.update(state?.weather,state?.home,activeCamera,lastReceive);scenery.sky.position.copy(activeCamera.position);renderer.render(scene,activeCamera);cameraVideo.capture(canvas,performance.now());
 }render();

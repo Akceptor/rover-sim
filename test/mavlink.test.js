@@ -18,3 +18,19 @@ test('heartbeat decodes v1/v2 arm and Rover modes, invalid data cannot refresh f
  assert.equal(t.snapshot(4100).flightMode,'MODE 99');
  const other=new HeartbeatTelemetry({systemId:2});other.receive(manual,100);assert.equal(other.snapshot(100).connected,false);
 });
+
+// RC fixtures from pymavlink, not the decoder under test.
+const rc=Buffer.from('fd2a000000010141000001000000dc05e803dc05d007dc05dc05dc05dc05dc05dc05dc05dc05dc05dc05dc05dc05dc05dc0508ff021c','hex');
+const rawRC=Buffer.from('fe160001012301000000dc05d007dc05e803dc05dc05dc05dc0500ffaafc','hex');
+test('RC inputs decode independently of heartbeat, with CRC checks and their own timeout',()=>{
+ const t=new HeartbeatTelemetry({timeoutMs:3000});
+ assert.equal(t.rcSnapshot(0).connected,false);t.receive(rc,100);
+ assert.equal(t.snapshot(100).connected,false);assert.equal(t.rcSnapshot(100).connected,true);
+ assert.deepEqual(t.rcSnapshot(100).channels.slice(0,4),[1500,1000,1500,2000]);
+ const corrupt=Buffer.from(rc);corrupt[15]^=1;t.receive(corrupt,2000);
+ t.receive(manual,3000);assert.equal(t.snapshot(3200).connected,true);assert.equal(t.rcSnapshot(3200).connected,false);
+ t.receive(rawRC,4000);assert.deepEqual(t.rcSnapshot(4000).channels.slice(0,4),[1500,2000,1500,1000]);
+ const other=new HeartbeatTelemetry({systemId:2});other.receive(rc,100);assert.equal(other.rcSnapshot(100).connected,false);
+ const trimmedCentre=Buffer.from('fd29000000010141000002000000dc05dc05dc05dc05dc05dc05dc05dc05dc05dc05dc05dc05dc05dc05dc05dc05dc05dc0508f6d4','hex');
+ t.receive(trimmedCentre,5000);assert.deepEqual(t.rcSnapshot(5000).channels.slice(0,4),[1500,1500,1500,1500]);
+});

@@ -11,5 +11,7 @@ export function loadEnvironment(config,configPath=defaultConfig,{flat=false,play
   try{terrain=validateTerrain(JSON.parse(fs.readFileSync(file,'utf8')));}
   catch(error){throw Error(`Cannot load terrain ${file}: ${error.message}`);}
  }
- return {terrain,world:terrain?terrainObjects(terrain):flat?playground.slice(0,1):playground,home:terrain?.home??{lat:50.4501,lon:30.5234,alt:100}};
+ const timeZone=config.timeZone??terrain?.timeZone??(!terrain||config.terrain==='feofaniya'?'Europe/Kyiv':null);
+ if(timeZone!==null){try{if(typeof timeZone!=='string')throw Error();new Intl.DateTimeFormat('en',{timeZone});}catch{throw Error('Invalid environment timezone');}}
+ return {terrain,timeZone,world:terrain?terrainObjects(terrain):flat?playground.slice(0,1):playground,home:terrain?.home??{lat:50.4501,lon:30.5234,alt:100}};
 }

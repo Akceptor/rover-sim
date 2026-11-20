@@ -141,3 +141,8 @@ html[data-camera-output] #viewport{width:100vw;height:100vh;min-height:0;max-hei
 
 .terrain-attribution{font-size:.7rem;color:var(--muted);line-height:1.5;margin:6px 0;overflow-wrap:anywhere}
 .terrain-attribution:empty,html[data-camera-output] .terrain-attribution{display:none}
+
+.environment-status{display:flex;flex-wrap:wrap;gap:4px 20px;font-size:.75rem;color:var(--muted);padding-top:8px}
+.environment-status a{color:#aac5ff}
+#weatherStatus[data-state=stale]{color:var(--warn)}
+html[data-camera-output] .environment-status{display:none}

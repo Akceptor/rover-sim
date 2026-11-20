@@ -26,7 +26,10 @@ export function createScenery(renderer){
  const dome=new T.Mesh(new T.SphereGeometry(110,32,16),new T.MeshBasicMaterial({map:skyMap,side:T.BackSide,depthWrite:false,fog:false}));dome.renderOrder=-2;sky.add(dome);
  const cloudMap=texture(256,(c)=>{for(const [x,y,r] of [[62,144,48],[105,111,61],[158,131,57],[199,148,36]]){const g=c.createRadialGradient(x,y,0,x,y,r);g.addColorStop(0,'#ffffffed');g.addColorStop(.65,'#ffffffe0');g.addColorStop(1,'#ffffff00');c.fillStyle=g;c.fillRect(x-r,y-r,r*2,r*2);}});
  for(let i=0;i<15;i++){const a=i*Math.PI*2/15+.1,r=65+rng()*20;const cloud=new T.Sprite(new T.SpriteMaterial({map:cloudMap,depthWrite:false,fog:false,opacity:.78+rng()*.2}));cloud.position.set(Math.cos(a)*r,13+rng()*20,Math.sin(a)*r);cloud.scale.set(18+rng()*16,10+rng()*10,1);cloud.renderOrder=-1;sky.add(cloud);}
- return {sky,decorate(world){
+ return {sky,setWeather(color,visual){
+  dome.material.color.copy(color);
+  for(const cloud of sky.children.slice(1)){cloud.material.opacity=visual.cloud*(.25+visual.daylight*.65);cloud.material.color.setScalar(.18+visual.daylight*.82);}
+ },decorate(world){
   const ground=world.children[0];ground.material.map=grass;ground.material.color.set(0xffffff);ground.material.needsUpdate=true;
   const paint=new T.Mesh(new T.PlaneGeometry(100,100),new T.MeshStandardMaterial({map:markings,transparent:true,depthWrite:false,roughness:1,polygonOffset:true,polygonOffsetFactor:-1}));paint.rotation.x=-Math.PI/2;paint.position.y=.003;paint.receiveShadow=true;world.add(paint);
  }};

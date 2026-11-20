@@ -111,11 +111,26 @@ try {
   await page.setViewportSize({width:1440,height:900});
   udp.send(Buffer.from('fe0900010100000000000a038104035d04','hex'),config.mavlink.port,'127.0.0.1');
   await delay(100);await page.screenshot({path:'docs/sitl.png'});
+  // Real MAVLink RC inputs, separate from SERVO outputs, rotate the FPV camera.
+  await page.getByRole('button',{name:'FPV',exact:true}).click();
+  udp.send(Buffer.from('fd2a000000010141000001000000dc05e803dc05d007dc05dc05dc05dc05dc05dc05dc05dc05dc05dc05dc05dc05dc05dc0508ff021c','hex'),config.mavlink.port,'127.0.0.1');
+  await page.waitForFunction(async()=>{const state=await fetch('/api/state').then(r=>r.json());return state.camera.panDeg===30&&state.camera.tiltDeg===-15;});
+  await delay(100);
+  const aim=await page.evaluate(async()=>{
+    const T=await import('/three.js'),{fpvOutput}=await import('/app.js');
+    const s=await fetch('/api/state').then(r=>r.json());
+    const q=new T.Quaternion(s.rotation.x,s.rotation.y,s.rotation.z,s.rotation.w).invert();
+    const v=fpvOutput.camera.getWorldDirection(new T.Vector3()).applyQuaternion(q);
+    return {pan:Math.atan2(v.z,v.x)*180/Math.PI,tilt:Math.atan2(v.y,Math.hypot(v.x,v.z))*180/Math.PI,throttle:s.inputs.throttle};
+  });
+  assert.ok(Math.abs(aim.pan-30)<.2,JSON.stringify(aim));assert.ok(Math.abs(aim.tilt+15)<.2,JSON.stringify(aim));
+  assert.equal(aim.throttle,0,'camera sticks do not drive the vehicle');
+  await page.waitForFunction(async()=>{const s=await fetch('/api/state').then(r=>r.json());return s.camera.panDeg===0&&s.camera.tiltDeg===0;});
   udp.send(Buffer.from('fd0900000001010000000f0000000a030104037547','hex'),config.mavlink.port,'127.0.0.1');
   await page.waitForFunction(()=>document.querySelector('#armState').textContent==='DISARMED');
   assert.equal(await page.locator('#flightMode').textContent(),'GUIDED');
   await page.waitForFunction(()=>document.querySelector('#armState').textContent==='ARM UNKNOWN');
   assert.equal(await page.locator('#flightMode').textContent(),'MODE UNKNOWN');
   assert.deepEqual(errors,[]);
-  console.log('Chrome cockpit, FPV/chase, settings focus, keyboard, stop/reset and narrow layout and SITL actuator authority passed');
+  console.log('Chrome cockpit, FPV/chase, settings focus, keyboard, stop/reset and narrow layout and SITL actuator authority and RC camera pan/tilt passed');
 }finally{await browser?.close();serverProcess.kill('SIGTERM');sitlProcess?.kill('SIGTERM');udp?.close();await fs.rm(temp,{recursive:true,force:true});}

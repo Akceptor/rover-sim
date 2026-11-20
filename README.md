@@ -334,6 +334,15 @@ double reversal. Configuration changes require backend and SITL restart.
 - **FPV / Chase:** choose camera using the toolbar or Settings. FPV field of view 40–120°, mount forward/height/right
   offsets in metres from chassis centre. Mount height is above the chassis origin,
   not ground. Camera values affect rendering only.
+- **RC camera:** in SITL, RC4 pans ±30° and RC2 tilts ±15°. At 1500 µs the
+  camera is centred; high PWM looks right/up. Missing, invalid or stale inputs
+  return to centre. These are RC inputs, independent of steering/throttle servo
+  outputs. For existing saved parameters, set `SR2_RC_CHAN = 10` in Mission Planner
+  if RC telemetry is slow; preserve your other settings, including `RC5_OPTION`.
+- **Weather / local time:** real time at the loaded location controls sunlight
+  and day/night appearance; current weather adds clouds, fog, rain or snow.
+  Works in both views and camera video, with offline fallback and visible data age.
+  See [weather, timezone configuration and data attribution](docs/weather.md).
 - **Stop / Start physics:** holds pose while stopped. In SITL, sensor timestamp
   continues, velocity/gyro are zero and gravity is transformed to the held attitude.
   This is a simulation hold, not an RC emergency stop. ArduRover continues computing
@@ -467,6 +476,7 @@ npm test
 # Installed Chrome needed, no downloaded Playwright browser required:
 npm run test:browser
 npm run test:terrain
+npm run test:weather
 npm run test:video
 # Built native SITL plus installed Chrome/Edge; disposable EEPROM and isolated ports:
 npm run test:launcher
