@@ -2,7 +2,11 @@
 
 The recommended source is a **background camera**. It renders independently of
 the visible HUD, so minimising, switching tabs or closing that window does not
-stop video.
+stop video. The [one-terminal launcher](launcher.md) starts it automatically:
+configure `config/launcher.local.json`, then run `npm.cmd run sim`. Wait for
+`[launcher] READY`; Ctrl+C stops video, SITL and backend together.
+
+For separate service terminals:
 
 1. Update the repo and run `npm.cmd ci` in PowerShell once after updating.
 2. Keep the backend and SITL running in their usual terminals.

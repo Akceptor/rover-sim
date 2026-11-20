@@ -9,6 +9,22 @@ EKF3/GPS, two simultaneous MAVLink TCP clients, and an AUTO waypoint mission.
 Windows ARM execution and Mission Planner's actual UI connection remain unverified.
 See [validation](docs/validation.md) and the recorded [integration result](docs/integration-result.json).
 
+## One-terminal start: backend, SITL and camera
+
+Everything runs from this npm package. Run `npm ci`, copy
+`config/launcher.example.json` to `config/launcher.local.json`, and set `sitlExe`
+to your ArduRover executable path. Then start all services:
+
+```sh
+npm run sim
+```
+
+In Windows PowerShell use `npm.cmd run sim`, or double-click
+`start-simulator.cmd`. Ctrl+C stops all three services. Saved SITL parameters
+are preserved unless you explicitly pass `--wipe`. See the
+[launcher setup and options](docs/launcher.md) for Windows/Mac config examples.
+The separate commands below remain available for development.
+
 ## Quick start: standalone
 
 Install Node.js 22 or later (ARM64 on the M3; ARM64 or emulated x64 on Windows).
@@ -288,8 +304,8 @@ additional defaults-file mechanism. This does not calibrate the physics model.
 
 ### Simulated camera in Mission Planner
 
-After updating, run `npm.cmd ci`, then start `npm.cmd run video` in another
-PowerShell terminal alongside the backend and SITL. This publishes from a
+With `npm.cmd run sim`, the background camera starts automatically. When running
+services separately, use `npm.cmd run video` alongside the backend and SITL. This publishes from a
 dedicated headless Chrome/Edge window and keeps working when the visible HUD is
 minimised or closed. Connect Mission Planner's MJPEG receiver to
 `http://127.0.0.1:8090/camera.mjpg`, or paste the GStreamer pipeline from Settings

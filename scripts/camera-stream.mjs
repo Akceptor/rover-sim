@@ -5,7 +5,8 @@ import {parseArgs} from 'node:util';
 const {values}=parseArgs({options:{url:{type:'string',default:'http://127.0.0.1:8090'},camera:{type:'string',default:'fpv'},fov:{type:'string',default:'85'},browser:{type:'string',default:'auto'},help:{type:'boolean',default:false}}});
 if(values.help){console.log('npm run video -- [--url http://127.0.0.1:8090] [--camera fpv|chase] [--fov 40..120] [--browser auto|chrome|msedge]');process.exit(0);}
 let browser,stopping=false;
-const stop=async()=>{if(stopping)return;stopping=true;await browser?.close();};
+const stop=async()=>{if(stopping)return;stopping=true;await browser?.close();if(process.connected)process.disconnect();};
+process.on('message',m=>{if(m?.type==='shutdown')void stop();});process.on('disconnect',()=>void stop());
 process.on('SIGINT',()=>void stop());process.on('SIGTERM',()=>void stop());
 try{
  const url=new URL(values.url),fov=Number(values.fov);

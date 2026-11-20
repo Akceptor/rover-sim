@@ -95,5 +95,9 @@ const broadcast=setInterval(()=>{const msg=JSON.stringify(snapshot());for(const 
 wss.on('error',e=>{log('websocket-error',{message:e.message});process.exitCode=1;});
 server.on('error',e=>{log('http-error',{message:e.message});process.exitCode=1;shutdown();});
 server.listen(config.httpPort,config.httpHost,()=>log('ready',{url:`http://${config.httpHost}:${config.httpPort}`,mode}));
-function shutdown(){video.close();clearInterval(tick);clearInterval(broadcast);if(pending)clearTimeout(pending.timer);for(const ws of wss.clients)ws.terminate();wss.close();server.close();if(mode==='sitl')udp.close();telemetrySocket?.close();physics.free();}
+let shuttingDown=false;
+function shutdown(){if(shuttingDown)return;shuttingDown=true;video.close();clearInterval(tick);clearInterval(broadcast);if(pending)clearTimeout(pending.timer);for(const ws of wss.clients)ws.terminate();wss.close();server.close();if(mode==='sitl')udp.close();telemetrySocket?.close();physics.free();if(process.connected)process.disconnect();}
 process.on('SIGINT',()=>{shutdown();});process.on('SIGTERM',()=>{shutdown();});
+
+process.on('message',m=>{if(m?.type==='shutdown')shutdown();});
+process.on('disconnect',shutdown);

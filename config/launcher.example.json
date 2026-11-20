@@ -1,0 +1,4 @@
+{
+  "sitlExe": "C:/path/to/Mission Planner/sitl/ArduRover.exe",
+  "backendConfig": "./default.json"
+}

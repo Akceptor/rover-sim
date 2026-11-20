@@ -1,0 +1,64 @@
+#!/usr/bin/env node
+import fs from 'node:fs/promises';
+import path from 'node:path';
+import {fileURLToPath} from 'node:url';
+import {parseArgs} from 'node:util';
+import {setTimeout as delay} from 'node:timers/promises';
+import {loadConfig} from '../src/config.js';
+import {ProcessGroup} from '../src/process-group.js';
+import {sitlArguments,checkPorts,localHost,loadLauncherConfig} from '../src/launcher.js';
+const root=path.resolve(path.dirname(fileURLToPath(import.meta.url)),'..');
+const {values}=parseArgs({options:{sitl:{type:'string'},'launcher-config':{type:'string'},config:{type:'string'},'extra-params':{type:'string'},'mavlink-port':{type:'string',default:'5760'},'run-dir':{type:'string'},'no-video':{type:'boolean'},standalone:{type:'boolean'},flat:{type:'boolean'},wipe:{type:'boolean'},camera:{type:'string',default:'fpv'},fov:{type:'string',default:'85'},browser:{type:'string',default:'auto'},help:{type:'boolean'}}});
+if(values.help){console.log(`npm run sim -- [--launcher-config config/launcher.local.json] [--no-video] [--standalone] [--flat] [--wipe]
+Set sitlExe and backendConfig in config/launcher.local.json (copy launcher.example.json).
+Overrides: --sitl "path/to/ArduRover.exe" --config path/to/backend.json
+Camera: --camera fpv|chase --fov 40..120 --browser auto|chrome|msedge
+Advanced: --extra-params path --mavlink-port 5760 --run-dir path
+Config paths are relative to the config file; command-line paths are relative to the current directory.
+--wipe is NEVER saved. Ctrl+C stops all services.`);process.exit(0);}
+const group=new ProcessGroup();
+const stop=()=>void group.stop();process.on('SIGINT',stop);process.on('SIGTERM',stop);
+process.on('message',m=>{if(m?.type==='shutdown')stop();});
+process.on('disconnect',stop);
+async function waitFor(label,fn,timeout=15000){
+ const deadline=Date.now()+timeout;
+ while(Date.now()<deadline){group.controller.signal.throwIfAborted();try{if(await fn())return;}catch{group.controller.signal.throwIfAborted();}await delay(100,undefined,{signal:group.controller.signal});}
+ throw Error(`Timed out waiting for ${label}. Check the service logs above.`);
+}
+try{
+ const settingsFile=path.resolve(values['launcher-config']??path.join(root,'config/launcher.local.json'));
+ // Standalone and explicit --sitl work without a local file; an explicitly selected file must exist.
+ const hasSettings=await fs.stat(settingsFile).then(()=>true,error=>{if(error.code==='ENOENT')return false;throw error;});
+ const settings=(hasSettings||values['launcher-config']||(!values.standalone&&!values.sitl))?loadLauncherConfig(settingsFile):{};
+ const configPath=values.config?path.resolve(values.config):(settings.backendConfig??path.join(root,'config/default.json')),config=loadConfig(configPath);
+ const mavlinkPort=Number(values['mavlink-port']);
+ if(!Number.isInteger(mavlinkPort)||mavlinkPort<1||mavlinkPort>65533)throw Error('--mavlink-port must be between 1 and 65533');
+ if(!['fpv','chase'].includes(values.camera)||!Number.isFinite(Number(values.fov))||Number(values.fov)<40||Number(values.fov)>120||!['auto','chrome','msedge'].includes(values.browser))throw Error('Invalid camera options. Use --help for accepted values.');
+ let executable=values.sitl?path.resolve(values.sitl):settings.sitlExe;
+ if(!values.standalone){
+  if(!executable)throw Error(`Set sitlExe in ${settingsFile} to your ArduRover executable.`);
+  const info=await fs.stat(executable).catch(()=>null);
+  if(!info?.isFile())throw Error(`SITL executable not found: ${executable}. Update sitlExe in ${settingsFile}.`);
+ }
+ const ports=[{kind:'tcp',host:config.httpHost,port:config.httpPort,name:'Backend'}];
+ if(!values.standalone){ports.push({kind:'udp',host:config.udpHost,port:config.udpPort,name:'Physics'},{kind:'tcp',host:'0.0.0.0',port:mavlinkPort,name:'Mission Planner'},{kind:'tcp',host:'0.0.0.0',port:mavlinkPort+2,name:'Companion'});if(config.mavlink)ports.push({kind:'udp',host:config.mavlink.host,port:config.mavlink.port,name:'HUD telemetry'});}
+ await checkPorts(ports);
+ const extra=values['extra-params']?path.resolve(values['extra-params']):null;if(extra)await fs.access(extra);
+ const url=`http://${localHost(config.httpHost)}:${config.httpPort}`;
+ const state=async()=>{const response=await fetch(url+'/api/state',{signal:AbortSignal.timeout(1000)});if(!response.ok)throw Error('backend not ready');return response.json();};
+ group.start('backend',process.execPath,[path.join(root,'src/server.js'),'--config',configPath,...(values.standalone?['--standalone']:[]),...(values.flat?['--flat']:[])],{cwd:root,ipc:true});
+ await waitFor('backend',state);
+ if(!values.standalone){
+  const runDir=path.resolve(values['run-dir']??path.join(root,'.run',process.platform==='win32'?'sitl-windows':'sitl'));await fs.mkdir(runDir,{recursive:true});
+  const defaults=path.join(root,'config/rover.parm')+(extra?','+extra:'');
+  group.start('sitl',executable,sitlArguments(config,{defaults,mavlinkPort,wipe:values.wipe}),{cwd:runDir});
+  await waitFor('SITL JSON connection',async()=>(await state()).connected,40000);
+ }
+ if(!values['no-video']){
+  group.start('video',process.execPath,[path.join(root,'scripts/camera-stream.mjs'),'--url',url,'--camera',values.camera,'--fov',values.fov,'--browser',values.browser],{cwd:root,ipc:true});
+  await waitFor('background camera',async()=>{const response=await fetch(url+'/api/video',{signal:AbortSignal.timeout(1000)});return (await response.json()).state==='streaming';},30000);
+ }
+ console.log(`\n[launcher] READY · ${url}\n[launcher] Video: ${values['no-video']?'disabled':url+'/camera.mjpg'}\n[launcher] ${values.standalone?'Standalone keyboard mode':`Mission Planner TCP ${mavlinkPort} · companion ${mavlinkPort+2}`}\n[launcher] Ctrl+C stops video, SITL and backend. Saved parameters are ${values.wipe?'being reset for this run':'preserved'}.\n`);
+ process.exitCode=await group.finished;
+}catch(error){if(!group.stopping){console.error(`[launcher] ${error.message}`);process.exitCode=await group.stop(1);}else process.exitCode=await group.finished;}
+finally{if(process.connected)process.disconnect();}
