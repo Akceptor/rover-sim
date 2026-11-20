@@ -23,3 +23,23 @@ specific force R^-1(a-g), including gravity compensation at rest.
    Report VM/browser checks that cannot be exercised.
 
 No changes to existing projects; no remote publication or push.
+
+## Simulator HUD (2026-11-20)
+
+The approved continuation restyles this local simulator using the sibling rover
+UI's dark panels, status pills, blue camera selector and corner telemetry.
+Only visual conventions are reused; physics and JSON/MAVLink routing stay intact.
+
+Implementation and validation sequence:
+1. Extend `scripts/browser-smoke.mjs` for Settings, camera controls, focus safety
+   and a 390px window; confirm failure on the missing Settings button.
+2. Replace `web/index.html` and `web/style.css` with the framed responsive cockpit
+   and modal camera drawer, preserving existing control IDs.
+3. Update `web/app.js` to render at viewport dimensions, synchronize camera
+   selectors, require viewport focus for standalone driving, and release keys
+   on focus loss or opening settings. Keep SITL actuator authority unchanged.
+4. Run `npm test` and `node scripts/browser-smoke.mjs`; inspect FPV, chase and
+   narrow screenshots, then review the diff and document the controls.
+
+The header reports backend/JSON state only. No MAVLink arming, flight mode or
+WebRTC statistics are inferred. Camera settings remain session-local.

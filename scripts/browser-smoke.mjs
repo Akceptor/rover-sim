@@ -4,24 +4,104 @@ import fs from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import {spawn} from 'node:child_process';
+import {once} from 'node:events';
+import dgram from 'node:dgram';
 import {setTimeout as delay} from 'node:timers/promises';
 const temp=await fs.mkdtemp(path.join(os.tmpdir(),'rover-browser-'));
 const config=JSON.parse(await fs.readFile('config/default.json'));config.httpPort=8092;
 await fs.writeFile(path.join(temp,'config.json'),JSON.stringify(config));
 const serverProcess=spawn('node',['src/server.js','--standalone','--config',path.join(temp,'config.json')],{stdio:'pipe'});
 let log='';serverProcess.stderr.on('data',v=>log+=v);serverProcess.stdout.on('data',v=>log+=v);
-let browser;
+let browser,sitlProcess,udp;
 try {
   await delay(700);assert.equal(serverProcess.exitCode,null,log);
   browser=await chromium.launch({channel:'chrome',headless:true});
   const page=await browser.newPage({viewport:{width:1440,height:900}});
+  page.setDefaultTimeout(5000);
   const errors=[];page.on('pageerror',e=>errors.push(e.message));
-  await page.goto('http://127.0.0.1:8092');await page.waitForFunction(()=>document.querySelector('#mode').textContent.includes('STANDALONE'));await delay(1000);
-  await page.screenshot({path:'docs/standalone.png'});
+  await page.goto('http://127.0.0.1:8092');
+  await page.waitForFunction(()=>document.querySelector('#mode').textContent.includes('STANDALONE'));
   const state=()=>page.evaluate(()=>fetch('/api/state').then(r=>r.json()));
-  const before=await state();await page.keyboard.down('w');await delay(1500);await page.keyboard.up('w');const after=await state();assert.ok(after.position.x-before.position.x>.2,'keyboard moves backend');
-  await page.selectOption('#camera','chase');await delay(500);await page.screenshot({path:'docs/chase.png'});
-  await page.click('#run');await delay(200);const held=await state();await delay(300);assert.equal((await state()).simTime,held.simTime);
+  await page.waitForFunction(()=>document.querySelector('#connection').textContent==='Standalone physics active');
+  const statusChanges=await page.evaluate(async()=>{
+    let changes=0;const observer=new MutationObserver(records=>changes+=records.length);
+    observer.observe(document.querySelector('#connection'),{childList:true,characterData:true,subtree:true});
+    await new Promise(resolve=>setTimeout(resolve,250));observer.disconnect();return changes;
+  });
+  assert.equal(statusChanges,0,'steady connection must not repeat live-region announcements');
+  assert.equal(await page.getByRole('button',{name:'Settings',exact:true}).count(),1,'cockpit has a settings drawer');
+  await page.getByRole('button',{name:'Settings',exact:true}).click();
+  assert.equal(await page.getByRole('dialog',{name:'Simulator settings'}).isVisible(),true);
+  const heldInSettings=await state();
+  await page.keyboard.down('w');await delay(200);await page.keyboard.up('w');
+  assert.equal((await state()).position.x,heldInSettings.position.x,'typing in settings must not drive');
+  await page.locator('#fov').focus();await page.keyboard.press('ArrowRight');
+  assert.equal(await page.locator('#fovValue').textContent(),'86°');
+  await page.selectOption('#camera','fpv');
+  await page.keyboard.press('Escape');
+  assert.equal(await page.getByRole('dialog').isVisible(),false);
+  await delay(500);await page.screenshot({path:'docs/standalone.png'});
+  const before=await state();
+  // Put focus on the viewport, rather than a form element.
+  await page.locator('#viewport').click({position:{x:500,y:250}});
+  await page.keyboard.down('w');await delay(1500);await page.keyboard.up('w');
+  assert.ok((await state()).position.x-before.position.x>.2,'keyboard moves backend');
+  // Opening the drawer must release an already-held driving command.
+  await page.keyboard.down('w');await delay(200);
+  await page.getByRole('button',{name:'Settings',exact:true}).click();await delay(200);
+  assert.equal((await state()).inputs.throttle,0,'opening settings releases held keys');
+  await page.keyboard.up('w');await page.keyboard.press('Escape');
+  await page.keyboard.down('w');await delay(200);await page.keyboard.up('w');
+  assert.equal((await state()).inputs.throttle,0,'focus on a toolbar button must not drive');
+  // Canvas dimensions and projection must follow the viewport, not the window.
+  assert.equal(await page.evaluate(()=>{
+    const canvas=document.querySelector('#view'),viewport=document.querySelector('#viewport');
+    const ratio=Math.min(devicePixelRatio,2);
+    return canvas.width===Math.floor(viewport.clientWidth*ratio)&&canvas.height===Math.floor(viewport.clientHeight*ratio);
+  }),true,'renderer matches viewport dimensions');
+  await page.getByRole('button',{name:'Chase',exact:true}).click();await delay(500);
+  assert.equal(await page.getByRole('button',{name:'Chase',exact:true}).getAttribute('aria-pressed'),'true');
+  await page.screenshot({path:'docs/chase.png'});
+  await page.click('#run');await delay(200);const held=await state();await delay(300);
+  assert.equal((await state()).simTime,held.simTime);
   await page.click('#reset');await delay(200);assert.ok(Math.abs((await state()).position.x)<.01);
-  assert.deepEqual(errors,[]);console.log('Chrome FPV/chase rendering, keyboard, stop and standalone reset passed');
-}finally{await browser?.close();serverProcess.kill('SIGTERM');await fs.rm(temp,{recursive:true,force:true});}
+  // Both page and settings must stay usable on a narrow Windows browser window.
+  await page.setViewportSize({width:390,height:844});await delay(200);
+  assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true,'no horizontal page overflow');
+  const viewport=await page.locator('#viewport').boundingBox();assert.ok(viewport.width>300&&viewport.height>200);
+  await page.getByRole('button',{name:'Settings',exact:true}).click();
+  assert.equal(await page.getByRole('dialog').isVisible(),true);
+  await page.getByRole('button',{name:'Close settings'}).click();
+  assert.equal(await page.getByRole('dialog').isVisible(),false);
+  await page.screenshot({path:'docs/mobile.png'});
+  // Exercise the same HUD with actual JSON actuator packets, without an autopilot.
+  config.httpPort=8093;config.udpPort=9004;
+  await fs.writeFile(path.join(temp,'sitl.json'),JSON.stringify(config));
+  sitlProcess=spawn('node',['src/server.js','--config',path.join(temp,'sitl.json')],{stdio:'pipe'});
+  sitlProcess.stderr.on('data',v=>log+=v);sitlProcess.stdout.on('data',v=>log+=v);
+  await delay(700);assert.equal(sitlProcess.exitCode,null,log);
+  await page.goto('http://127.0.0.1:8093');
+  await page.waitForFunction(()=>document.querySelector('#connection').textContent.includes('Waiting for SITL'));
+  assert.equal(await page.locator('#keyLegend').isVisible(),false);
+  udp=dgram.createSocket('udp4');udp.bind(0,'127.0.0.1');await once(udp,'listening');
+  const packet=Buffer.alloc(40);packet.writeUInt16LE(18458);packet.writeUInt16LE(100,2);
+  packet.writeUInt16LE(2000,10);packet.writeUInt16LE(1500,14);
+  const exchange=async count=>{
+    packet.writeUInt32LE(count,4);
+    const response=once(udp,'message',{signal:AbortSignal.timeout(2000)});
+    udp.send(packet,config.udpPort,'127.0.0.1');await response;
+  };
+  await exchange(1);
+  await page.waitForFunction(()=>document.querySelector('#connection').textContent==='JSON connected');
+  await page.locator('#viewport').click();await page.keyboard.down('w');
+  for(let i=2;i<12;i++)await exchange(i);
+  await page.keyboard.up('w');
+  const sitlState=await page.evaluate(()=>fetch('/api/state').then(r=>r.json()));
+  assert.equal(sitlState.inputs.throttle,0,'browser keys must not override SITL throttle');
+  assert.equal(sitlState.inputs.steering,1,'JSON retains steering authority');
+  await page.waitForFunction(()=>document.querySelector('#steer').textContent.includes('2000'));
+  assert.equal(await page.evaluate(()=>[...document.querySelectorAll('.actuator label')].every(label=>label.scrollWidth<=label.clientWidth)),true,'SITL PWM labels fit narrow viewport');
+  await page.screenshot({path:'docs/sitl-mobile.png'});
+  assert.deepEqual(errors,[]);
+  console.log('Chrome cockpit, FPV/chase, settings focus, keyboard, stop/reset and narrow layout and SITL actuator authority passed');
+}finally{await browser?.close();serverProcess.kill('SIGTERM');sitlProcess?.kill('SIGTERM');udp?.close();await fs.rm(temp,{recursive:true,force:true});}

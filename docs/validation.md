@@ -24,14 +24,19 @@
   collision barrier, ramp contact/tilt, neutral slowing, parameter import protection, actual UDP/
   HTTP/WebSocket backend timeout/reconnect and standalone multi-client ownership.
 - Chrome headless using the installed Chrome channel: actual WebGL rendering,
-  screenshots of FPV/chase, keyboard movement, pause and standalone reset.
+  screenshots of FPV/chase and 390px standalone/SITL layouts, viewport sizing,
+  keyboard movement, pause and standalone reset. Settings drawer focus, Escape,
+  FOV, camera selector synchronization, held-key release and stable connection
+  live-region announcements checked. A real UDP actuator fixture verifies
+  JSON state/PWM rendering and that browser keys retain SITL actuator authority.
+  This fixture is a protocol check, not another full ArduRover integration run.
 - JavaScript syntax checks, POSIX launcher syntax, Python compile check.
 - npm production dependency audit: zero known vulnerabilities at validation time.
 - Read-only review found a neutral-input ownership bug across standalone tabs;
   fixed with a reproducing backend WebSocket regression test.
 
 See `integration-result.json`, `integration-sitl.log`, `integration-backend.log`,
-`standalone.png` and `chase.png`. Test scripts regenerate these artifacts.
+`standalone.png`, `chase.png`, `mobile.png` and `sitl-mobile.png`. Test scripts regenerate these artifacts.
 
 ## Limits and remaining manual checks
 

@@ -221,7 +221,13 @@ wheelbase/track, suspension, steering limit, engine force, speed and resistance.
 calibration in SITL and the physical mapping intentionally to avoid accidental
 double reversal. Configuration changes require backend and SITL restart.
 
-- **FPV / Chase:** choose camera. FPV field of view 40–120°, mount forward/height/right
+- **HUD:** the dark cockpit shows backend/JSON connection state, speed, heading,
+  steering/throttle (including PWM in SITL), simulation time and packet diagnostics.
+  It does not receive MAVLink arming or mode telemetry. Use **Settings** to open
+  the camera drawer; close with Escape or the close button. Standalone driving
+  requires focus on the camera viewport and releases when focus leaves it or
+  settings open. In SITL, drive through Mission Planner or a MAVLink companion.
+- **FPV / Chase:** choose camera using the toolbar or Settings. FPV field of view 40–120°, mount forward/height/right
   offsets in metres from chassis centre. Mount height is above the chassis origin,
   not ground. Camera values affect rendering only.
 - **Stop / Start physics:** holds pose while stopped. In SITL, sensor timestamp
@@ -323,7 +329,7 @@ Integration reserves HTTP 8091, UDP 9003, TCP 5770/5772 and uses a temporary EEP
 and log directory. It checks stationary IMU, two MAVLink clients, EKF readiness,
 normal arm, manual forward/reverse/right steering, mission upload and waypoint
 reach. Artifacts go to `docs/integration-result.json` and `docs/integration-*.log`.
-Browser smoke reserves 8092 and checks real Chrome WebGL rendering, keys, pause
+Browser smoke reserves HTTP 8092/8093 and UDP 9004 and checks real Chrome WebGL rendering, keys, pause
 and reset, producing screenshots. No tests contact a real flight controller.
 
 ## Troubleshooting
