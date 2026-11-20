@@ -60,7 +60,9 @@ Ctrl+C stops camera, SITL and backend together. Saved parameters, including
 `RC5_OPTION`, are preserved in `.run/sitl-windows` on Windows (`.run/sitl` on Mac).
 Only an explicit `--wipe` resets them. Stop any previous backend/SITL/video
 terminals before using the combined launcher; busy ports fail without taking over
-the existing processes. Do not also start Mission Planner's built-in simulation.
+the existing processes. With the normal launcher, do not also start Mission
+Planner's built-in simulation. Use the optional [Mission Planner start-selection
+mode](docs/mission-planner-start.md) when choosing the start on its Simulation map.
 
 Useful variants:
 
@@ -481,6 +483,14 @@ models or textures are downloaded.
 
 ![Tan crawler preview](docs/mn168.png)
 
+## Mission Planner start selection
+
+To pick the start on Mission Planner's **Simulation** map and load terrain on
+demand, run `npm.cmd run sim -- --mission-planner`. Paste the printed Extra
+command line into Mission Planner and start Rover there. The simulator loads or
+reuses the selected terrain while disarmed, then holds until you click **Start
+physics**. See [setup, cache behavior and limitations](docs/mission-planner-start.md).
+
 ## Tests
 
 ```sh
@@ -490,6 +500,8 @@ npm run test:browser
 npm run test:terrain
 npm run test:weather
 npm run test:crawler
+# Native SITL required; exercises the selected-start telemetry bridge:
+npm run test:position
 npm run test:video
 # Built native SITL plus installed Chrome/Edge; disposable EEPROM and isolated ports:
 npm run test:launcher

@@ -13,25 +13,32 @@ import {loadEnvironment} from './environment.js';
 import {HeartbeatTelemetry} from './mavlink.js';
 import {cameraAim} from './camera.js';
 import {LiveWeather} from './weather.js';
+import {loadStartTerrain} from './start-terrain.js';
+import {terrainObjects} from './terrain.js';
 import {VideoRelay} from './video.js';
 const args=process.argv.slice(2),configIndex=args.indexOf('--config');
 const config=loadConfig(configIndex>=0?args[configIndex+1]:undefined);
+const externalStart=args.includes('--mission-planner');
+if(externalStart&&(args.includes('--standalone')||args.includes('--flat')||args.includes('--playground')||!config.mavlink))throw Error('--mission-planner needs MAVLink telemetry and cannot be combined with standalone/flat/playground');
 const mode=args.includes('--standalone')?'standalone':'sitl';
-const environment=loadEnvironment(config,configIndex>=0?args[configIndex+1]:undefined,{flat:args.includes('--flat'),playground:args.includes('--playground')});
-const physics=await Physics.create(config.vehicle,!args.includes('--flat'),environment.terrain);
+let environment=loadEnvironment(externalStart?{...config,terrain:null}:config,configIndex>=0?args[configIndex+1]:undefined,{flat:externalStart||args.includes('--flat'),playground:args.includes('--playground')});
+let physics=await Physics.create(config.vehicle,!externalStart&&!args.includes('--flat'),environment.terrain);
 const session=new Session(physics,config);
-const weather=new LiveWeather(environment.home,{timeZone:environment.timeZone});weather.start();
+let weather=new LiveWeather(environment.home,{timeZone:environment.timeZone});if(!externalStart)weather.start();
 const root=path.resolve(path.dirname(fileURLToPath(import.meta.url)),'..');
 const log=(event,data={})=>console.log(JSON.stringify({time:new Date().toISOString(),event,...data}));
+let startTerrain=externalStart?{status:'waiting',message:'Waiting for Mission Planner start coordinates and disarmed telemetry'}:null;
+const terrainAbort=new AbortController();
 const telemetry=new HeartbeatTelemetry(config.mavlink??{});
 let telemetrySocket=null;
 if(mode==='sitl'&&config.mavlink){
   telemetrySocket=dgram.createSocket('udp4');
-  telemetrySocket.on('message',bytes=>telemetry.receive(bytes,performance.now()));
+  telemetrySocket.on('message',bytes=>{telemetry.receive(bytes,performance.now());void loadPickedStart();});
   telemetrySocket.on('error',e=>{log('mavlink-error',{message:e.message});telemetrySocket.close();telemetrySocket=null;});
   telemetrySocket.bind(config.mavlink.port,config.mavlink.host,()=>log('mavlink-listening',{port:config.mavlink.port}));
 }
-let running=true,pending=null,due=performance.now(),malformed=0,lastLog=0,lastConnected=false,resetPending=false;
+let running=!externalStart,pending=null,due=performance.now(),malformed=0,lastLog=0,lastConnected=false,resetPending=false;
+session.running=running;
 let keyboard={steering:0,throttle:0,time:0,owner:null};
 const video=new VideoRelay();
 const server=http.createServer(async(req,res)=>{
@@ -50,14 +57,14 @@ server.on('upgrade',(req,socket,head)=>{
   else socket.destroy();
 });
 wss.on('connection',ws=>{
-  ws.send(JSON.stringify({type:'init',mode,config,world:environment.world,terrain:environment.terrain}));
+  ws.send(JSON.stringify(initialState()));
   ws.on('message',data=>{try{
     const m=JSON.parse(data);let error;
     if(m.type==='keys'&&mode==='standalone'){
       if(keyboard.owner&&keyboard.owner!==ws&&performance.now()-keyboard.time<300)return;
       const steering=Math.max(-1,Math.min(1,Number(m.steering)||0)),throttle=Math.max(-1,Math.min(1,Number(m.throttle)||0));
       keyboard={steering,throttle,time:performance.now(),owner:steering||throttle?ws:null};
-    } else if(m.type==='running'){running=!!m.value;session.running=running;log('running',{running});}
+    } else if(m.type==='running'){if(externalStart&&startTerrain.status!=='ready')error='Wait for the selected start terrain to finish loading.';else{running=!!m.value;session.running=running;log('running',{running});}}
     else if(m.type==='reset'){
       if(mode==='standalone'){physics.reset();keyboard.throttle=0;keyboard.steering=0;}
       else if(performance.now()-session.last<config.timeoutMs)error='Stop the SITL process first, wait for timeout, then reset and restart SITL. Live teleport would invalidate EKF state.';
@@ -94,13 +101,34 @@ const tick=setInterval(()=>{const now=performance.now();if(mode==='standalone'){
 }previous=now;
 const connected=mode==='sitl'&&now-session.last<config.timeoutMs;if(connected!==lastConnected){log(connected?'sitl-connected':'sitl-timeout',{peer:session.peer});lastConnected=connected;}
 },5);
-function snapshot(){const state=physics.state();return {type:'state',mode,running,environment:environment.terrain?.name??'Test playground',home:environment.home,weather:weather.snapshot(),camera:cameraAim(mode==='sitl'?telemetry.rcSnapshot(performance.now()):null),autopilot:mode==='sitl'?telemetry.snapshot(performance.now()):null,connected:mode==='standalone'||performance.now()-session.last<config.timeoutMs,resetPending,...state,simTime:mode==='sitl'?session.time:physics.time,rate:session.rate??100,ageMs:Number.isFinite(session.last)?Math.round(performance.now()-session.last):null,raw:session.raw??[],stats:{...session.stats,malformed,lagDropped},wallTime:performance.now()/1000};}
+function snapshot(){const state=physics.state();return {type:'state',mode,running,startTerrain,environment:environment.terrain?.name??'Test playground',home:environment.home,weather:weather.snapshot(),camera:cameraAim(mode==='sitl'?telemetry.rcSnapshot(performance.now()):null),autopilot:mode==='sitl'?telemetry.snapshot(performance.now()):null,connected:mode==='standalone'||performance.now()-session.last<config.timeoutMs,resetPending,...state,simTime:mode==='sitl'?session.time:physics.time,rate:session.rate??100,ageMs:Number.isFinite(session.last)?Math.round(performance.now()-session.last):null,raw:session.raw??[],stats:{...session.stats,malformed,lagDropped},wallTime:performance.now()/1000};}
 const broadcast=setInterval(()=>{const msg=JSON.stringify(snapshot());for(const ws of wss.clients)if(ws.readyState===WebSocket.OPEN&&ws.bufferedAmount<65536)ws.send(msg);},50);
 wss.on('error',e=>{log('websocket-error',{message:e.message});process.exitCode=1;});
 server.on('error',e=>{log('http-error',{message:e.message});process.exitCode=1;shutdown();});
 server.listen(config.httpPort,config.httpHost,()=>log('ready',{url:`http://${config.httpHost}:${config.httpPort}`,mode}));
 let shuttingDown=false;
-function shutdown(){if(shuttingDown)return;shuttingDown=true;weather.close();video.close();clearInterval(tick);clearInterval(broadcast);if(pending)clearTimeout(pending.timer);for(const ws of wss.clients)ws.terminate();wss.close();server.close();if(mode==='sitl')udp.close();telemetrySocket?.close();physics.free();if(process.connected)process.disconnect();}
+function initialState(){return {type:'init',mode,config,world:environment.world,terrain:environment.terrain};}
+async function loadPickedStart(){
+ if(!externalStart||startTerrain.status!=='waiting'||shuttingDown)return;
+ const now=performance.now(),home=telemetry.positionSnapshot(now);
+ if(!home||telemetry.snapshot(now).armed!==false)return;
+ startTerrain={status:'loading',message:'Downloading terrain for selected start',home};log('terrain-start-loading',{home});
+ try{
+  const {terrain,cached}=await loadStartTerrain(home,{signal:terrainAbort.signal});
+  if(shuttingDown)return;
+  const safe=()=>{const now=performance.now(),p=telemetry.positionSnapshot(now);return telemetry.snapshot(now).armed===false&&p&&Math.abs(p.lat-home.lat)<1e-7&&Math.abs(p.lon-home.lon)<1e-7;};
+  if(!safe())throw Error('Start changed or disarmed telemetry lost during loading. Disarm and restart the backend.');
+  const replacement=await Physics.create(config.vehicle,true,terrain);
+  if(shuttingDown||!safe()){replacement.free();if(shuttingDown)return;throw Error('Disarm and restart the backend before loading terrain.');}
+  physics.free();physics=replacement;session.physics=physics;
+  environment={terrain,world:terrainObjects(terrain),home,timeZone:config.timeZone??terrain.timeZone??null};
+  weather.close();weather=new LiveWeather(home,{timeZone:environment.timeZone});weather.start();
+  startTerrain={status:'ready',message:'Terrain ready · start physics when ready',home,cached};
+  const init=JSON.stringify(initialState());for(const ws of wss.clients)if(ws.readyState===WebSocket.OPEN)ws.send(init);
+  log('terrain-start-ready',{home,cached});
+ }catch(error){if(!shuttingDown){startTerrain={status:'error',message:`Terrain load failed: ${error.message}. Restart the backend to retry.`,home};log('terrain-start-error',{message:error.message});}}
+}
+function shutdown(){if(shuttingDown)return;shuttingDown=true;terrainAbort.abort();weather.close();video.close();clearInterval(tick);clearInterval(broadcast);if(pending)clearTimeout(pending.timer);for(const ws of wss.clients)ws.terminate();wss.close();server.close();if(mode==='sitl')udp.close();telemetrySocket?.close();physics.free();if(process.connected)process.disconnect();}
 process.on('SIGINT',()=>{shutdown();});process.on('SIGTERM',()=>{shutdown();});
 
 process.on('message',m=>{if(m?.type==='shutdown')shutdown();});

@@ -22,6 +22,15 @@ test('heartbeat decodes v1/v2 arm and Rover modes, invalid data cannot refresh f
 // RC fixtures from pymavlink, not the decoder under test.
 const rc=Buffer.from('fd2a000000010141000001000000dc05e803dc05d007dc05dc05dc05dc05dc05dc05dc05dc05dc05dc05dc05dc05dc05dc0508ff021c','hex');
 const rawRC=Buffer.from('fe160001012301000000dc05d007dc05e803dc05dc05dc05dc0500ffaafc','hex');
+const simstate=Buffer.from('fd2c0000000101a400000000000000000000000000000000000000000000c3f51cc100000000000000000000000098e4001eb01d2a1253ae','hex');
+const globalPosition=Buffer.from('fd0f0000000101210000e803000098e4001eb01d2a1260cf026c8f','hex');
+test('selected SITL location requires fresh CRC-checked simulation and geographic telemetry',()=>{
+ const t=new HeartbeatTelemetry({timeoutMs:3000});assert.equal(t.positionSnapshot(0),null);
+ t.receive(simstate,100);assert.equal(t.positionSnapshot(100),null);
+ t.receive(globalPosition,200);assert.deepEqual(t.positionSnapshot(200),{lat:50.3375,lon:30.475,alt:184.16});
+ const corrupt=Buffer.from(simstate);corrupt[25]^=1;t.receive(corrupt,3100);assert.equal(t.positionSnapshot(3201),null);
+ const other=new HeartbeatTelemetry({systemId:2});other.receive(simstate,100);other.receive(globalPosition,100);assert.equal(other.positionSnapshot(100),null);
+});
 test('RC inputs decode independently of heartbeat, with CRC checks and their own timeout',()=>{
  const t=new HeartbeatTelemetry({timeoutMs:3000});
  assert.equal(t.rcSnapshot(0).connected,false);t.receive(rc,100);

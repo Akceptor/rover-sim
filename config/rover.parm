@@ -46,3 +46,7 @@ SERIAL2_PROTOCOL 2
 
 # RC2 tilt / RC4 pan telemetry at 10 Hz (existing EEPROM rates may override).
 SR2_RC_CHAN 10
+
+# Simulation-tab start coordinates on the receive-only SERIAL2 telemetry feed.
+SR2_EXTRA1 2
+SR2_POSITION 2

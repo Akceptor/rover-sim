@@ -56,6 +56,7 @@ function render(){requestAnimationFrame(render);const width=viewport.clientWidth
     for(const [id,text] of [['armState',armText],['flightMode',flightText]])if($(id).textContent!==text)$(id).textContent=text;
     $('armState').dataset.state=autopilot?autopilot.armed?'armed':'disarmed':'unknown';$('flightMode').dataset.state=autopilot?.flightMode?'known':'unknown';
     if(s.wallTime!==previousWall){ratio=(s.simTime-previousTime)/(s.wallTime-previousWall);previousTime=s.simTime;previousWall=s.wallTime;}
+    const terrainMessage=s.startTerrain?.message??'';if($('startTerrainStatus').textContent!==terrainMessage)$('startTerrainStatus').textContent=terrainMessage;$('run').disabled=!!s.startTerrain&&s.startTerrain.status!=='ready';
     $('run').textContent=s.running?'Stop physics':'Start physics';$('diagnostics').textContent=`RTF ${ratio.toFixed(2)} · packet age ${s.ageMs??'—'} ms · duplicates ${s.stats.duplicates} · skipped ${s.stats.skipped} · malformed ${s.stats.malformed}`;$('status').textContent=s.running?`${$('camera').value==='fpv'?'ONBOARD FPV':'CHASE'} · ${mode==='sitl'?'SITL actuator authority':'keyboard test mode'}`:'PHYSICS STOPPED · sensor time continues in SITL';
   }const activeCamera=$('camera').value==='fpv'?camera:chase;weatherView.update(state?.weather,state?.home,activeCamera,lastReceive);scenery.sky.position.copy(activeCamera.position);renderer.render(scene,activeCamera);cameraVideo.capture(canvas,performance.now());
 }render();

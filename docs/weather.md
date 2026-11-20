@@ -36,10 +36,10 @@ Open-Meteo endpoint is for noncommercial use under its
 attribution. A linked credit appears below the viewport and a source credit is
 included in recorded/streamed frames alongside terrain attribution.
 
-Location is currently chosen by the loaded terrain, before SITL starts. A Mission
-Planner map selection does not yet trigger terrain loading or relocation. The
-launcher passes that terrain's home to SITL; the JSON actuator connection does
-not carry start coordinates back to the terrain loader.
+Normally location is chosen by the loaded terrain before SITL starts. The optional
+[`--mission-planner` mode](mission-planner-start.md) learns the Simulation map's
+selected start over MAVLink and loads its terrain before enabling physics. The
+JSON actuator connection itself does not carry geographic start coordinates.
 
 Run `npm test` for clock, solar geometry, provider validation, refresh coalescing,
 failure, expiry, and cancellation checks. `npm run test:weather` uses installed

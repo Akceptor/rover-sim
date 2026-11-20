@@ -16,6 +16,11 @@ export function sitlArguments(config,{defaults,mavlinkPort=5760,wipe=false,home=
  const telemetry=config.mavlink??{host:'127.0.0.1',port:14560};
  return ['--model',`JSON:${localHost(config.udpHost)}`,'--sim-port-out',String(config.udpPort),'--rate','100','--speedup','1','--home',`${home.lat},${home.lon},${home.alt},0`,'--defaults',defaults,'--serial0',`tcp:${mavlinkPort}`,'--serial1',`tcp:${mavlinkPort+2}`,'--serial2',`udpclient:${localHost(telemetry.host)}:${telemetry.port}`,...(wipe?['--wipe']:[])];
 }
+export function missionPlannerArguments(config,defaults){
+ const telemetry=config.mavlink;
+ if(!telemetry)throw Error('Mission Planner start selection needs MAVLink telemetry configuration');
+ return ['--model',`JSON:${localHost(config.udpHost)}`,'--sim-port-out',String(config.udpPort),'--rate','100','--speedup','1','--serial2',`udpclient:${localHost(telemetry.host)}:${telemetry.port}`,'--defaults',defaults];
+}
 export async function checkPorts(ports){
  const results=await Promise.allSettled(ports.map(({kind,host,port,name})=>new Promise((resolve,reject)=>{
   const listener=kind==='tcp'?net.createServer():dgram.createSocket('udp4');

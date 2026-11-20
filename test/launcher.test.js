@@ -2,7 +2,7 @@ import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import net from 'node:net';
 import {once} from 'node:events';
-import {sitlArguments,checkPorts} from '../src/launcher.js';
+import {sitlArguments,missionPlannerArguments,checkPorts} from '../src/launcher.js';
 test('launcher preserves parameters by default and passes paths with spaces as single arguments',()=>{
  const config={udpHost:'0.0.0.0',udpPort:9005,mavlink:{host:'127.0.0.1',port:14563}};
  const defaults='C:\\My Simulator\\config\\rover.parm';
@@ -34,4 +34,11 @@ test('launcher config resolves machine paths relative to the config file without
   await writeFile(file,JSON.stringify({sitlExe:'rover',wipe:true}));
   assert.throws(()=>loadLauncherConfig(file),/wipe/);
  }finally{await rm(dir,{recursive:true,force:true});}
+});
+
+test('Mission Planner arguments preserve its map-selected home and GCS connection',()=>{
+ const args=missionPlannerArguments({udpHost:'127.0.0.1',udpPort:9002,mavlink:{host:'127.0.0.1',port:14560}},'C:/My Simulator/config/rover.parm');
+ assert.ok(args.includes('JSON:127.0.0.1'));assert.ok(args.includes('udpclient:127.0.0.1:14560'));
+ for(const flag of ['--home','--serial0','--wipe'])assert.equal(args.includes(flag),false);
+ assert.equal(args.at(-1),'C:/My Simulator/config/rover.parm');
 });
