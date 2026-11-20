@@ -6,24 +6,76 @@ camera and chase view. Browser rendering never advances physics. No WebRTC in v1
 
 Validated on Apple M3/macOS with native ARM64 SITL: manual forward/reverse/steering,
 EKF3/GPS, two simultaneous MAVLink TCP clients, and an AUTO waypoint mission.
-Windows ARM execution and Mission Planner's actual UI connection remain unverified.
+Automated Windows VM and Mission Planner UI checks have not been run.
 See [validation](docs/validation.md) and the recorded [integration result](docs/integration-result.json).
 
 ## One-terminal start: backend, SITL and camera
 
-Everything runs from this npm package. Run `npm ci`, copy
-`config/launcher.example.json` to `config/launcher.local.json`, and set `sitlExe`
-to your ArduRover executable path. Then start all services:
+Everything runs from this npm package. Install Node.js 22 or later with npm,
+Chrome or Edge for background video, and a runnable ArduRover SITL executable.
+The launcher does not download firmware. Use the Windows setup below when
+backend, SITL and Mission Planner all run inside the Windows VM.
 
-```sh
-npm run sim
+From your **Windows checkout** of `rover-sim`, run in PowerShell:
+
+```powershell
+npm.cmd ci
+Copy-Item config/launcher.example.json config/launcher.local.json
+notepad config/launcher.local.json
 ```
 
-In Windows PowerShell use `npm.cmd run sim`, or double-click
-`start-simulator.cmd`. Ctrl+C stops all three services. Saved SITL parameters
-are preserved unless you explicitly pass `--wipe`. See the
-[launcher setup and options](docs/launcher.md) for Windows/Mac config examples.
-The separate commands below remain available for development.
+Set `sitlExe` to your actual Windows executable path. For the Mission Planner
+SITL executable in the Parallels shared Documents folder, the config is:
+
+```json
+{
+  "sitlExe": "C:/Mac/Home/Documents/Mission Planner/sitl/ArduRover.exe",
+  "backendConfig": "./default.json"
+}
+```
+
+Use forward slashes, or escape each backslash as `\\` in JSON. Paths with spaces
+need no extra quotes inside the value. `backendConfig` and relative executable
+paths resolve against the launcher config's directory.
+
+**Create this file once in each checkout.** `config/launcher.local.json` is ignored
+by Git, so `git pull` does not copy it from the Mac checkout to the Windows one.
+Keep an existing local config when updating; copying the example again replaces it.
+
+Then start all three services:
+
+```powershell
+npm.cmd run sim
+```
+
+You can also double-click `start-simulator.cmd`. Neither entry point needs a
+PowerShell execution-policy change. Wait for `[launcher] READY`, then open
+**http://127.0.0.1:8090** for the HUD. Connect Mission Planner to TCP
+**127.0.0.1:5760** and a companion to TCP **127.0.0.1:5762** on the same Windows
+machine. The background camera publishes **http://127.0.0.1:8090/camera.mjpg**
+and keeps running when the visible HUD is hidden or closed. See
+[video setup](docs/video.md) for Mission Planner's GStreamer pipeline.
+
+Ctrl+C stops camera, SITL and backend together. Saved parameters, including
+`RC5_OPTION`, are preserved in `.run/sitl-windows` on Windows (`.run/sitl` on Mac).
+Only an explicit `--wipe` resets them. Stop any previous backend/SITL/video
+terminals before using the combined launcher; busy ports fail without taking over
+the existing processes. Do not also start Mission Planner's built-in simulation.
+
+Useful variants:
+
+```powershell
+npm.cmd run sim -- --no-video
+npm.cmd run sim -- --standalone
+npm.cmd run sim -- --flat
+npm.cmd run sim -- --help
+```
+
+On Mac/Linux, use `npm` instead of `npm.cmd`. For the native Mac build described
+below, set `sitlExe` to `../.tools/ardupilot/build/sitl/bin/ardurover` in your Mac
+checkout's local config. See [launcher setup and options](docs/launcher.md) for
+alternate configs, ports and camera options. The separate service commands below
+remain available for development.
 
 ## Quick start: standalone
 
@@ -74,12 +126,12 @@ The first release models a small generic crawler; dimensions are starting values
 not measured MN168 specifications. Obstacles are fixed objects; wheel contact uses
 ray casts, not tyre meshes. This is not an MN168 performance calibration.
 
-## Recommended deployment: native Mac SITL and backend, Windows Mission Planner
+## Alternative deployment: native Mac SITL and backend, Windows Mission Planner
 
-This avoids any assumption about Windows ARM SITL packages, WSL2 or nested
-virtualisation. Rapier is WebAssembly with no platform-specific physics addon.
-Three.js and ws are JavaScript. Windows ARM backend compatibility is expected
-from this arrangement but has **not** been tested on the VM.
+This arrangement runs SITL and the backend on Mac, with Mission Planner in the
+Windows VM. It is the deployment used for the automated native SITL integration
+checks. Rapier is WebAssembly with no platform-specific physics addon; Three.js
+and ws are JavaScript. WSL2 and nested virtualisation are not required.
 
 ### Build native SITL once
 
@@ -98,7 +150,10 @@ generation must use the venv Python; merely invoking waf with a venv interpreter
 while `python` resolves elsewhere can produce an erroneous missing-empy failure.
 The pinned source is a development commit tested here, not a stable release claim.
 
-### Start backend, then SITL
+### Separate backend and SITL commands
+
+For the combined backend/SITL/camera launcher, use `npm run sim` after configuring
+the Mac executable path above. To run the services individually instead:
 
 Terminal 1:
 
@@ -192,7 +247,10 @@ on **14551**. MAVProxy initiates traffic toward those listeners and routes repli
 Keep `mavfwd` enabled for commands from its output links. Direct TCP is the tested,
 simpler option. UDP fanout and Mission Planner UI were not tested here.
 
-### Optional Windows backend / SITL
+### Separate Windows backend / SITL commands
+
+For one-terminal startup, use `npm.cmd run sim` as described above. The following
+commands are the manual alternative; run each in its own PowerShell window:
 
 ```powershell
 npm.cmd start
@@ -218,11 +276,13 @@ Cygwin runtime requirements and x64 emulation must be checked for that executabl
 For Mac SITL + Windows backend, set backend `udpHost` to `0.0.0.0`, allow inbound
 Windows UDP 9002, and run Mac with `BACKEND_HOST=<WINDOWS_IP>`; leave JSON and
 MAVLink port numbers separate. This mixed variant is untested; colocating backend
-and SITL on Mac is recommended and was exercised without nested virtualisation.
+and SITL avoids that cross-machine physics configuration.
 
 ## Configuration, controls and reset
 
-Copy `config/default.json` and launch:
+For the combined launcher, set `backendConfig` in `config/launcher.local.json`
+to the backend config you want to use. To start the backend separately, copy
+`config/default.json` and launch:
 
 ```sh
 node src/server.js --config config/my-rover.json
@@ -279,7 +339,9 @@ This is already the default for an unchanged SERIAL2 configuration.
 `config/default.json` contains `mavlink.host` (bind address), `port`, `systemId`
 (default 1) and `timeoutMs` (3000). Old custom configs without `mavlink` keep the
 feed disabled; copy that block to enable it, or use `null` to disable it.
-Match a changed port with PowerShell `-TelemetryPort` or shell `TELEMETRY_PORT`.
+The combined launcher reads the telemetry port from that backend config. With
+the separate SITL scripts, match a changed port with PowerShell `-TelemetryPort`
+or shell `TELEMETRY_PORT`.
 For SITL and backend on different machines, match the destination to the backend
 host, bind the telemetry listener to an accessible interface and allow its UDP
 port. This telemetry port is separate from the physics JSON UDP port.
@@ -305,9 +367,9 @@ additional defaults-file mechanism. This does not calibrate the physics model.
 ### Simulated camera in Mission Planner
 
 With `npm.cmd run sim`, the background camera starts automatically. When running
-services separately, use `npm.cmd run video` alongside the backend and SITL. This publishes from a
-dedicated headless Chrome/Edge window and keeps working when the visible HUD is
-minimised or closed. Connect Mission Planner's MJPEG receiver to
+services separately, use `npm.cmd run video` alongside the backend and SITL.
+This publishes from a dedicated headless Chrome/Edge window and keeps working
+when the visible HUD is minimised or closed. Connect Mission Planner's MJPEG receiver to
 `http://127.0.0.1:8090/camera.mjpg`, or paste the GStreamer pipeline from Settings
 into **Video → Set GStreamer Source**. The output is 960 × 540 at up to 10 fps.
 The optional **Start video** button in Settings publishes from the visible tab
@@ -381,6 +443,10 @@ npm test
 # Installed Chrome needed, no downloaded Playwright browser required:
 npm run test:browser
 npm run test:video
+# Built native SITL plus installed Chrome/Edge; disposable EEPROM and isolated ports:
+npm run test:launcher
+# Without background video:
+npm run test:launcher -- --no-video
 # With a GStreamer receiver installed:
 npm run test:video -- --gstreamer
 # After build; no browser needed, starts its own backend/SITL on isolated ports:
@@ -396,10 +462,19 @@ Browser smoke reserves HTTP 8092/8093 and UDP 9004/14561 and checks real Chrome 
 and reset, producing screenshots. Video smoke reserves HTTP 8094 and checks
 real WebGL JPEG capture, HTTP MJPEG and stream lifecycle; `--gstreamer` also
 checks the displayed Mission Planner pipeline through a BGRA appsink. No tests
-contact a real flight controller.
+contact a real flight controller. Launcher smoke reserves HTTP 8095, UDP
+9005/14563 and TCP 5774/5776. It checks combined startup, MJPEG delivery, shutdown
+and port release, missing executables, busy ports and startup cancellation; it
+uses a disposable EEPROM and does not read your local launcher config.
 
 ## Troubleshooting
 
+- **Cannot read launcher config / ENOENT:** create `config/launcher.local.json`
+  in the checkout named in the error, using the Windows setup above. The file is
+  ignored by Git and must be created separately in each checkout; a config in the
+  Mac checkout does not appear in a separate Windows clone.
+- **SITL executable not found:** edit `sitlExe` in that checkout's local config.
+  A Windows run needs a Windows path; a Mac run needs the native Mac binary.
 - **SITL exits immediately only inside an agent sandbox:** the tested firmware
   probes its parent with `kill(parent_pid, 0)` each frame and exits if denied.
   Launch from a normal terminal or grant the launcher normal local process

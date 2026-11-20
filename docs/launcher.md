@@ -30,6 +30,11 @@ file resolve against the file's directory. For the native Mac build, use
 `"sitlExe": "../.tools/ardupilot/build/sitl/bin/ardurover"`.
 
 The local config is ignored by Git and is never rewritten by the launcher.
+Create it separately in each checkout: a config in a Mac checkout is not copied
+into a Windows clone by `git pull`. Run the setup commands from the same checkout
+where you will run `npm.cmd run sim`. If startup reports `ENOENT`, create the
+config at the exact path printed in that error. Keep your existing local config
+when updating; copying the example again replaces it.
 There is no automatic path detection or interactive prompt. The old experimental
 `.run/launcher.json` is not read. Backend ports, vehicle settings and channel
 calibration stay in the file selected by `backendConfig`.
