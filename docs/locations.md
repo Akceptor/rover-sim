@@ -1,8 +1,34 @@
 # Bundled location presets
 
+## Mission Planner mode: presets or Custom
+
+With `npm.cmd run sim -- --mission-planner`, the **Location** selector beside
+terrain status and **Retry terrain** offers all five offline presets plus
+**Custom · Mission Planner**. Choose an option and click **Load location**.
+
+Presets load their bundled terrain without downloading. The backend supplies
+absolute latitude, longitude and altitude to ArduPilot's JSON simulator, so
+Mission Planner's Simulation map marker can stay anywhere. Weather and local
+time follow the preset.
+
+If SITL has already connected, disarm before changing location. The backend
+holds physics and asks you to stop and start SITL in Mission Planner, keeping
+the backend and browser open. The GPS override activates on the new SITL
+session; physics remains held until fresh simulation/GPS telemetry confirms
+the selected location and altitude. No manual map-coordinate changes are needed.
+Choosing a preset before the first SITL connection avoids this extra restart.
+
+**Custom · Mission Planner** is the default and downloads terrain at Mission
+Planner's selected start, with validated cache reuse. Switching from a preset
+to Custom also requires restarting SITL so its navigation estimator initializes
+at the map-selected start again. Custom terrain can still fail where source
+data is missing; choose a preset to use a complete offline patch instead.
+
+## Launcher-owned SITL: preset startup
+
 Run `npm.cmd run sim -- --choose-location` in Windows, or double-click
 `start-location-picker.cmd`. On macOS/Linux use `npm run sim -- --choose-location`.
-Open `http://127.0.0.1:8090`, select a **Starting location**, and click **Load
+Open `http://127.0.0.1:8090`, select a **Location**, and click **Load
 location**. The launcher waits for that choice before starting SITL with the
 selected terrain's latitude, longitude and elevation. Then click **Start physics**
 and drive through Mission Planner as usual.
@@ -33,10 +59,10 @@ the launcher and launch the picker again. If loading an asset fails, **Retry
 terrain** retries without restarting the backend. `--standalone --choose-location`
 also works for keyboard testing without SITL.
 
-The default `npm run sim` still loads Feofaniya automatically. The separate
-`--mission-planner` mode still takes its start from Mission Planner's Simulation
-map; it automatically reuses a bundled patch when the selected coordinates match
-one of these exact origins. `--choose-location` cannot be combined with
+The default `npm run sim` still loads Feofaniya automatically.
+In `--mission-planner` mode, **Custom** takes its start from Mission Planner's
+Simulation map and automatically reuses a bundled patch when its selected
+coordinates match one of these exact origins. `--choose-location` cannot be combined with
 `--mission-planner`, `--flat` or `--playground`.
 
 ## Data provenance
@@ -63,3 +89,8 @@ measured elevation range, and proves loading presets never calls the downloader.
 `npm run test:locations` uses Chrome and native SITL to select Lima through the
 dropdown and verifies its actual SITL home, timezone, collisions and narrow
 layout. It reserves HTTP 8103, UDP 9010/14568 and TCP 5794/5796.
+
+`npm run test:terrain-selector` uses Chrome and native SITL to verify preset GPS
+overrides against an Australian start, restart handling for a live region
+change, return to Custom, terrain collisions and narrow layout. It reserves
+HTTP 8104, UDP 9011/14569 and TCP 5798/5800.

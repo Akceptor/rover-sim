@@ -18,10 +18,6 @@
     <div><span class="view-title">ROVER CAMERA</span><span id="landscape" class="muted secondary">Loading landscape</span></div>
     <div class="seg" role="group" aria-label="Camera view"><button id="fpv" aria-pressed="true">FPV</button><button id="chase" aria-pressed="false">Chase</button></div>
   </div>
-  <section id="locationPicker" class="location-picker" aria-label="Starting location" hidden>
-    <label for="locationSelect">Starting location</label><select id="locationSelect" aria-describedby="locationHint"></select><button id="loadLocation" type="button">Load location</button>
-    <p id="locationHint" class="muted"></p>
-  </section>
   <section id="viewport" tabindex="0" aria-label="Rover viewport. Focus to drive in standalone mode.">
     <canvas id="view" aria-label="Rover camera view"></canvas>
     <div class="osd">
@@ -37,7 +33,14 @@
     <div id="notice" role="status"></div>
   </section>
   <div class="environment-status"><span id="localTime">Waiting for local time</span><span id="weatherStatus">Loading weather…</span><a href="https://open-meteo.com/" target="_blank" rel="noopener noreferrer">Weather by Open-Meteo · CC BY 4.0</a></div>
-  <div id="terrainLoad" class="terrain-load" hidden><p id="startTerrainStatus" class="terrain-attribution" role="status"></p><button id="retryTerrain" type="button">Retry terrain</button></div>
+  <div id="terrainLoad" class="terrain-load" hidden>
+    <p id="startTerrainStatus" class="terrain-attribution" role="status"></p>
+    <section id="locationPicker" class="location-picker" aria-label="Starting location" hidden>
+      <label for="locationSelect">Location</label><select id="locationSelect" aria-describedby="locationHint"></select><button id="loadLocation" type="button">Load location</button>
+      <p id="locationHint" class="muted"></p>
+    </section>
+    <button id="retryTerrain" type="button">Retry terrain</button>
+  </div>
   <p id="terrainAttribution" class="terrain-attribution"></p>
   <div class="timing"><span><b id="rate">—</b> Hz physics</span><span><b id="time">0.0</b> s simulated</span><span id="diagnostics">Waiting for timing data</span></div>
   <section class="controls" aria-label="Simulator controls">

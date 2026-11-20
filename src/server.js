@@ -29,14 +29,14 @@ const session=new Session(physics,config);
 let weather=new LiveWeather(environment.home,{timeZone:environment.timeZone});if(!pendingLocation)weather.start();
 const root=path.resolve(path.dirname(fileURLToPath(import.meta.url)),'..');
 const log=(event,data={})=>console.log(JSON.stringify({time:new Date().toISOString(),event,...data}));
-let selectedLocation=null;
+let selectedLocation=externalStart?'custom':null;
 let startTerrain=locationPicker?{status:'selecting',message:'Choose a starting location below'}:externalStart?{status:'waiting',message:'Waiting for Mission Planner start coordinates and disarmed telemetry'}:null;
 const terrainAbort=new AbortController();
 const telemetry=new HeartbeatTelemetry(config.mavlink??{});
 let telemetrySocket=null;
 if(mode==='sitl'&&config.mavlink){
   telemetrySocket=dgram.createSocket('udp4');
-  telemetrySocket.on('message',bytes=>{telemetry.receive(bytes,performance.now());void loadPickedStart();});
+  telemetrySocket.on('message',bytes=>{telemetry.receive(bytes,performance.now());checkSelectedGps();void loadPickedStart();});
   telemetrySocket.on('error',e=>{log('mavlink-error',{message:e.message});telemetrySocket.close();telemetrySocket=null;});
   telemetrySocket.bind(config.mavlink.port,config.mavlink.host,()=>log('mavlink-listening',{port:config.mavlink.port}));
 }
@@ -68,13 +68,19 @@ wss.on('connection',ws=>{
       const steering=Math.max(-1,Math.min(1,Number(m.steering)||0)),throttle=Math.max(-1,Math.min(1,Number(m.throttle)||0));
       keyboard={steering,throttle,time:performance.now(),owner:steering||throttle?ws:null};
     } else if(m.type==='selectLocation'){
-      if(!locationPicker)error='Start the launcher with --choose-location to select a preset.';
-      else if(['loading','ready'].includes(startTerrain.status))error='Location is loading or already selected.';
-      else if(mode==='sitl'&&performance.now()-session.last<config.timeoutMs)error='Stop SITL before choosing a start; the launcher starts it after selection.';
+      if(!locationPicker&&!externalStart)error='Start with --choose-location or --mission-planner to select a location.';
+      else if(startTerrain.status==='loading'||(locationPicker&&startTerrain.status==='ready'))error='Location is loading or already selected.';
+      else if(externalStart&&sitlActive()&&telemetry.snapshot(performance.now()).armed!==false)error='Disarm SITL and wait for fresh telemetry before changing location.';
+      else if(locationPicker&&mode==='sitl'&&sitlActive())error='Stop SITL before choosing a start; the launcher starts it after selection.';
+      else if(m.id==='custom'&&externalStart)selectCustom();
       else void loadPreset(findLocation(m.id));
     } else if(m.type==='retryTerrain'){
-      if(locationPicker&&startTerrain.status==='error'&&selectedLocation){void loadPreset(findLocation(selectedLocation));}
+      if((locationPicker||externalStart)&&startTerrain.status==='error'&&selectedLocation&&selectedLocation!=='custom'){
+        if(externalStart&&sitlActive()&&telemetry.snapshot(performance.now()).armed!==false)error='Disarm SITL before retrying the location.';
+        else void loadPreset(findLocation(selectedLocation));
+      }
       else if(!externalStart)error='Terrain retry is available in Mission Planner start-selection mode.';
+      else if(['restart','verifying'].includes(startTerrain.status))error='Restart SITL in Mission Planner and wait for the selected GPS position.';
       else if(startTerrain.status==='loading')error='Terrain is already loading.';
       else if(startTerrain.status==='ready')error='Terrain is already loaded.';
       else if(telemetry.snapshot(performance.now()).armed!==false)error='Disarm SITL and wait for fresh telemetry before retrying terrain.';
@@ -99,6 +105,11 @@ if(mode==='sitl'){
       const p=decodeActuators(bytes),key=`${remote.address}:${remote.port}`;
       if(pending){if(p.count===pending.count&&key===pending.key)return;return;}
       const reply=session.receive(p,key,now);if(!reply)return;
+      if(startTerrain?.status==='restart'&&session.stats.restarts>startTerrain.restartFrom){
+        telemetry.simPosition=null;telemetry.globalPosition=null;
+        if(selectedLocation==='custom')startTerrain={status:'waiting',message:'Waiting for Mission Planner start coordinates and disarmed telemetry'};
+        else startTerrain={...startTerrain,status:'verifying',message:'Waiting for GPS at the selected preset · physics held'};
+      }
       resetPending=false;
       if(reply.event==='restart')log('sitl-restarted',{peer:key});
       if(reply.event==='gap')log('frame-gap-resync',{peer:key,count:p.count});
@@ -117,33 +128,58 @@ const tick=setInterval(()=>{const now=performance.now();if(mode==='standalone'){
 }previous=now;
 const connected=mode==='sitl'&&now-session.last<config.timeoutMs;if(connected!==lastConnected){log(connected?'sitl-connected':'sitl-timeout',{peer:session.peer});lastConnected=connected;}
 },5);
-function snapshot(){const state=physics.state();return {type:'state',mode,running,startTerrain,selectedLocation,environment:environment.terrain?.name??'Test playground',home:environment.home,weather:weather.snapshot(),camera:cameraAim(mode==='sitl'?telemetry.rcSnapshot(performance.now()):null),autopilot:mode==='sitl'?telemetry.snapshot(performance.now()):null,connected:mode==='standalone'||performance.now()-session.last<config.timeoutMs,resetPending,...state,simTime:mode==='sitl'?session.time:physics.time,rate:session.rate??100,ageMs:Number.isFinite(session.last)?Math.round(performance.now()-session.last):null,raw:session.raw??[],stats:{...session.stats,malformed,lagDropped},wallTime:performance.now()/1000};}
+function snapshot(){const state=physics.state();return {type:'state',mode,running,startTerrain,selectedLocation,environment:environment.terrain?.name??'Test playground',home:environment.home,weather:weather.snapshot(),camera:cameraAim(mode==='sitl'?telemetry.rcSnapshot(performance.now()):null),autopilot:mode==='sitl'?{...telemetry.snapshot(performance.now()),position:telemetry.positionSnapshot(performance.now())}:null,connected:mode==='standalone'||performance.now()-session.last<config.timeoutMs,resetPending,...state,simTime:mode==='sitl'?session.time:physics.time,rate:session.rate??100,ageMs:Number.isFinite(session.last)?Math.round(performance.now()-session.last):null,raw:session.raw??[],stats:{...session.stats,malformed,lagDropped},wallTime:performance.now()/1000};}
 const broadcast=setInterval(()=>{const msg=JSON.stringify(snapshot());for(const ws of wss.clients)if(ws.readyState===WebSocket.OPEN&&ws.bufferedAmount<65536)ws.send(msg);},50);
 wss.on('error',e=>{log('websocket-error',{message:e.message});process.exitCode=1;});
 server.on('error',e=>{log('http-error',{message:e.message});process.exitCode=1;shutdown();});
 server.listen(config.httpPort,config.httpHost,()=>log('ready',{url:`http://${config.httpHost}:${config.httpPort}`,mode}));
 let shuttingDown=false;
-function initialState(){return {type:'init',mode,config,locations:locationPicker?locationPresets:[],selectedLocation,world:environment.world,terrain:environment.terrain};}
+function initialState(){return {type:'init',mode,config,locations:externalStart?[...locationPresets,{id:'custom',name:'Custom · Mission Planner',description:'Fetch terrain at Mission Planner’s selected start'}]:locationPicker?locationPresets:[],selectedLocation,locationMode:externalStart?'mission-planner':locationPicker?'launcher':null,world:environment.world,terrain:environment.terrain};}
+function sitlActive(){return performance.now()-session.last<config.timeoutMs||telemetry.snapshot(performance.now()).connected;}
+function selectCustom(){
+ selectedLocation='custom';running=false;session.running=false;
+ if(session.stats.packets>0||session.home||session.pendingHome){
+  session.pendingHome=null;
+  startTerrain={status:'restart',restartFrom:session.stats.restarts,message:'Custom selected · stop and start SITL in Mission Planner to read its selected start. Keep this page open.'};
+ }else{
+  startTerrain={status:'waiting',message:'Waiting for Mission Planner start coordinates and disarmed telemetry'};
+  void loadPickedStart();
+ }
+}
+function checkSelectedGps(){
+ if(startTerrain?.status!=='verifying')return;
+ const now=performance.now(),p=telemetry.positionSnapshot(now),home=environment.home;
+ if(p&&telemetry.snapshot(now).armed===false&&Math.abs(p.lat-home.lat)<.00002&&Math.abs(p.lon-home.lon)<.00002&&Math.abs(p.alt-home.alt)<2){
+  startTerrain={...startTerrain,status:'ready',message:`${findLocation(selectedLocation).name} ready · GPS overridden · start physics when ready`};
+ }
+}
 async function loadPreset(preset){
  selectedLocation=preset.id;running=false;session.running=false;keyboard={steering:0,throttle:0,time:0,owner:null};
  startTerrain={status:'loading',message:`Loading ${preset.name}`,home:preset};
  try{
   const {terrain,cached}=await loadStartTerrain(preset,{signal:terrainAbort.signal});
   if(shuttingDown)return;
-  if(mode==='sitl'&&performance.now()-session.last<config.timeoutMs)throw Error('SITL connected before selection finished. Stop it before retrying.');
+  if(locationPicker&&mode==='sitl'&&sitlActive())throw Error('SITL connected before selection finished. Stop it before retrying.');
+  if(externalStart&&sitlActive()&&telemetry.snapshot(performance.now()).armed!==false)throw Error('Disarm SITL before retrying the location selection.');
   const replacement=await Physics.create(config.vehicle,true,terrain);
   if(shuttingDown){replacement.free();return;}
-  if(mode==='sitl'&&performance.now()-session.last<config.timeoutMs){replacement.free();throw Error('Stop SITL before retrying the location selection.');}
+  if(mode==='sitl'&&sitlActive()&&(locationPicker||telemetry.snapshot(performance.now()).armed!==false)){replacement.free();throw Error('Stop or disarm SITL before retrying the location selection.');}
   physics.free();physics=replacement;session.physics=physics;
   environment={terrain,world:terrainObjects(terrain),home:terrain.home,timeZone:preset.timeZone};
   weather.close();weather=new LiveWeather(terrain.home,{timeZone:preset.timeZone});weather.start();
   startTerrain={status:'ready',message:`${preset.name} ready · ${preset.reliefM} m elevation range`,home:terrain.home,cached};
+  if(externalStart){
+   if(session.stats.packets>0){
+    session.pendingHome=terrain.home;
+    startTerrain={...startTerrain,status:'restart',restartFrom:session.stats.restarts,message:`${preset.name} loaded · stop and start SITL in Mission Planner to apply its GPS coordinates. Keep this page open; no map changes needed.`};
+   }else{session.home=terrain.home;session.pendingHome=undefined;}
+  }
   const init=JSON.stringify(initialState());for(const ws of wss.clients)if(ws.readyState===WebSocket.OPEN)ws.send(init);
   log('location-selected',{id:preset.id,home:terrain.home,cached});
  }catch(error){if(!shuttingDown)startTerrain={status:'error',message:`Location load failed: ${error.message}. Use Retry terrain.`,home:preset};}
 }
 async function loadPickedStart(){
- if(!externalStart||startTerrain.status!=='waiting'||shuttingDown)return;
+ if(!externalStart||selectedLocation!=='custom'||startTerrain.status!=='waiting'||shuttingDown)return;
  const now=performance.now(),home=telemetry.positionSnapshot(now);
  if(!home||telemetry.snapshot(now).armed!==false)return;
  startTerrain={status:'loading',message:'Downloading terrain for selected start',home};log('terrain-start-loading',{home});

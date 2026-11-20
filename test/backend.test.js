@@ -35,7 +35,7 @@ test('startup dropdown loads a preset before SITL connects and keeps it locked a
  }finally{ws?.terminate();unexpectedSITL.close();await s.close();}
 });
 test('Mission Planner selected start waits for disarm, loads matching terrain and keeps physics held',async()=>{
- const s=await launch('mission-planner'),udp=dgram.createSocket('udp4');
+ const s=await launch('mission-planner'),udp=dgram.createSocket('udp4');let ws;
  const send=hex=>new Promise((resolve,reject)=>udp.send(Buffer.from(hex,'hex'),s.config.mavlink.port,'127.0.0.1',e=>e?reject(e):resolve()));
  try{
   assert.equal((await s.state()).startTerrain.status,'waiting');
@@ -46,7 +46,33 @@ test('Mission Planner selected start waits for disarm, loads matching terrain an
   await send('fd0900000001010000000f0000000a030104037547');
   let state;for(let i=0;i<100;i++){state=await s.state();if(state.startTerrain.status==='ready')break;await delay(20);}
   assert.equal(state.startTerrain.status,'ready');assert.equal(state.startTerrain.cached,true);assert.equal(state.home.lat,50.3375);assert.equal(state.home.alt,184.16);assert.equal(state.running,false);assert.match(state.environment,/Feofaniya/);
- }finally{udp.close();await s.close();}
+  const packet=Buffer.alloc(40);packet.writeUInt16LE(18458);packet.writeUInt16LE(100,2);packet.writeUInt32LE(1,4);
+  const reply=once(udp,'message',{signal:AbortSignal.timeout(2000)});udp.send(packet,s.config.udpPort,'127.0.0.1');await reply;
+  ws=await s.socket();ws.send(JSON.stringify({type:'selectLocation',id:'custom'}));await delay(50);
+  assert.equal((await s.state()).startTerrain.status,'restart','reloading Custom must restart the estimator rather than resetting physics under a live session');
+ }finally{ws?.terminate();udp.close();await s.close();}
+});
+test('external preset changes reject armed or unknown telemetry and hold physics until restart',async()=>{
+ const s=await launch('mission-planner'),udp=dgram.createSocket('udp4');let ws;
+ const send=hex=>new Promise((resolve,reject)=>udp.send(Buffer.from(hex,'hex'),s.config.mavlink.port,'127.0.0.1',e=>e?reject(e):resolve()));
+ const select=id=>ws.send(JSON.stringify({type:'selectLocation',id}));
+ try{
+  ws=await s.socket();select('lima');
+  for(let i=0;i<100&&(await s.state()).startTerrain.status!=='ready';i++)await delay(20);
+  assert.equal((await s.state()).selectedLocation,'lima');
+  // The JSON stream can be alive even while heartbeat freshness is unknown.
+  const packet=Buffer.alloc(40);packet.writeUInt16LE(18458);packet.writeUInt16LE(100,2);packet.writeUInt32LE(1,4);
+  const reply=once(udp,'message',{signal:AbortSignal.timeout(2000)});udp.send(packet,s.config.udpPort,'127.0.0.1');await reply;
+  select('lviv');await delay(40);assert.equal((await s.state()).selectedLocation,'lima');
+  await send('fe0900010100000000000a038104035d04');await delay(20);select('custom');await delay(40);
+  assert.equal((await s.state()).selectedLocation,'lima','armed requests are refused by the backend, not just disabled UI');
+  await send('fd0900000001010000000f0000000a030104037547');await delay(20);select('lviv');
+  for(let i=0;i<100&&(await s.state()).startTerrain.status!=='restart';i++)await delay(20);
+  const held=await s.state();assert.equal(held.selectedLocation,'lviv');assert.equal(held.startTerrain.status,'restart');assert.equal(held.running,false);
+  ws.send(JSON.stringify({type:'running',value:true}));await delay(40);assert.equal((await s.state()).running,false);
+  select('custom');await delay(40);assert.equal((await s.state()).startTerrain.status,'restart');
+  select('custom');await delay(40);assert.equal((await s.state()).startTerrain.status,'restart','reloading Custom must not reuse the previous SITL session');
+ }finally{ws?.terminate();udp.close();await s.close();}
 });
 test('failed terrain can be retried through the browser without restarting the backend',async()=>{
  const s=await launch('mission-planner'),udp=dgram.createSocket('udp4');let ws;

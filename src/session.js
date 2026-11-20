@@ -2,6 +2,7 @@ import {FrameClock,encodeSensors,pwm} from './protocol.js';
 export class Session {
   constructor(physics,config){this.physics=physics;this.config=config;this.clock=new FrameClock();this.peer=null;this.last=-Infinity;this.cached=null;this.running=true;this.time=0;this.inputs={steering:0,throttle:0};this.stats={packets:0,duplicates:0,skipped:0,restarts:0,old:0,gaps:0};}
   receive(p,peer,now){
+    const restarts=this.stats.restarts;
     const expired=now-this.last>this.config.timeoutMs;
     if(this.peer!==null&&peer!==this.peer&&!expired)return null;
     if(this.peer!==peer){this.peer=peer;this.clock=new FrameClock();this.physics.reset();this.time=0;this.stats.restarts++;}
@@ -14,6 +15,7 @@ export class Session {
     // Frame zero while a peer is live is ambiguous with UDP reordering. Require timeout.
     if(f.kind==='restart'&&!expired){this.clock.count=this.previousCount;this.stats.old++;return null;}
     if(f.kind==='restart'){this.physics.reset();this.time=0;this.stats.restarts++;}
+    if(this.stats.restarts!==restarts&&this.pendingHome!==undefined){this.home=this.pendingHome;this.pendingHome=undefined;}
     this.previousCount=p.count;this.last=now;this.rate=p.rate;this.raw=p.pwm;
     this.stats.skipped+=f.steps-1;
     const next={steering:pwm(p.pwm[this.config.steering.channel-1],this.config.steering),throttle:pwm(p.pwm[this.config.throttle.channel-1],this.config.throttle)};
@@ -22,6 +24,13 @@ export class Session {
     if(!this.running){sensor.velocity=[0,0,0];sensor.imu.gyro=[0,0,0]; // hold pose, but keep estimator time alive
       // Specific force for frozen pose is computed from attitude, not last collision.
       const {rotation}=this.physics.state();if(rotation){sensor.imu=this.physics.frozenIMU();}}
+    if(this.home){
+      const [north,east,down]=sensor.position,metresPerDegree=111318.845;
+      sensor.latitude=this.home.lat+north/metresPerDegree;
+      const longitude=this.home.lon+east/(metresPerDegree*Math.cos((this.home.lat+sensor.latitude)*Math.PI/360));
+      sensor.longitude=longitude>=-180&&longitude<=180?longitude:((longitude+180)%360+360)%360-180;
+      sensor.altitude=this.home.alt-down;
+    }
     sensor.timestamp=this.time;this.cached=encodeSensors(sensor);
     return {bytes:this.cached,dt:f.steps*f.dt,event:f.kind};
   }
