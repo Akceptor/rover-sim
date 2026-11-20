@@ -12,7 +12,30 @@ See [validation](docs/validation.md) and the recorded [integration result](docs/
 ## Quick start: standalone
 
 Install Node.js 22 or later (ARM64 on the M3; ARM64 or emulated x64 on Windows).
-From this directory:
+
+On **Windows 11 ARM in Parallels**, install Node.js LTS and npm together from
+PowerShell using WinGet:
+
+```powershell
+winget install --id OpenJS.NodeJS.LTS --exact --architecture arm64 --source winget
+```
+
+The [WinGet package](https://github.com/microsoft/winget-pkgs/tree/master/manifests/o/OpenJS/NodeJS/LTS)
+includes the ARM64 installer. Alternatively, use the Windows ARM64 `.msi` from
+the [official Node.js download page](https://nodejs.org/en/download/).
+
+Close and reopen PowerShell after installation so the updated PATH takes effect,
+then verify both commands:
+
+```powershell
+node --version
+npm.cmd --version
+```
+
+Use `npm.cmd` in PowerShell to avoid script execution-policy restrictions on
+`npm.ps1`; no execution-policy change is needed.
+
+From the cloned `rover-sim` directory:
 
 ```sh
 npm ci
