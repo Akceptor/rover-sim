@@ -41,5 +41,19 @@ Implementation and validation sequence:
 4. Run `npm test` and `node scripts/browser-smoke.mjs`; inspect FPV, chase and
    narrow screenshots, then review the diff and document the controls.
 
-The header reports backend/JSON state only. No MAVLink arming, flight mode or
-WebRTC statistics are inferred. Camera settings remain session-local.
+Camera settings remain session-local. WebRTC statistics are not inferred.
+
+## HUD MAVLink telemetry (2026-11-20)
+
+Add arm state and flight mode badges beside JSON connection in the header.
+Read SERIAL2's independent UDP heartbeat feed on 14560, validate MAVLink v1/v2
+framing, HEARTBEAT CRC and source system/component/type, then expose an
+`autopilot` snapshot over the existing HTTP/WebSocket path. Keep decoding in
+`src/mavlink.js`, transport in `src/server.js` and presentation in `web/app.js`.
+No MAVLink commands are sent and the two existing TCP endpoints stay available.
+
+Missing/stale telemetry clears both badges to UNKNOWN after three seconds;
+standalone hides them. Unrecognized custom modes retain their numeric value.
+Both launchers add SERIAL2's UDP destination; its protocol defaults to MAVLink2.
+Tests use independent pymavlink wire fixtures, malformed and stale data, Chrome
+badge transitions and the real SITL integration's disarmed/armed/mode changes.

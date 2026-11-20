@@ -6,7 +6,7 @@ import {setTimeout as delay} from 'node:timers/promises';
 import {once} from 'node:events';import dgram from 'node:dgram';
 import {WebSocket} from 'ws';
 async function launch(mode){
- const dir=await fs.mkdtemp(path.join(os.tmpdir(),'rover-test-'));const config=JSON.parse(await fs.readFile(new URL('../config/default.json',import.meta.url)));config.httpPort=22000+Math.floor(Math.random()*10000);config.udpPort=32000+Math.floor(Math.random()*10000);config.timeoutMs=150;await fs.writeFile(path.join(dir,'config.json'),JSON.stringify(config));
+ const dir=await fs.mkdtemp(path.join(os.tmpdir(),'rover-test-'));const config=JSON.parse(await fs.readFile(new URL('../config/default.json',import.meta.url)));config.httpPort=22000+Math.floor(Math.random()*10000);config.udpPort=32000+Math.floor(Math.random()*10000);config.timeoutMs=150;config.mavlink=null;await fs.writeFile(path.join(dir,'config.json'),JSON.stringify(config));
  const proc=spawn(process.execPath,['src/server.js','--flat','--config',path.join(dir,'config.json'),...(mode==='standalone'?['--standalone']:[])],{cwd:new URL('..',import.meta.url),stdio:['ignore','pipe','pipe']});let logs='';proc.stdout.on('data',v=>logs+=v);proc.stderr.on('data',v=>logs+=v);
  const url=`http://127.0.0.1:${config.httpPort}`;
  const state=async()=>{const r=await fetch(url+'/api/state');return r.json();};

@@ -106,7 +106,8 @@ command is:
 /path/to/ardupilot/build/sitl/bin/ardurover \
   --model JSON:127.0.0.1 --sim-port-out 9002 --rate 100 --speedup 1 \
   --home 50.4501,30.5234,100,0 --defaults /absolute/path/rover-sim/config/rover.parm \
-  --serial0 tcp:5760 --serial1 tcp:5762 --wipe
+  --serial0 tcp:5760 --serial1 tcp:5762 \
+  --serial2 udpclient:127.0.0.1:14560 --wipe
 ```
 
 For an already configured official source tree, an alternative is:
@@ -115,7 +116,7 @@ For an already configured official source tree, an alternative is:
 /path/to/ardupilot/Tools/autotest/sim_vehicle.py -v Rover -f rover \
   --model JSON:127.0.0.1 --no-mavproxy \
   --add-param-file=/absolute/path/rover-sim/config/rover.parm \
-  -A '--sim-port-out 9002 --rate 100 --serial0 tcp:5760 --serial1 tcp:5762' -w
+  -A '--sim-port-out 9002 --rate 100 --serial0 tcp:5760 --serial1 tcp:5762 --serial2 udpclient:127.0.0.1:14560' -w
 ```
 
 `-v Rover` matches the current source vehicle directory. Older trees may use
@@ -159,6 +160,7 @@ or set their protocols to MAVLink2. Do not connect two clients to one UART port.
 | Physics | Backend UDP 127.0.0.1:9002 | SITL sends binary actuators; backend replies to sender's ephemeral UDP port |
 | Mission Planner MAVLink | SITL TCP 0.0.0.0:5760 | Windows MP connects to Mac |
 | Companion MAVLink | SITL TCP 0.0.0.0:5762 | Companion connects to Mac |
+| HUD arm/mode telemetry | Backend UDP 127.0.0.1:14560 | SITL SERIAL2 sends MAVLink heartbeats; receive only |
 | Browser/HUD | Backend HTTP + WebSocket 127.0.0.1:8090 | Browser connects to backend |
 
 To use a companion that requires UDP endpoints, run MAVProxy against one SITL UART
@@ -223,7 +225,9 @@ double reversal. Configuration changes require backend and SITL restart.
 
 - **HUD:** the dark cockpit shows backend/JSON connection state, speed, heading,
   steering/throttle (including PWM in SITL), simulation time and packet diagnostics.
-  It does not receive MAVLink arming or mode telemetry. Use **Settings** to open
+  Header badges show **ARMED / DISARMED** and the Rover mode from MAVLink
+  heartbeats. They show **UNKNOWN** after 3 seconds without telemetry and are
+  hidden in standalone mode. Use **Settings** to open
   the camera drawer; close with Escape or the close button. Standalone driving
   requires focus on the camera viewport and releases when focus leaves it or
   settings open. In SITL, drive through Mission Planner or a MAVLink companion.
@@ -243,6 +247,27 @@ double reversal. Configuration changes require backend and SITL restart.
 - In SITL mode browser keys never directly affect physics. Your existing browser
   keyboard companion must send MAVLink RC overrides/manual commands to ArduRover.
   The resulting SERVO outputs alone move this backend.
+
+### HUD arm status and mode telemetry
+
+The launchers send a dedicated MAVLink feed from SERIAL2 to backend UDP **14560**.
+Mission Planner TCP 5760 and companion TCP 5762 remain available. The HUD reads
+heartbeats only and sends no arming, mode or control commands.
+
+After updating, restart both the backend and SITL, then refresh the browser.
+Omit `-Wipe` / `--wipe` to retain saved parameters, including `RC5_OPTION`.
+If JSON is connected but the arm/mode badges remain UNKNOWN, check
+`SERIAL2_PROTOCOL = 2` in Mission Planner, write parameters and restart SITL.
+This is already the default for an unchanged SERIAL2 configuration.
+
+`config/default.json` contains `mavlink.host` (bind address), `port`, `systemId`
+(default 1) and `timeoutMs` (3000). Old custom configs without `mavlink` keep the
+feed disabled; copy that block to enable it, or use `null` to disable it.
+Match a changed port with PowerShell `-TelemetryPort` or shell `TELEMETRY_PORT`.
+For SITL and backend on different machines, match the destination to the backend
+host, bind the telemetry listener to an accessible interface and allow its UDP
+port. This telemetry port is separate from the physics JSON UDP port.
+The local receiver supports unsigned MAVLink 1/2 ArduPilot ground-rover heartbeats.
 
 ### Import selected real-rover tuning
 
@@ -325,11 +350,11 @@ npm run test:browser
   --sitl .tools/ardupilot/build/sitl/bin/ardurover
 ```
 
-Integration reserves HTTP 8091, UDP 9003, TCP 5770/5772 and uses a temporary EEPROM
+Integration reserves HTTP 8091, UDP 9003/14562, TCP 5770/5772 and uses a temporary EEPROM
 and log directory. It checks stationary IMU, two MAVLink clients, EKF readiness,
 normal arm, manual forward/reverse/right steering, mission upload and waypoint
 reach. Artifacts go to `docs/integration-result.json` and `docs/integration-*.log`.
-Browser smoke reserves HTTP 8092/8093 and UDP 9004 and checks real Chrome WebGL rendering, keys, pause
+Browser smoke reserves HTTP 8092/8093 and UDP 9004/14561 and checks real Chrome WebGL rendering, keys, pause
 and reset, producing screenshots. No tests contact a real flight controller.
 
 ## Troubleshooting

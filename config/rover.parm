@@ -40,3 +40,6 @@ FS_GCS_ENABLE 0
 AHRS_EKF_TYPE 3
 EK3_ENABLE 1
 LOG_DISARMED 1
+
+# Dedicated receive-only HUD heartbeat feed over SERIAL2.
+SERIAL2_PROTOCOL 2

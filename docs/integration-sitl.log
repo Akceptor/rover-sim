@@ -21,10 +21,9 @@ JSON received:
 
 bind port 5772 for SERIAL1
 SERIAL1 on TCP port 5772
-bind port 5763 for SERIAL2
-SERIAL2 on TCP port 5763
-validate_structures:546: Validating structures
+UDP connection 127.0.0.1:14562
 New connection on SERIAL0
+validate_structures:546: Validating structures
 New connection on SERIAL1
 Closed connection on SERIAL0
 Closed connection on SERIAL1
@@ -52,6 +51,5 @@ JSON received:
 
 bind port 5772 for SERIAL1
 SERIAL1 on TCP port 5772
-bind port 5763 for SERIAL2
-SERIAL2 on TCP port 5763
+UDP connection 127.0.0.1:14562
 validate_structures:546: Validating structures

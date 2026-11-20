@@ -75,7 +75,7 @@ try {
   assert.equal(await page.getByRole('dialog').isVisible(),false);
   await page.screenshot({path:'docs/mobile.png'});
   // Exercise the same HUD with actual JSON actuator packets, without an autopilot.
-  config.httpPort=8093;config.udpPort=9004;
+  config.httpPort=8093;config.udpPort=9004;config.mavlink.port=14561;config.mavlink.timeoutMs=1000;
   await fs.writeFile(path.join(temp,'sitl.json'),JSON.stringify(config));
   sitlProcess=spawn('node',['src/server.js','--config',path.join(temp,'sitl.json')],{stdio:'pipe'});
   sitlProcess.stderr.on('data',v=>log+=v);sitlProcess.stdout.on('data',v=>log+=v);
@@ -83,6 +83,8 @@ try {
   await page.goto('http://127.0.0.1:8093');
   await page.waitForFunction(()=>document.querySelector('#connection').textContent.includes('Waiting for SITL'));
   assert.equal(await page.locator('#keyLegend').isVisible(),false);
+  assert.equal(await page.locator('#armState').textContent(),'ARM UNKNOWN');
+  assert.equal(await page.locator('#flightMode').textContent(),'MODE UNKNOWN');
   udp=dgram.createSocket('udp4');udp.bind(0,'127.0.0.1');await once(udp,'listening');
   const packet=Buffer.alloc(40);packet.writeUInt16LE(18458);packet.writeUInt16LE(100,2);
   packet.writeUInt16LE(2000,10);packet.writeUInt16LE(1500,14);
@@ -101,7 +103,19 @@ try {
   assert.equal(sitlState.inputs.steering,1,'JSON retains steering authority');
   await page.waitForFunction(()=>document.querySelector('#steer').textContent.includes('2000'));
   assert.equal(await page.evaluate(()=>[...document.querySelectorAll('.actuator label')].every(label=>label.scrollWidth<=label.clientWidth)),true,'SITL PWM labels fit narrow viewport');
+  udp.send(Buffer.from('fe0900010100000000000a038104035d04','hex'),config.mavlink.port,'127.0.0.1');
+  await page.waitForFunction(()=>document.querySelector('#armState').textContent==='ARMED');
+  assert.equal(await page.locator('#flightMode').textContent(),'MANUAL');
+  assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true);
   await page.screenshot({path:'docs/sitl-mobile.png'});
+  await page.setViewportSize({width:1440,height:900});
+  udp.send(Buffer.from('fe0900010100000000000a038104035d04','hex'),config.mavlink.port,'127.0.0.1');
+  await delay(100);await page.screenshot({path:'docs/sitl.png'});
+  udp.send(Buffer.from('fd0900000001010000000f0000000a030104037547','hex'),config.mavlink.port,'127.0.0.1');
+  await page.waitForFunction(()=>document.querySelector('#armState').textContent==='DISARMED');
+  assert.equal(await page.locator('#flightMode').textContent(),'GUIDED');
+  await page.waitForFunction(()=>document.querySelector('#armState').textContent==='ARM UNKNOWN');
+  assert.equal(await page.locator('#flightMode').textContent(),'MODE UNKNOWN');
   assert.deepEqual(errors,[]);
   console.log('Chrome cockpit, FPV/chase, settings focus, keyboard, stop/reset and narrow layout and SITL actuator authority passed');
 }finally{await browser?.close();serverProcess.kill('SIGTERM');sitlProcess?.kill('SIGTERM');udp?.close();await fs.rm(temp,{recursive:true,force:true});}

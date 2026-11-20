@@ -121,3 +121,9 @@ footer .muted{display:none}
 .actions button{flex:1}
 .drive-help p{font-size:.875rem}
 }
+
+.vehicle-state{font-weight:700;letter-spacing:.03em}
+#armState[data-state=armed]{color:#fff;background:#b63838;border-color:#ed6969}
+#armState[data-state=disarmed]{color:var(--ok);border-color:#315c45}
+#flightMode[data-state=known]{color:#9bbaff;border-color:#4b689e}
+.vehicle-state[data-state=unknown]{color:var(--muted)}

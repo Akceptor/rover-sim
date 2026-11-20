@@ -11,17 +11,17 @@
   ready; normal arming succeeded without disabling checks or truth-AHRS mode.
 - Separate simultaneous SERIAL0/1 MAVLink TCP clients both received heartbeats.
 - Manual RC overrides into ArduRover caused SERVO2/4 outputs and real physics:
-  forward 2.53 m, reverse -2.53 m, right heading change +35.48° (about +37° in the preceding run).
+  forward 2.53 m, reverse -2.51 m, right heading change +35.48° (about +37° in the preceding run).
 - Mission protocol upload accepted and AUTO `MISSION_ITEM_REACHED` for waypoint 1.
 - Real SITL process restart after timeout reconnected and reset physical pose.
 - Installation/build script rerun successfully from the project directory using its
   pinned Python dependencies; native ARM64 binary is available under `.tools`.
 - Stationary acceleration [0,0,-9.80665] m/s². Stationary velocity consistency
   and transformed attitude signs checked with tests.
-- 16 focused automated tests: 16/32 channel packet layouts, bad lengths/magic/rate,
+- 17 focused automated tests: 16/32 channel packet layouts, bad lengths/magic/rate,
   PWM calibration/clipping/reversal, NED/body/quaternion signs, duplicate/gap/wrap/
   restart handling, pause timestamps, ground settling, forward/reverse/turn,
-  collision barrier, ramp contact/tilt, neutral slowing, parameter import protection, actual UDP/
+  collision barrier, ramp contact/tilt, neutral slowing, parameter import protection, MAVLink heartbeat CRC/source/freshness decoding, actual UDP/
   HTTP/WebSocket backend timeout/reconnect and standalone multi-client ownership.
 - Chrome headless using the installed Chrome channel: actual WebGL rendering,
   screenshots of FPV/chase and 390px standalone/SITL layouts, viewport sizing,
@@ -29,14 +29,16 @@
   FOV, camera selector synchronization, held-key release and stable connection
   live-region announcements checked. A real UDP actuator fixture verifies
   JSON state/PWM rendering and that browser keys retain SITL actuator authority.
-  This fixture is a protocol check, not another full ArduRover integration run.
+  The full native ArduRover integration was also rerun: receive-only SERIAL2
+  heartbeats reported disarmed, ARMED/MANUAL and AUTO in the backend while both
+  MAVLink TCP clients, manual driving, mission completion and restart passed.
 - JavaScript syntax checks, POSIX launcher syntax, Python compile check.
 - npm production dependency audit: zero known vulnerabilities at validation time.
 - Read-only review found a neutral-input ownership bug across standalone tabs;
   fixed with a reproducing backend WebSocket regression test.
 
 See `integration-result.json`, `integration-sitl.log`, `integration-backend.log`,
-`standalone.png`, `chase.png`, `mobile.png` and `sitl-mobile.png`. Test scripts regenerate these artifacts.
+`standalone.png`, `chase.png`, `mobile.png`, `sitl-mobile.png` and `sitl.png`. Test scripts regenerate these artifacts.
 
 ## Limits and remaining manual checks
 

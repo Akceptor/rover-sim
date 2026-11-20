@@ -19,17 +19,20 @@ def wait_for(fn,timeout=20):
     raise TimeoutError(f'condition after {timeout}s')
 
 with tempfile.TemporaryDirectory(prefix='rover-sitl-') as run:
-    run=pathlib.Path(run);c=json.loads((ROOT/'config/default.json').read_text());c.update(httpPort=8091,udpPort=9003)
+    run=pathlib.Path(run);c=json.loads((ROOT/'config/default.json').read_text());c.update(httpPort=8091,udpPort=9003);c["mavlink"]["port"]=14562
     (run/'config.json').write_text(json.dumps(c));logs=[];procs=[];results={}
     try:
         for name,cmd,cwd in [
           ('backend',['node',str(ROOT/'src/server.js'),'--flat','--config',str(run/'config.json')],ROOT),
-          ('sitl',[str(pathlib.Path(args.sitl).resolve()),'--model','JSON:127.0.0.1','--sim-port-out','9003','--rate','100','--speedup','1','--home','50.4501,30.5234,100,0','--defaults',str(ROOT/'config/rover.parm'),'--serial0','tcp:5770','--serial1','tcp:5772','--wipe'],run)]:
+          ('sitl',[str(pathlib.Path(args.sitl).resolve()),'--model','JSON:127.0.0.1','--sim-port-out','9003','--rate','100','--speedup','1','--home','50.4501,30.5234,100,0','--defaults',str(ROOT/'config/rover.parm'),'--serial0','tcp:5770','--serial1','tcp:5772','--serial2','udpclient:127.0.0.1:14562','--wipe'],run)]:
             log=open(run/f'{name}.log','w+');logs.append((name,log));procs.append(subprocess.Popen(cmd,cwd=cwd,stdout=log,stderr=subprocess.STDOUT))
         wait_for(lambda:state()['connected'],40)
         link=mavutil.mavlink_connection('tcp:127.0.0.1:5770',source_system=255)
         assert link.wait_heartbeat(timeout=20),'heartbeat missing'
         results['heartbeat']=True
+        wait_for(lambda:state()['autopilot']['connected'],10)
+        assert state()['autopilot']['armed'] is False
+        results['hud_disarmed_heartbeat']=True
         link.mav.request_data_stream_send(1,1,mavutil.mavlink.MAV_DATA_STREAM_ALL,10,1)
         second=mavutil.mavlink_connection('tcp:127.0.0.1:5772',source_system=254)
         assert second.wait_heartbeat(timeout=15),'second simultaneous endpoint missing'
@@ -64,6 +67,8 @@ with tempfile.TemporaryDirectory(prefix='rover-sitl-') as run:
         hb=link.recv_match(type='HEARTBEAT',blocking=True,timeout=3)
         if not hb or not hb.base_mode&mavutil.mavlink.MAV_MODE_FLAG_SAFETY_ARMED:
             raise AssertionError('normal arming failed; inspect prearm messages')
+        wait_for(lambda:state()['autopilot']['armed'] and state()['autopilot']['flightMode']=='MANUAL',5)
+        results['hud_armed_manual']=True
         origin=state()['position'];pump(3,(1500,1700));forward=state();results['forward_metres']=forward['position']['x']-origin['x'];assert results['forward_metres']>.4
         pump(2,(1500,1500));start=state()['position'];pump(3,(1500,1300));reverse=state();results['reverse_metres']=reverse['position']['x']-start['x'];assert results['reverse_metres']<-.3
         pump(2,(1500,1500));heading=state()['heading'];pump(2,(1750,1650));turned=state();results['right_turn_deg']=(turned['heading']-heading+180)%360-180;assert results['right_turn_deg']>5
@@ -93,6 +98,8 @@ with tempfile.TemporaryDirectory(prefix='rover-sitl-') as run:
             msg=link.recv_match(blocking=True,timeout=.2)
             if msg and msg.get_type()=='STATUSTEXT':print(msg.text,flush=True)
             if msg and msg.get_type()=='MISSION_ITEM_REACHED' and msg.seq==1:reached=True;break
+        wait_for(lambda:state()['autopilot']['flightMode']=='AUTO',5)
+        results['hud_auto_mode']=True
         results['mission_item_reached']=reached;results['mission_final_state']=state()['position'];assert reached,'AUTO waypoint not reached'
         # Restart the actual firmware after timeout; backend must reset its world
         # and reconnect without any browser, not just recognise synthetic packets.

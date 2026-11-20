@@ -1,5 +1,6 @@
 {
   "heartbeat": true,
+  "hud_disarmed_heartbeat": true,
   "simultaneous_mavlink_endpoints": true,
   "ekf_absolute_position": true,
   "stationary_accel": [
@@ -7,15 +8,17 @@
     0,
     -9.80665
   ],
+  "hud_armed_manual": true,
   "forward_metres": 2.529651165008545,
-  "reverse_metres": -2.529653489589691,
-  "right_turn_deg": 35.484297449509256,
+  "reverse_metres": -2.514855206012726,
+  "right_turn_deg": 35.4842957430493,
   "mission_uploaded": true,
+  "hud_auto_mode": true,
   "mission_item_reached": true,
   "mission_final_state": {
-    "x": 4.851578235626221,
-    "y": 0.1053701788187027,
-    "z": 3.7699928283691406
+    "x": 4.684591293334961,
+    "y": 0.10536955296993256,
+    "z": 3.6002068519592285
   },
   "real_sitl_restart_reconnected": true,
   "passed": true
