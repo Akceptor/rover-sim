@@ -7,7 +7,7 @@ import {setTimeout as delay} from 'node:timers/promises';
 import {loadConfig} from '../src/config.js';
 import {loadEnvironment} from '../src/environment.js';
 import {ProcessGroup} from '../src/process-group.js';
-import {sitlArguments,missionPlannerArguments,checkPorts,localHost,loadLauncherConfig} from '../src/launcher.js';
+import {sitlArguments,missionPlannerCommand,checkPorts,localHost,loadLauncherConfig} from '../src/launcher.js';
 const root=path.resolve(path.dirname(fileURLToPath(import.meta.url)),'..');
 const {values}=parseArgs({options:{sitl:{type:'string'},'launcher-config':{type:'string'},config:{type:'string'},'extra-params':{type:'string'},'mavlink-port':{type:'string',default:'5760'},'run-dir':{type:'string'},'no-video':{type:'boolean'},standalone:{type:'boolean'},'mission-planner':{type:'boolean'},'choose-location':{type:'boolean'},flat:{type:'boolean'},playground:{type:'boolean'},wipe:{type:'boolean'},camera:{type:'string',default:'fpv'},fov:{type:'string',default:'85'},browser:{type:'string',default:'auto'},help:{type:'boolean'}}});
 if(values.help){console.log(`npm run sim -- [--launcher-config config/launcher.local.json] [--no-video] [--standalone] [--mission-planner] [--choose-location] [--flat] [--playground] [--wipe]
@@ -50,15 +50,15 @@ try{
  if(!values.standalone){ports.push({kind:'udp',host:config.udpHost,port:config.udpPort,name:'Physics'});if(!values['mission-planner'])ports.push({kind:'tcp',host:'0.0.0.0',port:mavlinkPort,name:'Mission Planner'},{kind:'tcp',host:'0.0.0.0',port:mavlinkPort+2,name:'Companion'});if(config.mavlink)ports.push({kind:'udp',host:config.mavlink.host,port:config.mavlink.port,name:'HUD telemetry'});}
  await checkPorts(ports);
  const extra=values['extra-params']?path.resolve(values['extra-params']):null;if(extra)await fs.access(extra);
- if(values['mission-planner'])console.log(`[launcher] Mission Planner Simulation → Extra command line:\n${missionPlannerArguments(config,path.join(root,'config/rover.parm')+(extra?','+extra:'')).map(a=>/\s/.test(a)?`"${a}"`:a).join(' ')}\n[launcher] Pick the start on its map; keep heading 0 and Wipe unchecked.\n`);
+ const defaults=path.join(root,'config/rover.parm')+(extra?','+extra:'');
+ if(values['mission-planner'])console.log(`[launcher] Mission Planner Simulation → Extra command line:\n${missionPlannerCommand(config,defaults)}\n[launcher] Copy this command from the browser's Mission Planner setup panel too. Keep heading 0 and Wipe unchecked.\n`);
  const url=`http://${localHost(config.httpHost)}:${config.httpPort}`;
  const state=async()=>{const response=await fetch(url+'/api/state',{signal:AbortSignal.timeout(1000)});if(!response.ok)throw Error('backend not ready');return response.json();};
- group.start('backend',process.execPath,[path.join(root,'src/server.js'),'--config',configPath,...(values.standalone?['--standalone']:[]),...(values['mission-planner']?['--mission-planner']:[]),...(values['choose-location']?['--location-picker']:[]),...(values.flat?['--flat']:[]),...(values.playground?['--playground']:[])],{cwd:root,ipc:true});
+ group.start('backend',process.execPath,[path.join(root,'src/server.js'),'--config',configPath,...(values.standalone?['--standalone']:[]),...(values['mission-planner']?['--mission-planner','--mission-planner-defaults',defaults]:[]),...(values['choose-location']?['--location-picker']:[]),...(values.flat?['--flat']:[]),...(values.playground?['--playground']:[])],{cwd:root,ipc:true});
  await waitFor('backend',state);
  if(values['choose-location']){console.log(`[launcher] Open ${url} and choose a location. All presets are bundled for offline use.`);await waitFor('location selection',async()=>(await state()).startTerrain?.status==='ready',Infinity);}
  if(!values.standalone&&!values['mission-planner']){
   const runDir=path.resolve(values['run-dir']??path.join(root,'.run',process.platform==='win32'?'sitl-windows':'sitl'));await fs.mkdir(runDir,{recursive:true});
-  const defaults=path.join(root,'config/rover.parm')+(extra?','+extra:'');
   group.start('sitl',executable,sitlArguments(config,{defaults,mavlinkPort,wipe:values.wipe,home:values['choose-location']?(await state()).home:environment.home}),{cwd:runDir});
   await waitFor('SITL JSON connection',async()=>(await state()).connected,40000);
  }

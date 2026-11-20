@@ -17,7 +17,7 @@ export const fpvOutput={camera,canvas,renderer,scene};
 function box(size,color,parent=scene){const m=new T.Mesh(new T.BoxGeometry(...size),new T.MeshStandardMaterial({color,roughness:.85}));m.castShadow=true;m.receiveShadow=true;parent.add(m);return m;}
 let state=null,config=null,wheels=[],ws,mode='sitl',lastReceive=0,crawler=null,locations=[],locationMode=null;
 function notice(message){$('notice').textContent=message;$('notice').style.display='block';setTimeout(()=>$('notice').style.display='none',7000);}
-function setup(m){locationMode=m.locationMode;locations=m.locations??[];$('locationPicker').hidden=!locations.length;$('locationSelect').replaceChildren(...locations.map(p=>{const o=document.createElement('option');o.value=p.id;o.textContent=p.id==='custom'?p.name:`${p.name} · ${p.reliefM} m relief`;return o;}));$('locationSelect').value=m.selectedLocation??state?.selectedLocation??locations[0]?.id??'';describeLocation();config=m.config;mode=m.mode;const c=config.vehicle;$('mode').textContent=mode==='sitl'?'ARDUROVER SITL':'STANDALONE · NO AUTOPILOT';$('help').textContent=mode==='sitl'?'Drive using Mission Planner or your MAVLink companion. Browser keys do not control physics.':'W/S or ↑/↓: forward / brake / reverse. A/D or ←/→: steer. Release to stop. Click the view to focus.';$('keyLegend').hidden=mode!=='standalone';for(const id of ['armState','flightMode'])$(id).hidden=mode!=='sitl';
+function setup(m){$('missionPlannerSetup').hidden=!m.missionPlannerCommand;$('missionPlannerCommand').value=m.missionPlannerCommand??'';locationMode=m.locationMode;locations=m.locations??[];$('locationPicker').hidden=!locations.length;$('locationSelect').replaceChildren(...locations.map(p=>{const o=document.createElement('option');o.value=p.id;o.textContent=p.id==='custom'?p.name:`${p.name} · ${p.reliefM} m relief`;return o;}));$('locationSelect').value=m.selectedLocation??state?.selectedLocation??locations[0]?.id??'';describeLocation();config=m.config;mode=m.mode;const c=config.vehicle;$('mode').textContent=mode==='sitl'?'ARDUROVER SITL':'STANDALONE · NO AUTOPILOT';$('help').textContent=mode==='sitl'?'Drive using Mission Planner or your MAVLink companion. Browser keys do not control physics.':'W/S or ↑/↓: forward / brake / reverse. A/D or ←/→: steer. Release to stop. Click the view to focus.';$('keyLegend').hidden=mode!=='standalone';for(const id of ['armState','flightMode'])$(id).hidden=mode!=='sitl';
   if(crawler){rover.remove(crawler.model);crawler.dispose();}
   crawler=createCrawler(c);rover.add(crawler.model);wheels=crawler.wheels;
   // Init is resent on reconnect; replace world instead of duplicating objects.
@@ -37,6 +37,11 @@ $('run').onclick=()=>send({type:'running',value:!state?.running});$('reset').onc
 function describeLocation(){const p=locations.find(p=>p.id===$('locationSelect').value);$('locationHint').textContent=p?(p.id==='custom'?p.description:`${p.description} · 960 m map · ${p.reliefM} m elevation range · bundled offline`):'';}
 $('locationSelect').onchange=describeLocation;$('loadLocation').onclick=()=>send({type:'selectLocation',id:$('locationSelect').value});
 $('retryTerrain').onclick=()=>send({type:'retryTerrain'});
+$('copyMissionPlannerCommand').onclick=async()=>{
+  const field=$('missionPlannerCommand'),status=$('missionPlannerCopyStatus');
+  try{await navigator.clipboard.writeText(field.value);status.textContent='Copied';}
+  catch{field.focus();field.select();status.textContent='Command selected · press Ctrl+C or ⌘C to copy';}
+};
 $('fov').oninput=()=>{camera.fov=+$('fov').value;camera.updateProjectionMatrix();$('fovValue').textContent=`${camera.fov}°`;};
 function selectCamera(value){$('camera').value=value;for(const id of ['fpv','chase'])$(id).setAttribute('aria-pressed',String(id===value));$('cameraLabel').textContent=value==='fpv'?'ONBOARD FPV':'CHASE CAMERA';}
 $('fpv').onclick=()=>selectCamera('fpv');$('chase').onclick=()=>selectCamera('chase');$('camera').onchange=()=>selectCamera($('camera').value);
