@@ -5,7 +5,7 @@ import {createHash,randomUUID} from 'node:crypto';
 import {processOsm,overlayKey,geographicBounds,OSM_SCHEMA} from './osm.js';
 const root=fileURLToPath(new URL('..',import.meta.url));
 export function overpassQuery(t){const box=geographicBounds(t).join(',');return `[out:json][timeout:25];(way[building](${box});relation[building][type=multipolygon](${box});way[highway](${box}););(._;>;);out body;`;}
-export async function loadOsmOverlay(t,{cacheDir=path.join(root,'.run/osm-cache'),endpoint='https://overpass-api.de/api/interpreter',fetcher=fetch,signal,timeoutMs=30000,defaultHeight=6}={}){
+export async function loadOsmOverlay(t,{cacheDir=path.join(root,'.run/osm-cache'),bundledDir=path.join(root,'assets/osm'),endpoint='https://overpass-api.de/api/interpreter',fetcher=fetch,signal,timeoutMs=30000,defaultHeight=6}={}){
  const key=overlayKey(t,OSM_SCHEMA,defaultHeight),hash=createHash('sha256').update(key).digest('hex'),file=path.join(cacheDir,`${hash}.json`);
  const valid=o=>{
   if(o?.version!==OSM_SCHEMA||o.key!==key||!Array.isArray(o.buildings)||!Array.isArray(o.roads))throw Error('Invalid OSM cache');
@@ -14,8 +14,11 @@ export async function loadOsmOverlay(t,{cacheDir=path.join(root,'.run/osm-cache'
   if(!o.buildings.every(b=>typeof b.id==='string'&&ring(b.outer)&&Array.isArray(b.holes)&&b.holes.every(ring)&&Number.isFinite(b.height)&&b.height>0&&b.height<=500)||!o.roads.every(r=>typeof r.id==='string'&&Array.isArray(r.points)&&r.points.length>=2&&r.points.every(point)&&Number.isFinite(r.width)&&r.width>0&&r.width<=500&&typeof r.paved==='boolean'))throw Error('Invalid OSM cache geometry');
   return o;
  };
- const result=(overlay,cached)=>({overlay,cached,status:overlay.buildings.length||overlay.roads.length?'ready':'empty'});
- try{signal?.throwIfAborted();return result(valid(JSON.parse(await fs.readFile(file,'utf8'))),true);}catch(error){if(signal?.aborted)throw error;}
+ const result=(overlay,cached,bundled=false)=>({overlay,cached,bundled,status:overlay.buildings.length||overlay.roads.length?'ready':'empty'});
+ // A user-refreshed cache takes precedence over the repository snapshot.
+ for(const [candidate,bundled]of [[file,false],...(bundledDir?[[path.join(bundledDir,`${hash}.json`),true]]:[])]){
+  try{signal?.throwIfAborted();return result(valid(JSON.parse(await fs.readFile(candidate,'utf8'))),true,bundled);}catch(error){if(signal?.aborted)throw error;}
+ }
  let temp;
  try{
   signal?.throwIfAborted();

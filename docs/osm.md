@@ -15,8 +15,14 @@ open ground: the importer does not move a start that lies inside a building.
 
 ## Online, offline and retry
 
-The backend queries Overpass for building ways, building multipolygons and highway
-ways over the terrain patch. Requests have a 30-second client timeout and a
+All five existing terrain presets include matching OSM snapshots under
+`assets/osm/`: Kyiv, Lviv, Lima, Cusco and the Andes ravine. They load directly
+offline, even in a fresh checkout without `.run/`. See the [snapshot dates,
+feature counts and license](../assets/osm/README.md). Cusco has mapped roads but
+no mapped buildings in this snapshot.
+
+For other starts, the backend queries Overpass for building ways, building
+multipolygons and highway ways over the terrain patch. Requests have a 30-second client timeout and a
 25-second Overpass execution timeout. Server errors, rate limits, malformed or
 partial responses produce a visible error and **Retry OSM**; there is no automatic
 retry loop. A valid empty response is displayed and cached as an empty patch.
@@ -25,11 +31,13 @@ Processed overlays are cached separately under **`.run/osm-cache/`**, as hashed
 JSON files keyed by schema version, exact terrain latitude/longitude, local patch
 bounds and configured default building height. Elevation/imagery files and
 `.run/terrain-cache/` keep their existing format and behavior. Successful cached
-OSM data is reused without contacting Overpass, including offline. Caches do not
-expire automatically; stop the backend and remove the corresponding OSM cache
-file to refresh mapping. To transfer an offline setup, copy both terrain and OSM
-cache directories to the other checkout. Bundled terrain works without an OSM
-cache; its first overlay download needs internet access.
+OSM data is reused without contacting Overpass, including offline. A valid local
+cache takes priority over the bundled snapshot; otherwise a matching bundled
+snapshot takes priority over downloading. Neither expires automatically. To
+refresh mapping, stop the backend, remove the corresponding runtime cache file
+and temporarily set `osm.bundledDir` to `null` to bypass bundled data. Restore the
+default afterwards. To transfer custom offline locations, copy both terrain and
+OSM cache directories to the other checkout; the five presets need no such copy.
 
 Overlay geometry and colliders are installed together while physics is held.
 Before the first **Start physics**, a successful retry can install immediately.
@@ -53,7 +61,8 @@ Optional backend configuration (merge into your existing config):
 
 Set `"osm": false` to disable OSM entirely, including downloads and cache use.
 `cacheDir` can override the cache directory; relative paths resolve from the
-backend's working directory. A different default height uses a different cache.
+backend's working directory. A different default height uses a different cache
+and does not match the bundled 6 m snapshots.
 
 ## Geometry and current limits
 
@@ -72,7 +81,10 @@ steep sites. Fixed triangular prism colliders cover the solid footprint, includi
 roofs, without covering courtyard holes or concave gaps. Mapped openings in the
 footprint stay accessible; unmapped doors, archways and building interiors are not
 modeled. Buildings crossing the patch edge retain complete footprints with edge
-terrain heights clamped. Start outside solid footprints.
+terrain heights clamped. Start outside solid footprints. The existing Lima
+preset origin falls inside a mapped building in the bundled snapshot; use a
+nearby Custom start outside buildings there. Other bundled origins are clear of
+building footprints. Terrain origins are preserved.
 
 Roads include primary, secondary, tertiary, unclassified, residential, living
 streets, service roads, tracks, paths, footways, cycleways and pedestrian streets.
@@ -107,7 +119,8 @@ when sharing them. Generated scenery is separate from the OSM data.
 projection alignment, height precedence, split multipolygons with courtyards,
 concave gaps, actual vehicle/wall collision, road filtering, sloping terrain
 alignment, scenery clearance, offline cache reuse, timeouts, HTTP errors and held
-startup/retry/defer behavior. Automated checks never contact Overpass.
+startup/retry/defer behavior. Every bundled preset is also loaded with a fetcher
+that refuses all network calls; its road alignment and Rapier geometry are checked. Automated checks never contact Overpass.
 
 `npm run test:osm` uses installed Chrome, a local fixture server and temporary
 caches to check rendered roads against terrain heights, linked attribution and
@@ -115,7 +128,8 @@ FPV driving into a rendered building. Screenshots go to `.run/osm-fixture-*.png`
 Existing browser regression scripts explicitly disable OSM downloads.
 
 Validation during implementation: `npm test` passed (75 passed, one Windows-only skip). The synthetic village Chrome check, existing terrain Chrome check, Mission Planner command-copy browser check, and terrain-selector browser/native-SITL check passed. An OSM-enabled Custom Mission Planner fixture test also confirmed that arming during a delayed download prevents installation and that a subsequent safe retry reuses the cached overlay.
-Live downloads for Bohuslav and the bundled Lviv patch were attempted; Overpass
-returned HTTP 406/429, including an unsandboxed attempt. Bohuslav elevation also
-had missing source samples. A live town visual check could therefore not be
-completed in this environment; no live OSM result is bundled with this version.
+The initial default-server requests returned HTTP 406/429. A later download via
+the Dresel regional instances succeeded for all five presets; their OSM snapshots
+are now bundled. The real Lviv overlay (258 buildings, 82 road features) passed
+the Chrome terrain-alignment and attribution check and was visually inspected.
+Bohuslav elevation still had missing samples; that separate test patch is not bundled.

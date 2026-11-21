@@ -93,3 +93,16 @@ test('configured fallback height has its own cache entry, so changing it takes e
  const response={elements:[...osm.elements.filter(e=>e.type==='node'),{type:'way',id:99,nodes:[1,2,3,4,1],tags:{building:'yes'}}]};
  try{const a=await loadOsmOverlay(terrain,{cacheDir:dir,defaultHeight:6,fetcher:async()=>new Response(JSON.stringify(response))});const b=await loadOsmOverlay(terrain,{cacheDir:dir,defaultHeight:9,fetcher:async()=>new Response(JSON.stringify(response))});assert.equal(a.overlay.buildings[0].height,6);assert.equal(b.overlay.buildings[0].height,9);assert.equal(b.cached,false);}finally{await fs.rm(dir,{recursive:true,force:true});}
 });
+
+test('bundled overlay is used offline without creating a runtime cache, while an existing runtime cache takes precedence',async()=>{
+ const dir=await fs.mkdtemp(path.join(os.tmpdir(),'osm-bundle-')),bundledDir=path.join(dir,'bundled'),cacheDir=path.join(dir,'runtime');
+ try{
+ const {createHash}=await import('node:crypto');const file=createHash('sha256').update(overlayKey(terrain)).digest('hex')+'.json';
+ await fs.mkdir(bundledDir);const overlay=processOsm(osm,terrain);await fs.writeFile(path.join(bundledDir,file),JSON.stringify(overlay));
+ const options={cacheDir,bundledDir,fetcher:()=>{throw Error('must not contact Overpass');}};
+ const bundled=await loadOsmOverlay(terrain,options);assert.equal(bundled.status,'ready');assert.equal(bundled.cached,true);assert.equal(bundled.bundled,true);assert.deepEqual(bundled.overlay,overlay);
+ await assert.rejects(fs.stat(cacheDir),{code:'ENOENT'});
+ await fs.mkdir(cacheDir);const newer={...overlay,buildings:[]};await fs.writeFile(path.join(cacheDir,file),JSON.stringify(newer));
+ const runtime=await loadOsmOverlay(terrain,options);assert.deepEqual(runtime.overlay,newer);assert.equal(runtime.bundled,false);
+ }finally{await fs.rm(dir,{recursive:true,force:true});}
+});

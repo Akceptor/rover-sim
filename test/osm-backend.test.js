@@ -15,7 +15,7 @@ async function launch({picker=false,missionPlanner=false}={}){
  const dir=await fs.mkdtemp(path.join(os.tmpdir(),'osm-world-'));let respond,requests=0;
  const overpass=http.createServer((req,res)=>{requests++;respond=res;req.resume();});overpass.listen(0,'127.0.0.1');await once(overpass,'listening');
  const config=JSON.parse(await fs.readFile(new URL('../config/default.json',import.meta.url)));config.httpPort=23000+Math.floor(Math.random()*5000);config.mavlink=missionPlanner?{...config.mavlink,port:43000+Math.floor(Math.random()*5000)}:null;
- config.terrain=path.join(dir,'terrain.json');config.osm={endpoint:`http://127.0.0.1:${overpass.address().port}`,cacheDir:path.join(dir,'osm-cache'),timeoutMs:1000};
+ config.terrain=path.join(dir,'terrain.json');config.osm={bundledDir:null,endpoint:`http://127.0.0.1:${overpass.address().port}`,cacheDir:path.join(dir,'osm-cache'),timeoutMs:1000};
  await fs.writeFile(config.terrain,JSON.stringify(terrain));await fs.writeFile(path.join(dir,'config.json'),JSON.stringify(config));
  const proc=spawn(process.execPath,['src/server.js',...(missionPlanner?['--mission-planner']:['--standalone']),...(picker?['--location-picker']:[]),'--config',path.join(dir,'config.json')],{stdio:['ignore','pipe','pipe']});let logs='';proc.stdout.on('data',v=>logs+=v);proc.stderr.on('data',v=>logs+=v);
  const url=`http://127.0.0.1:${config.httpPort}`,state=async()=>{const r=await fetch(url+'/api/state');return r.json();};
