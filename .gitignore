@@ -11,3 +11,5 @@ __pycache__/
 
 !docs/*.png
 config/launcher.local.json
+
+!assets/textures/*.png

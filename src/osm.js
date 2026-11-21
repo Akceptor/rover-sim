@@ -65,7 +65,7 @@ function buildingGeometry(b,t){
  const n=points.length;
  for(const tri of triangles){const [a,c,d]=tri;indices.push(a+n,d+n,c+n);prisms.push([...tri.flatMap(i=>[points[i][0],bottom,points[i][1]]),...tri.flatMap(i=>[points[i][0],top,points[i][1]])]);}
  let offset=0;for(const r of rings){for(let i=0;i<r.length;i++){const a=offset+i,c=offset+(i+1)%r.length;indices.push(a,c,a+n,c,c+n,a+n);}offset+=r.length;}
- return {id:b.id,vertices,indices,prisms,bottom,top};
+ return {id:b.id,vertices,indices,prisms,bottom,top,height:b.height};
 }
 // Convex polygon clipping against a CCW terrain triangle in local north/east space.
 function clip(poly,triangle){let out=poly;for(let i=0;i<3&&out.length;i++){const a=triangle[i],b=triangle[(i+1)%3],side=p=>(b[0]-a[0])*(p[1]-a[1])-(b[1]-a[1])*(p[0]-a[0]);const input=out;out=[];let prev=input.at(-1),sp=side(prev);for(const p of input){const s=side(p);if((s>=0)!==(sp>=0)){const f=sp/(sp-s);out.push([prev[0]+f*(p[0]-prev[0]),prev[1]+f*(p[1]-prev[1])]);}if(s>=0)out.push(p);prev=p;sp=s;}}return out;}

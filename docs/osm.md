@@ -72,7 +72,12 @@ triangulation. Concave outlines and multipolygon holes remain open. Relation
 member ways are joined in either direction; incomplete rings are skipped rather
 than artificially closed. Invalid/unavailable map data never replaces terrain.
 
-Buildings have plain walls and flat roofs. Heights use a positive `height` in
+Buildings use bundled plaster, brick and concrete textures, window frames and
+sills, decorative doors and textured flat roofs. Styles are stable per building
+and vary across a patch. These are plausible generic facades, not photographs of
+the mapped buildings. The material atlas is included under `assets/textures/`
+and requires no downloads. Render-only UVs preserve the footprint and courtyard
+geometry; windows and doors add no physical openings. Heights use a positive `height` in
 metres (or feet), then `building:levels × 3 m`, then `osm.defaultHeight` (6 m).
 Invalid heights and values above 500 m fall back to the next source. Foundations
 extend below the lowest surrounding terrain cell; roofs sit above the highest
@@ -123,8 +128,8 @@ startup/retry/defer behavior. Every bundled preset is also loaded with a fetcher
 that refuses all network calls; its road alignment and Rapier geometry are checked. Automated checks never contact Overpass.
 
 `npm run test:osm` uses installed Chrome, a local fixture server and temporary
-caches to check rendered roads against terrain heights, linked attribution and
-FPV driving into a rendered building. Screenshots go to `.run/osm-fixture-*.png`.
+caches to check rendered roads against terrain heights, linked attribution,
+bundled facade texture loading and UVs, and FPV driving into a rendered building. Screenshots go to `.run/osm-fixture-*.png`.
 Existing browser regression scripts explicitly disable OSM downloads.
 
 Validation during implementation: `npm test` passed (75 passed, one Windows-only skip). The synthetic village Chrome check, existing terrain Chrome check, Mission Planner command-copy browser check, and terrain-selector browser/native-SITL check passed. An OSM-enabled Custom Mission Planner fixture test also confirmed that arming during a delayed download prevents installation and that a subsequent safe retry reuses the cached overlay.
@@ -133,3 +138,8 @@ the Dresel regional instances succeeded for all five presets; their OSM snapshot
 are now bundled. The real Lviv overlay (258 buildings, 82 road features) passed
 the Chrome terrain-alignment and attribution check and was visually inspected.
 Bohuslav elevation still had missing samples; that separate test patch is not bundled.
+
+Building texture verification: 80 unit/backend tests passed (one Windows-only
+skip). Chrome verified the bundled atlas, facade UVs, wall collision and the
+258-building Lviv patch. The atlas generation prompt and runtime material notes
+are in [assets/textures/README.md](../assets/textures/README.md).

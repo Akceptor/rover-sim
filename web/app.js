@@ -26,7 +26,7 @@ function setup(m){$('missionPlannerSetup').hidden=!m.missionPlannerCommand;$('mi
   scenery.sky.scale.setScalar(m.terrain?10:1);
   if(m.terrain){addTerrain(world,m.terrain,renderer);scene.fog.near=70;scene.fog.far=650;for(const c of [camera,chase]){c.far=1500;c.updateProjectionMatrix();}}else{scene.fog.near=35;scene.fog.far=95;for(const c of [camera,chase]){c.far=150;c.updateProjectionMatrix();}}
   $('landscape').textContent=m.terrain?`${m.terrain.name} · ${(m.terrain.size-1)*m.terrain.spacing} m`:'100 × 100 m playground';
-  addOsmOverlay(world,m.overlay);$('osmAttribution').hidden=!m.overlay||!(m.overlay.buildings.length||m.overlay.roads.length);
+  addOsmOverlay(world,m.overlay,m.terrain);$('osmAttribution').hidden=!m.overlay||!(m.overlay.buildings.length||m.overlay.roads.length);
   $('terrainAttribution').textContent=m.terrain?.attribution??'';cameraVideo.attribution=[m.terrain?.attribution,m.overlay&&(m.overlay.buildings.length||m.overlay.roads.length)?'© OpenStreetMap contributors · https://www.openstreetmap.org/copyright':null,'Weather: open-meteo.com (CC BY 4.0)'].filter(Boolean).join(' · ');
   for(const o of m.world){const mesh=o.kind==='cone'?new T.Mesh(new T.ConeGeometry(o.size[0]/2,o.size[1],16),new T.MeshStandardMaterial({color:o.color})):box(o.size,o.color,world);if(o.kind==='cone'){world.add(mesh);mesh.castShadow=true;}mesh.position.fromArray(o.position);mesh.rotation.z=o.angle??0;if(o.kind==='tree')addTreeCrown(world,o);}
   if(!m.terrain){scenery.decorate(world);

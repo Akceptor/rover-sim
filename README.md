@@ -96,7 +96,7 @@ Real terrain now loads mapped roads and flat-roof buildings automatically. Build
 
 The Mission Planner copy/paste workflow above is unchanged. OSM loads while physics is held. A timeout or server error leaves terrain usable and offers **Retry OSM**; after driving begins, retries are cached for the next world load. All five existing presets include OSM snapshots under **`assets/osm/`** and work offline in a fresh checkout. Custom overlays use **`.run/osm-cache/`**, independently of elevation and imagery. Set `"osm": false` in the backend config to disable overlays.
 
-Data is **[© OpenStreetMap contributors](https://www.openstreetmap.org/copyright)** under **ODbL**; processed caches are derived OSM databases. This version has simple walls/roofs, approximate heights and paved/unpaved road colours. It skips bridges, tunnels and motorways and adds no road traction or grading. Cusco has roads but no mapped buildings in its snapshot; Lima’s existing start intersects a building, so choose a nearby Custom start there. See [setup, configuration, offline behavior, license and limits](docs/osm.md).
+Data is **[© OpenStreetMap contributors](https://www.openstreetmap.org/copyright)** under **ODbL**; processed caches are derived OSM databases. Buildings have varied plaster, brick and concrete facades, windows, decorative doors and textured flat roofs; heights remain approximate. Roads use paved/unpaved colours. It skips bridges, tunnels and motorways and adds no road traction or grading. Cusco has roads but no mapped buildings in its snapshot; Lima’s existing start intersects a building, so choose a nearby Custom start there. See [setup, configuration, offline behavior, license and limits](docs/osm.md).
 
 ## Checks
 
