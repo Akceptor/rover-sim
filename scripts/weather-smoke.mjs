@@ -6,7 +6,7 @@ import path from 'node:path';
 import {setTimeout as delay} from 'node:timers/promises';
 import {ProcessGroup} from '../src/process-group.js';
 const temp=await fs.mkdtemp(path.join(os.tmpdir(),'rover-weather-')),group=new ProcessGroup();
-const config=JSON.parse(await fs.readFile('config/default.json'));config.httpPort=8098;
+const config=JSON.parse(await fs.readFile('config/default.json'));config.osm=false;config.httpPort=8098;
 await fs.writeFile(path.join(temp,'config.json'),JSON.stringify(config));
 let browser,scenario={hour:10,code:0,cloudCover:0,rainMm:0,snowCm:0,status:'current'};
 const fixture=()=>{const now=Date.parse(`2026-06-21T${String(scenario.hour).padStart(2,'0')}:00:00Z`);return {now,observedAt:now,fetchedAt:now+scenario.code,timeZone:'Europe/Kyiv',status:scenario.status,ageMs:0,conditions:scenario.status==='unavailable'?null:{temperatureC:20,code:scenario.code,cloudCover:scenario.cloudCover,rainMm:scenario.rainMm,snowCm:scenario.snowCm}};};

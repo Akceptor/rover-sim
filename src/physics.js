@@ -2,13 +2,19 @@ import R from '@dimforge/rapier3d-compat';
 import {playground} from './world.js';
 import {validateTerrain,terrainMesh,terrainObjects} from './terrain.js';
 import {ned,rotate,sensors} from './frames.js';
+import {overlayGeometry} from './osm.js';
 let init;
 export class Physics {
-  static async create(config,obstacles=true,terrain=null){if(terrain)validateTerrain(terrain);init??=R.init();await init;return new Physics(config,obstacles,terrain);}
-  constructor(c,obstacles,terrain) {
+  static async create(config,obstacles=true,terrain=null,overlay=null,geometry=null){if(terrain)validateTerrain(terrain);init??=R.init();await init;return new Physics(config,obstacles,terrain,overlay,geometry);}
+  constructor(c,obstacles,terrain,overlay,geometry) {
     this.c=c;this.world=new R.World({x:0,y:-9.80665,z:0});
     if(terrain){const {vertices,indices}=terrainMesh(terrain);this.world.createCollider(R.ColliderDesc.trimesh(vertices,indices).setFriction(.9));}
-    for(const o of (terrain?(obstacles?terrainObjects(terrain):[]):(obstacles?playground:playground.slice(0,1)))){const [x,y,z]=o.position;const a=o.angle??0;const body=this.world.createRigidBody(R.RigidBodyDesc.fixed().setTranslation(x,y,z).setRotation({x:0,y:0,z:Math.sin(a/2),w:Math.cos(a/2)}));const [sx,sy,sz]=o.size;this.world.createCollider((o.kind==='cone'?R.ColliderDesc.cone(sy/2,sx/2):R.ColliderDesc.cuboid(sx/2,sy/2,sz/2)).setFriction(.9),body);}
+    for(const o of (terrain?(obstacles?terrainObjects(terrain,overlay):[]):(obstacles?playground:playground.slice(0,1)))){const [x,y,z]=o.position;const a=o.angle??0;const body=this.world.createRigidBody(R.RigidBodyDesc.fixed().setTranslation(x,y,z).setRotation({x:0,y:0,z:Math.sin(a/2),w:Math.cos(a/2)}));const [sx,sy,sz]=o.size;this.world.createCollider((o.kind==='cone'?R.ColliderDesc.cone(sy/2,sx/2):R.ColliderDesc.cuboid(sx/2,sy/2,sz/2)).setFriction(.9),body);}
+    if(overlay)for(const building of (geometry??overlayGeometry(overlay,terrain)).buildings)for(const prism of building.prisms){
+      const shape=R.ColliderDesc.convexHull(new Float32Array(prism));
+      if(!shape)throw Error(`Invalid building collider: ${building.id}`);
+      this.world.createCollider(shape.setFriction(.9));
+    }
     this.body=this.world.createRigidBody(R.RigidBodyDesc.dynamic().setTranslation(0,this.spawnHeight(),0).setCanSleep(false).setCcdEnabled(true).setLinearDamping(.08).setAngularDamping(.6));
     this.world.createCollider(R.ColliderDesc.cuboid(c.length/2,c.height/2,c.width/2).setMass(c.mass).setFriction(.5),this.body);
     this.car=this.world.createVehicleController(this.body);this.car.indexUpAxis=1;this.car.setIndexForwardAxis=0;

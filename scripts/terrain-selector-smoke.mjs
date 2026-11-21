@@ -8,7 +8,7 @@ import {ProcessGroup} from '../src/process-group.js';
 import {sitlArguments} from '../src/launcher.js';
 const temp=await fs.mkdtemp(path.join(os.tmpdir(),'rover-selector-'));
 let logs='',browser,sitl;const group=new ProcessGroup({log:line=>{logs+=line+'\n';}});
-const config=JSON.parse(await fs.readFile('config/default.json'));config.httpPort=8104;config.udpPort=9011;config.mavlink.port=14569;
+const config=JSON.parse(await fs.readFile('config/default.json'));config.osm=false;config.httpPort=8104;config.udpPort=9011;config.mavlink.port=14569;
 await fs.writeFile(path.join(temp,'config.json'),JSON.stringify(config));
 const url='http://127.0.0.1:8104',state=()=>fetch(url+'/api/state').then(r=>r.json());
 async function until(check){let s;for(let i=0;i<500;i++){try{s=await state();if(check(s))return s;}catch{}await delay(100);}assert.fail(JSON.stringify(s)+'\n'+logs);}

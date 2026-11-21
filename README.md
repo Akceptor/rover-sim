@@ -90,6 +90,14 @@ If SITL is already connected when you change the location in the browser, disarm
 
 [Terrain sources, attribution and importer](docs/terrain.md) · [Weather and local time](docs/weather.md) · [Launcher options](docs/launcher.md)
 
+## OpenStreetMap roads and buildings
+
+Real terrain now loads mapped roads and flat-roof buildings automatically. Buildings have footprint colliders, including concave outlines and courtyard holes. Roads follow the terrain; wheel contact and traction stay unchanged. Generated trees and rocks keep clear of mapped buildings and roads.
+
+The Mission Planner copy/paste workflow above is unchanged. OSM loads while physics is held. A timeout or server error leaves terrain usable and offers **Retry OSM**; after driving begins, retries are cached for the next world load. Successful overlays work offline from **`.run/osm-cache/`**, independently of elevation and imagery. Bundled terrain still works without an overlay. Set `"osm": false` in the backend config to disable overlays.
+
+Data is **[© OpenStreetMap contributors](https://www.openstreetmap.org/copyright)** under **ODbL**; processed caches are derived OSM databases. This version has simple walls/roofs, approximate heights and paved/unpaved road colours. It skips bridges, tunnels and motorways and adds no road traction or grading. See [setup, configuration, offline behavior, license and limits](docs/osm.md).
+
 ## Checks
 
-Run `npm test` for the automated test suite. See [validation](docs/validation.md) for browser and native SITL integration checks.
+Run `npm test` for the automated test suite (local OSM fixtures; no Overpass access). Run `npm run test:osm` for the Chrome road-alignment and building-collision check. See [validation](docs/validation.md) for browser and native SITL integration checks.

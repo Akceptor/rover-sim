@@ -13,7 +13,7 @@ const root=path.resolve(path.dirname(fileURLToPath(import.meta.url)),'..'),group
 const temp=await fs.mkdtemp(path.join(os.tmpdir(),'rover-terrain-browser-'));let browser;
 try{
  await checkPorts([{kind:'tcp',host:'127.0.0.1',port:8096,name:'Terrain smoke'}]);
- const config=JSON.parse(await fs.readFile(path.join(root,'config/default.json')));config.httpPort=8096;
+ const config=JSON.parse(await fs.readFile(path.join(root,'config/default.json')));config.osm=false;config.httpPort=8096;
  const terrain=loadEnvironment(config).terrain;await fs.writeFile(path.join(temp,'config.json'),JSON.stringify(config));
  group.start('terrain-backend',process.execPath,[path.join(root,'src/server.js'),'--standalone','--config',path.join(temp,'config.json')],{cwd:root,ipc:true});
  const url='http://127.0.0.1:8096';

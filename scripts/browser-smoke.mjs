@@ -8,7 +8,7 @@ import {once} from 'node:events';
 import dgram from 'node:dgram';
 import {setTimeout as delay} from 'node:timers/promises';
 const temp=await fs.mkdtemp(path.join(os.tmpdir(),'rover-browser-'));
-const config=JSON.parse(await fs.readFile('config/default.json'));config.httpPort=8092;config.terrain=null;
+const config=JSON.parse(await fs.readFile('config/default.json'));config.osm=false;config.httpPort=8092;config.terrain=null;
 await fs.writeFile(path.join(temp,'config.json'),JSON.stringify(config));
 const serverProcess=spawn('node',['src/server.js','--standalone','--config',path.join(temp,'config.json')],{stdio:'pipe'});
 let log='';serverProcess.stderr.on('data',v=>log+=v);serverProcess.stdout.on('data',v=>log+=v);

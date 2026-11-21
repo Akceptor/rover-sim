@@ -6,7 +6,7 @@ import path from 'node:path';
 import {setTimeout as delay} from 'node:timers/promises';
 import {ProcessGroup} from '../src/process-group.js';
 const temp=await fs.mkdtemp(path.join(os.tmpdir(),'rover-crawler-')),group=new ProcessGroup();
-const config=JSON.parse(await fs.readFile('config/default.json'));config.httpPort=8099;
+const config=JSON.parse(await fs.readFile('config/default.json'));config.osm=false;config.httpPort=8099;
 await fs.writeFile(path.join(temp,'config.json'),JSON.stringify(config));let browser;
 try{
  group.start('backend',process.execPath,['src/server.js','--standalone','--config',path.join(temp,'config.json')],{ipc:true});

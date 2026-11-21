@@ -17,6 +17,7 @@
     "test:position": "node scripts/position-smoke.mjs",
     "test:crawler": "node scripts/crawler-smoke.mjs",
     "test:weather": "node scripts/weather-smoke.mjs",
+    "test:osm": "node scripts/osm-smoke.mjs",
     "test:terrain": "node scripts/terrain-smoke.mjs",
     "test:launcher": "node scripts/launcher-smoke.mjs",
     "test:sitl": "python3 scripts/integration.py",

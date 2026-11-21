@@ -7,7 +7,7 @@ import {setTimeout as delay} from 'node:timers/promises';
 import {ProcessGroup} from '../src/process-group.js';
 const temp=await fs.mkdtemp(path.join(os.tmpdir(),'rover-locations-'));let logs='';
 const group=new ProcessGroup({log:line=>{logs+=line+'\n';}});
-const config=JSON.parse(await fs.readFile('config/default.json'));config.httpPort=8103;config.udpPort=9010;config.mavlink.port=14568;
+const config=JSON.parse(await fs.readFile('config/default.json'));config.osm=false;config.httpPort=8103;config.udpPort=9010;config.mavlink.port=14568;
 await fs.writeFile(path.join(temp,'config.json'),JSON.stringify(config));let browser;
 try{
  group.start('launcher',process.execPath,['scripts/launch.mjs','--choose-location','--no-video','--sitl',path.resolve(process.env.ROVER_SITL??'.tools/ardupilot/build/sitl/bin/ardurover'),'--config',path.join(temp,'config.json'),'--run-dir',path.join(temp,'eeprom'),'--mavlink-port','5794'],{ipc:true});

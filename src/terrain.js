@@ -1,3 +1,4 @@
+import {overlayOccupies} from './osm-footprints.js';
 // Shared north/up/east terrain geometry. Rows increase north (+X), columns east (+Z).
 export function validateTerrain(t){
  if(!t||t.version!==1||typeof t.name!=='string'||!t.name||!Number.isInteger(t.size)||t.size<3||t.size>257||t.size%2!==1||!Number.isFinite(t.spacing)||t.spacing<.25||t.spacing>100)throw Error('Invalid terrain grid');
@@ -22,7 +23,7 @@ export function terrainHeight(t,x,z){
  const [h00,h01,h10,h11]=[t.heights[k],t.heights[k+1],t.heights[k+t.size],t.heights[k+t.size+1]];
  return a+b<=1?h00+(h10-h00)*a+(h01-h00)*b:h11+(h01-h11)*(1-a)+(h10-h11)*(1-b);
 }
-export function terrainObjects(t){
+export function terrainObjects(t,overlay=null){
  const out=[],half=(t.size-1)*t.spacing/2;
  // Boundary segments follow each imported edge; their tops are two metres above ground.
  for(let i=0;i<t.size-1;i++)for(const sign of [-1,1]){
@@ -40,5 +41,5 @@ export function terrainObjects(t){
   if(i%3===0){const s=.15+random()*.35;out.push({kind:'rock',size:[s,s*.7,s*.9],position:[x,y+s*.35,z],color:0x777b70});}
   else out.push({kind:'tree',size:[.22,height,.22],position:[x,y+height/2,z],color:0x655039});
  }
- return out;
+ return overlay?out.filter(o=>!['tree','rock'].includes(o.kind)||!overlayOccupies(overlay,o.position[0],o.position[2],o.kind==='tree'?o.size[1]*.32:Math.max(...o.size))):out;
 }
