@@ -1,31 +1,39 @@
-# Crawler Lab — local ArduRover FPV simulator
+# Rover Sim · Crawler Lab
 
-A four-wheel tan crawler driven by **real ArduRover SITL** through its JSON
-external physics interface. Node runs Rapier WASM; Three.js displays the onboard
-camera and chase view. Browser rendering never advances physics. No WebRTC in v1.
+A browser-based FPV simulator for an MN168-style RC crawler. ArduRover SITL runs the autopilot and exchanges actuator and sensor data with the Rapier physics backend through ArduPilot's JSON interface. The browser shows onboard FPV and chase views. Use Mission Planner to drive with a joystick or run waypoint missions. For a quick drive, standalone mode uses the keyboard and runs without SITL.
 
-Validated on Apple M3/macOS with native ARM64 SITL: manual forward/reverse/steering,
-EKF3/GPS, two simultaneous MAVLink TCP clients, and an AUTO waypoint mission.
-Automated Windows VM and Mission Planner UI checks have not been run.
-See [validation](docs/validation.md) and the recorded [integration result](docs/integration-result.json).
+## Install
 
-## One-terminal start: backend, SITL and camera
-
-Everything runs from this npm package. Install Node.js 22 or later with npm,
-Chrome or Edge for background video, and a runnable ArduRover SITL executable.
-The launcher does not download firmware. Use the Windows setup below when
-backend, SITL and Mission Planner all run inside the Windows VM.
-
-From your **Windows checkout** of `rover-sim`, run in PowerShell:
+Install Git and **Node.js 22 or later** with npm. On Windows 11 ARM in Parallels, use the ARM64 Node.js installer. Install Chrome or Edge if you want the launcher's background camera stream.
 
 ```powershell
+git clone https://github.com/Akceptor/rover-sim.git
+cd rover-sim
 npm.cmd ci
+```
+
+On macOS/Linux, use `npm` in place of `npm.cmd` throughout.
+
+## Quick start · keyboard
+
+```powershell
+npm.cmd run standalone
+```
+
+Open [http://127.0.0.1:8090](http://127.0.0.1:8090). Click the view to focus it, then use **W/S** or **↑/↓** for forward, brake and reverse, and **A/D** or **←/→** to steer.
+
+## Start with ArduRover SITL
+
+For an all-Windows setup, install Mission Planner and use its **Simulation** tab to download ArduRover SITL. Stop the Mission Planner simulation before starting the Rover Sim launcher. The executable must support the ArduPilot JSON backend.
+
+In PowerShell, copy the example launcher config once and edit it.
+
+```powershell
 Copy-Item config/launcher.example.json config/launcher.local.json
 notepad config/launcher.local.json
 ```
 
-Set `sitlExe` to your actual Windows executable path. For the Mission Planner
-SITL executable in the Parallels shared Documents folder, the config is:
+Set `sitlExe` to your executable's full path. For example, if Mission Planner stores SITL in the Parallels shared Documents folder:
 
 ```json
 {
@@ -34,542 +42,54 @@ SITL executable in the Parallels shared Documents folder, the config is:
 }
 ```
 
-Use forward slashes, or escape each backslash as `\\` in JSON. Paths with spaces
-need no extra quotes inside the value. `backendConfig` and relative executable
-paths resolve against the launcher config's directory.
-
-**Create this file once in each checkout.** `config/launcher.local.json` is ignored
-by Git, so `git pull` does not copy it from the Mac checkout to the Windows one.
-Keep an existing local config when updating; copying the example again replaces it.
-
-Then start all three services:
+Use forward slashes in Windows paths. Relative paths in this file resolve from `config/`. The file is local to each checkout and is ignored by Git.
 
 ```powershell
 npm.cmd run sim
 ```
 
-You can also double-click `start-simulator.cmd`. Neither entry point needs a
-PowerShell execution-policy change. Wait for `[launcher] READY`, then open
-**http://127.0.0.1:8090** for the HUD. Connect Mission Planner to TCP
-**127.0.0.1:5760** and a companion to TCP **127.0.0.1:5762** on the same Windows
-machine. The background camera publishes **http://127.0.0.1:8090/camera.mjpg**
-and keeps running when the visible HUD is hidden or closed. See
-[video setup](docs/video.md) for Mission Planner's GStreamer pipeline.
+On Windows you can also double-click `start-simulator.cmd`. Once the launcher prints **READY**, open the browser cockpit and connect Mission Planner using **TCP**.
 
-Ctrl+C stops camera, SITL and backend together. Saved parameters, including
-`RC5_OPTION`, are preserved in `.run/sitl-windows` on Windows (`.run/sitl` on Mac).
-Only an explicit `--wipe` resets them. Stop any previous backend/SITL/video
-terminals before using the combined launcher; busy ports fail without taking over
-the existing processes. With the normal launcher, do not also start Mission
-Planner's built-in simulation. Use the optional [Mission Planner start-selection
-mode](docs/mission-planner-start.md) when choosing the start on its Simulation map.
+| Service | Default address |
+| --- | --- |
+| Browser cockpit | [http://127.0.0.1:8090](http://127.0.0.1:8090) |
+| Mission Planner | TCP `127.0.0.1:5760` |
+| Companion computer client | TCP `127.0.0.1:5762` |
+| Background camera | [http://127.0.0.1:8090/camera.mjpg](http://127.0.0.1:8090/camera.mjpg) |
 
-Useful variants:
+Wait for GPS and EKF readiness, then arm in **MANUAL** for joystick driving, or upload a mission for **AUTO**. The background MJPEG stream continues when you close the cockpit. Use the [GStreamer setup](docs/video.md) to view it in Mission Planner, or run `npm.cmd run sim -- --no-video` to skip the background stream.
 
-```powershell
-npm.cmd run sim -- --no-video
-npm.cmd run sim -- --standalone
-npm.cmd run sim -- --flat
-npm.cmd run sim -- --help
-```
+**Ctrl+C** stops the launcher and its services. SITL parameters are saved in `.run/sitl-windows` on Windows or `.run/sitl` on macOS/Linux. Use `npm.cmd run sim -- --wipe` only when you want to reset the saved simulation parameters.
 
-On Mac/Linux, use `npm` instead of `npm.cmd`. For the native Mac build described
-below, set `sitlExe` to `../.tools/ardupilot/build/sitl/bin/ardurover` in your Mac
-checkout's local config. See [launcher setup and options](docs/launcher.md) for
-alternate configs, ports and camera options. The separate service commands below
-remain available for development.
+## Choose a location in Mission Planner
 
-## Landscape
-
-The default world is now a **960 × 960 m real terrain patch near Feofaniya, Kyiv**,
-using Google GEM-15 elevation and Copernicus Sentinel-2 ground colour. It is bundled
-locally and loads offline. Trees, rocks and close-up ground grain are generated;
-the 15 m elevation source cannot reproduce small ruts or kerbs. Rendering and
-wheel collisions share the same terrain mesh, and the launcher sets SITL's GPS
-home to the map's origin. Replace old mission waypoints when switching regions.
-
-Use `npm.cmd run sim -- --playground` for the original obstacle course, or
-`--flat` for an empty flat world. See [terrain setup, importer and attribution](docs/terrain.md)
-for other locations and the distinction between measured and generated detail.
-
-## Quick start: standalone
-
-Install Node.js 22 or later (ARM64 on the M3; ARM64 or emulated x64 on Windows).
-
-On **Windows 11 ARM in Parallels**, install Node.js LTS and npm together from
-PowerShell using WinGet:
+Run Rover Sim and Mission Planner on the same Windows machine.
 
 ```powershell
-winget install --id OpenJS.NodeJS.LTS --exact --architecture arm64 --source winget
+npm.cmd run sim -- --mission-planner
 ```
 
-The [WinGet package](https://github.com/microsoft/winget-pkgs/tree/master/manifests/o/OpenJS/NodeJS/LTS)
-includes the ARM64 installer. Alternatively, use the Windows ARM64 `.msi` from
-the [official Node.js download page](https://nodejs.org/en/download/).
+1. Open the simulator cockpit at `http://127.0.0.1:8090`. Under **Mission Planner · Extra command line**, click **Copy command**.
+2. Open the **Simulation** tab in Mission Planner and paste the copied line into **Extra command line**. These arguments tell ArduRover SITL to use Rover Sim as its physics backend.
+3. Choose the location in the browser. For **Custom · Mission Planner**, move the **H / home marker** on the Mission Planner map to the desired start. For a bundled map, select a preset in the browser and click **Load location**.
+4. In Mission Planner, set heading to **0**, leave **Wipe** unchecked, and click **Rover** to launch SITL with the extra arguments.
+5. Stay disarmed while the terrain loads. When the browser shows **Terrain ready**, click **Start physics**, then arm in Mission Planner.
 
-Close and reopen PowerShell after installation so the updated PATH takes effect,
-then verify both commands:
+The five bundled terrain presets work offline. A custom location downloads terrain on the first visit and reuses the cached patch on subsequent visits to the same coordinates. If loading fails, click **Retry terrain** in the browser.
 
-```powershell
-node --version
-npm.cmd --version
-```
+If SITL is already connected when you change the location in the browser, disarm and restart SITL from Mission Planner with the same extra command line.
 
-Use `npm.cmd` in PowerShell to avoid script execution-policy restrictions on
-`npm.ps1`; no execution-policy change is needed.
+[Mission Planner setup and troubleshooting](docs/mission-planner-start.md) · [Bundled locations](docs/locations.md)
 
-From the cloned `rover-sim` directory:
+## Terrain, weather and internet access
 
-```sh
-npm ci
-npm run standalone
-```
+- **Elevation** comes from Google GEM-15, a 15 m bare-earth elevation model. The browser and physics use the same terrain mesh.
+- **Ground colours** come from historical Copernicus Sentinel-2 imagery. The simulator generates trees, rocks and close-up surface detail.
+- **Bundled presets work offline** after installation. A new custom start needs internet access and available source coverage. The importer fetches elevation from Google Cloud Storage and looks up Sentinel-2 scenes through Element 84 Earth Search. Valid patches are saved under `.run/terrain-cache/` for offline reuse at the same coordinates.
+- **Weather** comes from Open-Meteo and updates every 15 minutes when available. Weather affects the camera view. Local time and sun position drive day/night lighting, which also works offline. The data requests require no API keys.
 
-Open **http://127.0.0.1:8090**. W/S or arrows drive forward/brake/reverse; A/D or
-arrows steer. Neutral applies a brake; an opposite command brakes and then reverses.
-Blur, hidden tab, disconnected WebSocket, or a 300 ms expired input lease releases
-keyboard controls. Standalone mode is prominently labelled and has no autopilot.
+[Terrain sources, attribution and importer](docs/terrain.md) · [Weather and local time](docs/weather.md) · [Launcher options](docs/launcher.md)
 
-Windows PowerShell:
+## Checks
 
-```powershell
-npm.cmd ci
-npm.cmd run standalone
-```
-
-The simulator models a small generic crawler; dimensions are starting values,
-not measured MN168 specifications. Trees and rocks are generated scenery with fixed colliders; wheel contact uses
-ray casts, not tyre meshes. This is not an MN168 performance calibration.
-
-## Alternative deployment: native Mac SITL and backend, Windows Mission Planner
-
-This arrangement runs SITL and the backend on Mac, with Mission Planner in the
-Windows VM. It is the deployment used for the automated native SITL integration
-checks. Rapier is WebAssembly with no platform-specific physics addon; Three.js
-and ws are JavaScript. WSL2 and nested virtualisation are not required.
-
-### Build native SITL once
-
-Install Apple's command line tools (`xcode-select --install` if absent), Git and
-Python 3.12 (or 3.15, both exercised here). The script clones the official source at the tested commit
-`4ca1bc74fc088242931054cac963cdfd91589b51`, installs Python dependencies in
-`.venv-sitl`, and builds `.tools/ardupilot/build/sitl/bin/ardurover`. It does not
-modify system Python or install an embedded ARM compiler.
-
-```sh
-PYTHON=python3.12 sh scripts/build-sitl.sh
-```
-
-If your `python3` already is Python 3.12, omit `PYTHON=python3.12`. Waf's code
-generation must use the venv Python; merely invoking waf with a venv interpreter
-while `python` resolves elsewhere can produce an erroneous missing-empy failure.
-The pinned source is a development commit tested here, not a stable release claim.
-
-### Separate backend and SITL commands
-
-For the combined backend/SITL/camera launcher, use `npm run sim` after configuring
-the Mac executable path above. To run the services individually instead:
-
-Terminal 1:
-
-```sh
-npm ci
-node src/server.js --playground
-```
-
-Terminal 2 (first run, or whenever changing defaults):
-
-```sh
-sh scripts/start-sitl.sh --wipe
-```
-
-The script starts a separate simulation EEPROM/log directory under `.run/sitl`.
-`--wipe` resets **only that simulation's** saved parameters. Subsequent runs can
-omit it; existing saved parameter values override defaults. The exact underlying
-command is:
-
-```sh
-/path/to/ardupilot/build/sitl/bin/ardurover \
-  --model JSON:127.0.0.1 --sim-port-out 9002 --rate 100 --speedup 1 \
-  --home 50.4501,30.5234,100,0 --defaults /absolute/path/rover-sim/config/rover.parm \
-  --serial0 tcp:5760 --serial1 tcp:5762 \
-  --serial2 udpclient:127.0.0.1:14560 --wipe
-```
-
-For an already configured official source tree, an alternative is:
-
-```sh
-/path/to/ardupilot/Tools/autotest/sim_vehicle.py -v Rover -f rover \
-  --model JSON:127.0.0.1 --no-mavproxy \
-  --add-param-file=/absolute/path/rover-sim/config/rover.parm \
-  -A '--sim-port-out 9002 --rate 100 --serial0 tcp:5760 --serial1 tcp:5762 --serial2 udpclient:127.0.0.1:14560' -w
-```
-
-`-v Rover` matches the current source vehicle directory. Older trees may use
-`APMrover2`; inspect that checkout's `sim_vehicle.py --help`. **An ordinary Mission
-Planner Simulation launch does not select this backend.** Do not run its default
-rover physics alongside this one. Confirm SITL prints `Starting SITL: JSON` and
-`JSON control interface set to 127.0.0.1:9002`, then the received sensor fields.
-The HUD must say JSON connected and sim seconds must advance.
-
-### Mission Planner in Parallels
-
-1. In Windows, determine the Mac's reachable IPv4 address on the Parallels shared
-   network, or the Mac's LAN IPv4 with bridged networking. Do not use Windows
-   `127.0.0.1` to reach a Mac process. On this Mac the Parallels shared host adapter is currently `10.211.55.2`;
-   try that address first for the default shared network. Check the Windows adapter's gateway and the
-   Mac's adapter addresses; the gateway may be the Parallels router, so verify it
-   rather than assuming a fixed address. `ifconfig` on Mac helps identify the host.
-2. Check from Windows PowerShell:
-   `Test-NetConnection <MAC_IP> -Port 5760`.
-3. Select **TCP** in Mission Planner, click Connect, enter `<MAC_IP>` and **5760**.
-   Windows Mission Planner is the **TCP client**; SITL on Mac is the **listener**.
-   Baud rate is irrelevant. Allow incoming TCP on macOS firewall if prompted.
-4. Wait for EKF/GPS readiness (typically 30–60 seconds). Select MANUAL and arm.
-   Configure Mission Planner joystick/RC override for RC1 steering and RC3
-   reversible throttle (centre 1500). Those RC inputs are distinct from SERVO2
-   steering and SERVO4 throttle outputs. Observe both actuator PWM and movement.
-5. For AUTO, upload a short mission within the flat area, select AUTO and arm.
-   Use roughly 1.2 m/s and 0.5 m waypoint radius. The compact playground contains
-   obstacles; this is a contact simulation, not obstacle avoidance. A waypoint
-   through a wall will not succeed. `node src/server.js --flat` removes obstacles
-   for initial navigation tests.
-
-**Simultaneous companion:** connect it as a separate TCP client to
-`tcp:<MAC_IP>:5762` (or `tcp:127.0.0.1:5762` on Mac). Both links allow inbound
-commands and outbound telemetry. SERIAL0 and SERIAL1 default to MAVLink in the
-validated binary. If previously saved settings changed them, wipe the simulation
-or set their protocols to MAVLink2. Do not connect two clients to one UART port.
-
-| Purpose | Listener | Initiator / direction |
-| --- | --- | --- |
-| Physics | Backend UDP 127.0.0.1:9002 | SITL sends binary actuators; backend replies to sender's ephemeral UDP port |
-| Mission Planner MAVLink | SITL TCP 0.0.0.0:5760 | Windows MP connects to Mac |
-| Companion MAVLink | SITL TCP 0.0.0.0:5762 | Companion connects to Mac |
-| HUD arm/mode telemetry | Backend UDP 127.0.0.1:14560 | SITL SERIAL2 sends MAVLink heartbeats; receive only |
-| Browser/HUD | Backend HTTP + WebSocket 127.0.0.1:8090 | Browser connects to backend |
-
-To use a companion that requires UDP endpoints, run MAVProxy against one SITL UART
-and fan out bidirectional links, for example (install MAVProxy separately):
-
-```sh
-mavproxy.py --master=tcp:127.0.0.1:5760 \
-  --out=udp:<WINDOWS_IP>:14550 --out=udp:127.0.0.1:14551
-```
-
-Then Mission Planner selects **UDP** and listens on **14550**; companion listens
-on **14551**. MAVProxy initiates traffic toward those listeners and routes replies.
-Keep `mavfwd` enabled for commands from its output links. Direct TCP is the tested,
-simpler option. UDP fanout and Mission Planner UI were not tested here.
-
-### Separate Windows backend / SITL commands
-
-For one-terminal startup, use `npm.cmd run sim` as described above. The following
-commands are the manual alternative; run each in its own PowerShell window:
-
-```powershell
-node src/server.js --playground
-# Only with an actual runnable JSON-capable Windows SITL executable:
-.\scripts\start-sitl.ps1 -SitlExe "C:\path\to\ardurover.exe" -Wipe
-```
-
-Run the backend and SITL in separate PowerShell windows from the `rover-sim`
-directory. If the SITL launcher fails with **running scripts is disabled on this
-system**, use a process-only execution-policy override:
-
-```powershell
-powershell.exe -NoProfile -ExecutionPolicy Bypass -File ".\scripts\start-sitl.ps1" -SitlExe "C:\path\to\ardurover.exe" -Wipe
-```
-
-Replace the executable path with your Mission Planner SITL executable; keep the
-quotes for paths containing spaces. This override applies only to the launched
-PowerShell process and does not change the saved user or system policy. See
-[Microsoft's execution-policy documentation](https://learn.microsoft.com/en-us/powershell/module/microsoft.powershell.core/about/about_execution_policies).
-
-The script does not download or assume an ARM Windows SITL binary exists.
-Cygwin runtime requirements and x64 emulation must be checked for that executable.
-For Mac SITL + Windows backend, set backend `udpHost` to `0.0.0.0`, allow inbound
-Windows UDP 9002, and run Mac with `BACKEND_HOST=<WINDOWS_IP>`; leave JSON and
-MAVLink port numbers separate. This mixed variant is untested; colocating backend
-and SITL avoids that cross-machine physics configuration.
-
-## Configuration, controls and reset
-
-The backend `terrain` setting selects `"feofaniya"` (bundled default), a custom
-terrain JSON path, or `null` (original playground). `--playground` and `--flat`
-override terrain selection. See [terrain configuration](docs/terrain.md).
-
-For the combined launcher, set `backendConfig` in `config/launcher.local.json`
-to the backend config you want to use. To start the backend separately, copy
-`config/default.json` and launch:
-
-```sh
-node src/server.js --config config/my-rover.json
-# Add --standalone for keyboard test mode, or --flat for an empty flat world.
-```
-
-`steering` and `throttle` use **one-based output channel numbers**, `min`, `trim`,
-`max` in microseconds, and `reversed` booleans. Defaults support SERVO2 and SERVO4.
-PWM 0/outside 800–2200 is neutral. Values within that envelope clip to calibrated
-limits; each side is normalised separately around trim. Invalid calibrations fail
-at startup. `vehicle` sets metres, kilograms, radians, newtons and m/s: dimensions,
-wheelbase/track, suspension, steering limit, engine force, speed and resistance.
-The default `engineForce` is 4.5 N and `maxSpeed` is 1.2 m/s for gentler
-acceleration and slower forward/reverse driving with either RC sticks or standalone
-keys. `maxSpeed` controls drive-force falloff rather than a hard speed clamp;
-slopes and impacts can push the vehicle faster. Custom backend configs retain
-their own values. For autonomous driving with this slower model, lower saved
-`CRUISE_SPEED` and `WP_SPEED` to about 0.7 m/s in Mission Planner if the controller
-cannot reach its requested speed; saved SITL parameters are not changed by a Git
-update. `brakeImpulse` is per-wheel impulse per physics substep. Adjust both servo
-calibration in SITL and the physical mapping intentionally to avoid accidental
-double reversal. Configuration changes require backend and SITL restart.
-
-- **HUD:** the dark cockpit shows backend/JSON connection state, speed, heading,
-  steering/throttle (including PWM in SITL), simulation time and packet diagnostics.
-  Header badges show **ARMED / DISARMED** and the Rover mode from MAVLink
-  heartbeats. They show **UNKNOWN** after 3 seconds without telemetry and are
-  hidden in standalone mode. Use **Settings** to open
-  the camera drawer; close with Escape or the close button. Standalone driving
-  requires focus on the camera viewport and releases when focus leaves it or
-  settings open. In SITL, drive through Mission Planner or a MAVLink companion.
-- **FPV / Chase:** choose camera using the toolbar or Settings. FPV field of view 40–120°, mount forward/height/right
-  offsets in metres from chassis centre. Mount height is above the chassis origin,
-  not ground. Camera values affect rendering only.
-- **RC camera:** in SITL, RC4 pans ±30° and RC2 tilts ±15°. At 1500 µs the
-  camera is centred; high PWM looks left/down. Missing, invalid or stale inputs
-  return to centre. These are RC inputs, independent of steering/throttle servo
-  outputs. For existing saved parameters, set `SR2_RC_CHAN = 10` in Mission Planner
-  if RC telemetry is slow; preserve your other settings, including `RC5_OPTION`.
-- **Weather / local time:** real time at the loaded location controls sunlight
-  and day/night appearance; current weather adds clouds, fog, rain or snow.
-  Works in both views and camera video, with offline fallback and visible data age.
-  See [weather, timezone configuration and data attribution](docs/weather.md).
-- **Stop / Start physics:** holds pose while stopped. In SITL, sensor timestamp
-  continues, velocity/gyro are zero and gravity is transformed to the held attitude.
-  This is a simulation hold, not an RC emergency stop. ArduRover continues computing
-  actuators, so switch HOLD/disarm before resuming if a mission was active.
-- **Standalone reset:** resets position, attitude and velocity immediately.
-- **SITL reset:** stop the SITL process, wait at least 2 seconds for timeout, click
-  Reset, then restart SITL. Reset while JSON is live is refused. Restart resets
-  ArduRover's EKF and physics together; backend starts a new session on new source
-  port or counter regression after timeout. Do not restart only the backend while
-  an armed SITL process is running; restart both to keep estimator state valid.
-- In SITL mode browser keys never directly affect physics. Your existing browser
-  keyboard companion must send MAVLink RC overrides/manual commands to ArduRover.
-  The resulting SERVO outputs alone move this backend.
-
-### HUD arm status and mode telemetry
-
-The launchers send a dedicated MAVLink feed from SERIAL2 to backend UDP **14560**.
-Mission Planner TCP 5760 and companion TCP 5762 remain available. The HUD reads
-heartbeats only and sends no arming, mode or control commands.
-
-After updating, restart both the backend and SITL, then refresh the browser.
-Omit `-Wipe` / `--wipe` to retain saved parameters, including `RC5_OPTION`.
-If JSON is connected but the arm/mode badges remain UNKNOWN, check
-`SERIAL2_PROTOCOL = 2` in Mission Planner, write parameters and restart SITL.
-This is already the default for an unchanged SERIAL2 configuration.
-
-`config/default.json` contains `mavlink.host` (bind address), `port`, `systemId`
-(default 1) and `timeoutMs` (3000). Old custom configs without `mavlink` keep the
-feed disabled; copy that block to enable it, or use `null` to disable it.
-The combined launcher reads the telemetry port from that backend config. With
-the separate SITL scripts, match a changed port with PowerShell `-TelemetryPort`
-or shell `TELEMETRY_PORT`.
-For SITL and backend on different machines, match the destination to the backend
-host, bind the telemetry listener to an accessible interface and allow its UDP
-port. This telemetry port is separate from the physics JSON UDP port.
-The local receiver supports unsigned MAVLink 1/2 ArduPilot ground-rover heartbeats.
-
-### Import selected real-rover tuning
-
-Never load the entire Cube parameter dump into SITL. Select named, allowlisted
-navigation/controller tuning values and review the generated file:
-
-```sh
-node scripts/import-params.mjs /path/to/real-rover.param \
-  CRUISE_SPEED,CRUISE_THROTTLE,ATC_ACCEL_MAX > config/selected.parm
-EXTRA_PARAMS="$PWD/config/selected.parm" sh scripts/start-sitl.sh --wipe
-```
-
-The importer cannot copy sensor calibration, EKF, GPS, serial, SIM or servo
-assignments. Edit the simulator's channel/PWM settings explicitly. The allowed
-parameters are listed in `src/parameters.js`; selected unavailable parameters
-are not silently invented. `start-sitl.ps1 -ExtraParams ...` provides the same
-additional defaults-file mechanism. This does not calibrate the physics model.
-
-### Simulated camera in Mission Planner
-
-With `npm.cmd run sim`, the background camera starts automatically. When running
-services separately, use `npm.cmd run video` alongside the backend and SITL.
-This publishes from a dedicated headless Chrome/Edge window and keeps working
-when the visible HUD is minimised or closed. Connect Mission Planner's MJPEG receiver to
-`http://127.0.0.1:8090/camera.mjpg`, or paste the GStreamer pipeline from Settings
-into **Video → Set GStreamer Source**. The output is 960 × 540 at up to 10 fps.
-The optional **Start video** button in Settings publishes from the visible tab
-instead and requires that tab to stay visible. See
-[video setup and troubleshooting](docs/video.md) for the pipeline, VM networking,
-pause/restart behavior and receiver requirements.
-
-The playground now includes procedural grass/gravel, tyre-track ground paint,
-compass markings and clouds to make motion and heading easier to judge. These
-are visual cues; collision geometry and the vehicle model stay the same.
-
-## Architecture and protocol
-
-`src/physics.js` owns Rapier and four suspension ray wheels, front steering,
-reversible four-wheel traction, speed-limited engine force, neutral/opposite-input
-braking, rolling resistance and rigid chassis contacts. `src/world.js` shares
-obstacle dimensions with the renderer. The default terrain is a fixed triangle mesh shared with the renderer. The
-optional playground uses fixed boxes, ramps, bumps and cone geometry. This is a compact first implementation with no drivetrain
-gearing, articulated axles, tyre deformation or movable obstacles.
-
-`src/protocol.js` validates official little-endian UDP layouts: 40 bytes with
-magic 18458 and 16 channels, or 72 bytes with magic 29569 and 32 channels. Both
-contain uint16 rate, uint32 counter and uint16 PWM array. Rates 50–2000 Hz are
-accepted. Each frame advances 1/rate seconds, subdivided to at most 5 ms, and replies
-with one `\n{JSON}\n` containing absolute physics seconds, IMU gyro (rad/s), body
-specific force (m/s²), NED position (m), NED velocity (m/s), quaternion `[w,x,y,z]`.
-
-The **right-handed** physics basis is X north/forward, Y up, Z east/right.
-NED and body FRD both map `[x,y,z] -> [x,z,-y]`. The attitude quaternion maps
-`[w,x,y,z] -> [w,x,z,-y]`. Sensors rotate world acceleration minus gravity into
-body axes. Level stationary IMU reads `[0,0,-9.80665]`, gyro zero. Pose derivatives
-provide mutually consistent velocity/acceleration (Rapier's end-of-step support
-velocity otherwise has a small downward bias even when pose is stationary).
-GPS uses the launch home and local position; the renderer does not handle geodesy.
-
-`src/session.js` tracks source endpoint and uint32 counter wrap. Duplicates get
-cached sensor bytes without advancing time. Up to one second / 500 missing frames
-are integrated with previous actuators before the newest output. Larger forward
-gaps resynchronise the counter with one bounded step and a diagnostic, avoiding an
-unbounded catch-up. Live out-of-order packets are discarded. A regressed counter
-requires timeout before resetting; new endpoints cannot replace an active peer.
-SITL retries when a reply is lost; the backend answers cached duplicates. Some
-older JSON documentation says 10 seconds; the tested source retries around 1 second.
-
-The backend paces replies to wall time and does not depend on requestAnimationFrame.
-At timeout, SITL physics freezes; it never free-runs stale throttle. Browser
-snapshots are 20 Hz, with backpressure limits. Standalone runs fixed 100 Hz steps
-from a server timer and drops excess wall-time backlog after stalls; system sleep
-and CPU overload cannot guarantee real time. HUD RTF and packet age show this.
-Close/minimise the browser: SITL and physics continue. Disable host sleep during
-long missions. Browser disconnect has no effect on SITL actuator authority.
-
-`web/app.js` isolates `fpvOutput` (scene/camera/renderer/canvas). `web/video.js`
-encodes JPEG frames after rendering and `src/video.js` relays them as HTTP MJPEG.
-There is no WebRTC. `npm run video` runs the same renderer in a dedicated
-headless browser; the manual Settings publisher pauses when its tab is hidden.
-Physics and SITL continue in either case.
-
-Official references verified before implementation:
-
-- [JSON protocol and launch example](https://github.com/ArduPilot/ardupilot/blob/master/libraries/SITL/examples/JSON/readme.md)
-- [JSON implementation](https://github.com/ArduPilot/ardupilot/blob/4ca1bc74fc088242931054cac963cdfd91589b51/libraries/SITL/SIM_JSON.cpp)
-- [SITL startup options](https://github.com/ArduPilot/ardupilot/blob/4ca1bc74fc088242931054cac963cdfd91589b51/libraries/AP_HAL_SITL/SITL_cmdline.cpp)
-- [Native macOS build setup](https://ardupilot.org/dev/docs/building-setup-mac.html)
-- [Rapier vehicle controller](https://rapier.rs/docs/user_guides/javascript/character_controller/)
-
-## Crawler model
-
-The tan MN-168-style crawler is an original procedural approximation of the
-provided reference photo: boxy three-door body, sloped glazing, round headlights,
-fender mirrors, black bumpers, silver rims and chunky tread. Its local source is
-[`assets/MN-168.js`](assets/MN-168.js), replacing the electronics-tray-only
-`MN-168.txt`. It follows the existing chassis dimensions and physics; steering,
-wheel spin and suspension position are animated from backend state. No external
-models or textures are downloaded.
-
-![Tan crawler preview](docs/mn168.png)
-
-## Mission Planner start selection
-
-To pick the start on Mission Planner's **Simulation** map and load terrain on
-demand, run `npm.cmd run sim -- --mission-planner`. Paste the printed Extra
-command line into Mission Planner and start Rover there. The simulator loads or
-reuses the selected terrain while disarmed, then holds until you click **Start
-physics**. See [setup, cache behavior and limitations](docs/mission-planner-start.md).
-
-## Location dropdown
-
-Run `npm.cmd run sim -- --choose-location` or double-click
-`start-location-picker.cmd` to select **Kyiv, Lviv, Lima, Cusco, or an Andes
-ravine** in the browser before SITL starts. All terrain and satellite colours
-are bundled in the repository and work offline. The steeper presets span up to
-206 m vertically across a 960 m map. See [presets, startup and data sources](docs/locations.md).
-
-## Tests
-
-```sh
-npm test
-# Installed Chrome needed, no downloaded Playwright browser required:
-npm run test:browser
-npm run test:terrain
-npm run test:weather
-npm run test:crawler
-npm run test:locations
-# Native SITL required; exercises the selected-start telemetry bridge:
-npm run test:position
-npm run test:video
-# Built native SITL plus installed Chrome/Edge; disposable EEPROM and isolated ports:
-npm run test:launcher
-# Without background video:
-npm run test:launcher -- --no-video
-# With a GStreamer receiver installed:
-npm run test:video -- --gstreamer
-# After build; no browser needed, starts its own backend/SITL on isolated ports:
-.venv-sitl/bin/python scripts/integration.py \
-  --sitl .tools/ardupilot/build/sitl/bin/ardurover
-```
-
-Integration reserves HTTP 8091, UDP 9003/14562, TCP 5770/5772 and uses a temporary EEPROM
-and log directory. It checks stationary IMU, two MAVLink clients, EKF readiness,
-normal arm, manual forward/reverse/right steering, mission upload and waypoint
-reach. Artifacts go to `docs/integration-result.json` and `docs/integration-*.log`.
-Browser smoke reserves HTTP 8092/8093 and UDP 9004/14561 and checks real Chrome WebGL rendering, keys, pause
-and reset, producing screenshots. Video smoke reserves HTTP 8094 and checks
-real WebGL JPEG capture, HTTP MJPEG and stream lifecycle; `--gstreamer` also
-checks the displayed Mission Planner pipeline through a BGRA appsink. No tests
-contact a real flight controller. Launcher smoke reserves HTTP 8095, UDP
-9005/14563 and TCP 5774/5776. It checks combined startup, MJPEG delivery, shutdown
-and port release, missing executables, busy ports and startup cancellation; it
-uses a disposable EEPROM and does not read your local launcher config. Terrain
-browser smoke reserves HTTP 8096 and validates the real terrain rendering,
-geometry match, attribution and driving/reset controls.
-
-## Troubleshooting
-
-- **Cannot read launcher config / ENOENT:** create `config/launcher.local.json`
-  in the checkout named in the error, using the Windows setup above. The file is
-  ignored by Git and must be created separately in each checkout; a config in the
-  Mac checkout does not appear in a separate Windows clone.
-- **SITL executable not found:** edit `sitlExe` in that checkout's local config.
-  A Windows run needs a Windows path; a Mac run needs the native Mac binary.
-- **SITL exits immediately only inside an agent sandbox:** the tested firmware
-  probes its parent with `kill(parent_pid, 0)` each frame and exits if denied.
-  Launch from a normal terminal or grant the launcher normal local process
-  permissions. The physics integration does not require administrator privileges.
-- **Port busy:** change `httpPort` (default 8090; 8080 was already occupied here)
-  or stop your previous backend. Stop only processes belonging to this simulator.
-  Match physics port in config and `--sim-port-out`/`PHYSICS_PORT`.
-- **Waiting for SITL / no JSON sensors:** check `--model JSON:<backend IP>`, UDP
-  bind/interface/firewall and the SITL console. MAVLink connectivity alone does
-  not prove the external physics backend is selected.
-- **SITL stuck after backend interruption:** wait for its actuator retry, or restart
-  SITL for a clean estimator reset. Never use a live backend-only reset as a teleport.
-- **Prearm/mode failure:** wait for GPS and EKF absolute position. Do not bypass
-  checks with truth AHRS or disabled arming checks; use the console diagnostics.
-  Real parameter dumps often disable the very simulated sensors SITL needs.
-- **No motion:** confirm armed MANUAL, non-neutral SERVO2/4 PWM in HUD, mapping and
-  min/trim/max. RC1/3 inputs are not the same as output channels 2/4.
-- **Wrong steering:** verify PWM reversal once and actuator sign. Positive steering
-  is right and increases compass heading. Check orientation and body/NED mapping.
-- **Unstable navigation:** use flat mode, default params, normal speedup, check RTF,
-  confirm stationary acceleration and rerun integration. Sharp impacts can upset
-  the EKF just as large acceleration transients do on a real vehicle.
-- **MP cannot connect from VM:** test TCP connectivity first. Shared/bridged network
-  changes the host address. The backend HTTP bind does not control SITL MAVLink's
-  TCP listener. A successful socket test does not confirm MP joystick configuration.
-- **Chrome software graphics:** enable browser hardware acceleration; a slow WebGL
-  renderer does not slow authoritative physics. Browser smoke requires local Chrome.
+Run `npm test` for the automated test suite. See [validation](docs/validation.md) for browser and native SITL integration checks.
