@@ -14,8 +14,8 @@ then follow that location. The normal `npm run sim` bundled-map workflow is unch
    npm.cmd run sim -- --mission-planner
    ```
 
-2. Open `http://localhost:8090` (or the URL printed by your launcher). Above the
-   location selector, find **Mission Planner · Extra command line** and click
+2. Open `http://localhost:8090` (or the URL printed by your launcher). Below the
+   camera/map panels, find **Mission Planner · Extra command line** and click
    **Copy command**. Paste it into **Extra command line** on Mission Planner's
    Simulation tab. The read-only field includes your actual ports, checkout path
    and any `--extra-params` file. If clipboard access is denied, the command is
@@ -40,7 +40,7 @@ then follow that location. The normal `npm run sim` bundled-map workflow is unch
    should say `Starting SITL: JSON`.
 4. Remain disarmed. The simulator cockpit reports waiting, loading, ready, or a
    download error below the view. The first download needs internet and can take
-   up to three minutes. Exact cached starts and the bundled Feofaniya start work
+   up to three minutes. Exact cached starts and all five bundled presets work
    offline. The rover remains frozen while sensor time continues. If a download
    fails, use **Retry terrain** below the view after fixing the connection or
    telemetry issue. The backend and SITL stay running; no restart is needed for
@@ -70,12 +70,22 @@ Check the actual input on Mission Planner's Radio Calibration screen.
 An existing EEPROM value overrides the defaults file; updating the repo alone
 does not change that saved value. Do not wipe EEPROM to restore one assignment.
 
-Start selection is a startup operation. To choose a different start, stop SITL
-in Mission Planner and restart the Node launcher before starting the next
-simulation. Ctrl+C stops only the launcher's backend/camera in this mode; stop
+To choose a different browser start, disarm, select and load it, then stop and
+restart SITL in Mission Planner to apply GPS. The Node launcher and browser can
+stay open. **Custom · Mission Planner** reads its H marker on the next SITL start. Ctrl+C stops only the launcher's backend/camera in this mode; stop
 Mission Planner's SITL separately. Live map clicks do not teleport the rover or
 stream a new terrain while driving. `--flat`, `--playground`, `--standalone` and
 `--wipe` cannot be combined with this mode.
+
+## Choose on the browser map instead
+
+The cockpit now has a square location map beside FPV. Click a point, then
+**Load location** to select **Custom · browser map**. This uses the same held
+loading and GPS override as a browser preset. If SITL is already connected,
+disarm and restart it after loading; Start physics remains blocked until GPS
+matches. The copied Extra command line is unchanged, and you do not need to move
+Mission Planner's H marker for this selection. To return to its map-selected
+home, choose **Custom · Mission Planner**. See [map and offline details](map.md).
 
 ## Data and verification
 

@@ -16,7 +16,7 @@ try{
  assert.equal(initial?.startTerrain.status,'selecting',logs);assert.equal(initial.connected,false);assert.equal(initial.running,false);
  browser=await chromium.launch({channel:'chrome',headless:true});const page=await browser.newPage({viewport:{width:1440,height:1000}}),errors=[];page.on('pageerror',e=>errors.push(e.message));
  await page.goto(url);await page.waitForFunction(()=>document.querySelector('#locationPicker').hidden===false);
- assert.equal(await page.locator('#locationSelect option').count(),5);assert.match(await page.locator('#locationSelect').textContent(),/Kyiv.*Lviv.*Lima.*Cusco.*Andes/);
+ assert.equal(await page.locator('#locationSelect option').count(),6);assert.match(await page.locator('#locationSelect').textContent(),/Kyiv.*Lviv.*Lima.*Cusco.*Andes/);
  await page.selectOption('#locationSelect','lima');assert.match(await page.locator('#locationHint').textContent(),/131 m.*bundled offline/);
  await page.getByRole('button',{name:'Load location',exact:true}).click();
  await page.waitForFunction(()=>document.querySelector('#startTerrainStatus').textContent.includes('Lima')&&document.querySelector('#locationSelect').disabled);

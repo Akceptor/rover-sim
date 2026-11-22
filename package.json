@@ -17,6 +17,7 @@
     "test:position": "node scripts/position-smoke.mjs",
     "test:crawler": "node scripts/crawler-smoke.mjs",
     "test:weather": "node scripts/weather-smoke.mjs",
+    "test:map": "node scripts/map-smoke.mjs",
     "test:osm": "node scripts/osm-smoke.mjs",
     "test:terrain": "node scripts/terrain-smoke.mjs",
     "test:launcher": "node scripts/launcher-smoke.mjs",
@@ -30,6 +31,7 @@
   "dependencies": {
     "@dimforge/rapier3d-compat": "0.19.3",
     "geotiff": "3.0.5",
+    "leaflet": "1.9.4",
     "playwright": "1.65.1",
     "proj4": "2.23.0",
     "three": "0.183.2",

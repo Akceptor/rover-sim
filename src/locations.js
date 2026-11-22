@@ -8,3 +8,7 @@ export const locationPresets=Object.freeze([
  {id:'andes',name:'Andes · mountain ravine',terrain:'andes.json',lat:-13.49,lon:-72.01,timeZone:'America/Lima',reliefM:206,description:'Steep valley sides near Cusco'}
 ].map(Object.freeze));
 export function findLocation(id){const location=locationPresets.find(p=>p.id===id);if(!location)throw Error('Unknown location preset');return location;}
+export function createMapLocation(lat,lon){
+ if(!Number.isFinite(lat)||Math.abs(lat)>85||!Number.isFinite(lon)||Math.abs(lon)>180)throw Error('Invalid map coordinates');
+ return {id:'map',name:`Map · ${lat.toFixed(5)}, ${lon.toFixed(5)}`,lat,lon,timeZone:null,description:'Selected on browser map'};
+}

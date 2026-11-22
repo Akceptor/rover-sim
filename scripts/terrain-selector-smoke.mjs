@@ -1,4 +1,6 @@
 import {chromium} from 'playwright';
+import {WebSocket} from 'ws';
+import {once} from 'node:events';
 import assert from 'node:assert/strict';
 import fs from 'node:fs/promises';
 import os from 'node:os';
@@ -20,13 +22,13 @@ try{
  group.start('backend',process.execPath,['src/server.js','--mission-planner','--config',path.join(temp,'config.json')],{ipc:true});await until(()=>true);
  browser=await chromium.launch({channel:'chrome',headless:true});const page=await browser.newPage({viewport:{width:1200,height:850}}),errors=[];page.on('pageerror',e=>errors.push(e.message));
  page.setDefaultTimeout(10000);await page.goto(url);await page.waitForFunction(()=>!document.querySelector('#locationPicker').hidden,{},{timeout:10000});
- assert.equal(await page.locator('#locationSelect option').count(),6);assert.equal(await page.locator('#locationSelect').inputValue(),'custom');
+ assert.equal(await page.locator('#locationSelect option').count(),7);assert.equal(await page.locator('#locationSelect').inputValue(),'custom');
  await page.selectOption('#locationSelect','lima');await page.locator('#loadLocation').click();
  await until(s=>s.startTerrain.status==='ready');await start();
  const lima=await until(s=>s.autopilot?.position&&Math.abs(s.autopilot.position.lat+12.026)<.00002&&Math.abs(s.autopilot.position.lon+77.028)<.00002);
  assert.equal(lima.home.lat,-12.026);assert.equal(lima.weather.timeZone,'America/Lima');assert.ok(Math.abs(lima.autopilot.position.alt-lima.home.alt)<2);assert.equal(lima.running,false);
  // A live selection must hold the old GPS until a new SITL session starts.
- await page.selectOption('#locationSelect','lviv');await page.locator('#loadLocation').click();await until(s=>s.startTerrain.status==='restart');
+ const control=new WebSocket(url.replace('http:','ws:'),{origin:url});await once(control,'open');control.send(JSON.stringify({type:'selectLocation',id:'map',lat:49.88,lon:24.055}));control.close();await until(s=>s.startTerrain.status==='restart');assert.equal((await state()).selectedLocation,'map');
  await page.waitForFunction(()=>document.querySelector('#run').disabled,{},{timeout:10000});await delay(1200);
  assert.ok(Math.abs((await state()).autopilot.position.lat+12.026)<.00002);
  await sitl.stop();await delay(config.timeoutMs+100);await start();
@@ -41,6 +43,6 @@ try{
  const hint=await page.locator('#locationHint').boundingBox(),select=await page.locator('#locationSelect').boundingBox();
  assert.ok(hint.y>=select.y+select.height,'location description wraps below the controls rather than being squeezed beside them');
  await page.screenshot({path:path.join(os.tmpdir(),'rover-terrain-selector.png')});assert.deepEqual(errors,[]);
- console.log('External terrain selector: six options, Australian start overridden to Lima GPS/altitude, live Lviv selection held until restart, Custom restores MP start, collisions and mobile layout passed');
+ console.log('External terrain selector: seven options, Australian start overridden to Lima GPS/altitude, live Lviv map selection held until restart, Custom restores MP start, collisions and mobile layout passed');
 }catch(error){console.error(logs);throw error;}
 finally{await browser?.close();await sitl?.stop();await group.stop();await fs.rm(temp,{recursive:true,force:true});}

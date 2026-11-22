@@ -7,6 +7,7 @@ export function loadConfig(path=new URL('../config/default.json',import.meta.url
   for(const k of ['httpPort','udpPort'])if(!Number.isInteger(c[k])||c[k]<1||c[k]>65535)throw Error(`invalid ${k}`);
   if(!(c.timeoutMs>=100&&c.timeoutMs<=30000))throw Error('invalid timeout');
   if(c.terrain!==undefined&&c.terrain!==null&&(typeof c.terrain!=='string'||!c.terrain.trim()))throw Error('invalid terrain configuration');
+  if(c.terrainCacheDir!==undefined&&(typeof c.terrainCacheDir!=='string'||!c.terrainCacheDir))throw Error('invalid terrain cache directory');
   if(c.osm!==undefined&&c.osm!==false){
     const o=c.osm;if(!o||typeof o!=='object'||Array.isArray(o))throw Error('invalid osm configuration');
     if(o.defaultHeight!==undefined&&(!Number.isFinite(o.defaultHeight)||o.defaultHeight<=0||o.defaultHeight>500))throw Error('invalid osm default height');

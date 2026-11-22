@@ -71,7 +71,7 @@ npm.cmd run sim -- --mission-planner
 
 1. Open the simulator cockpit at `http://127.0.0.1:8090`. Under **Mission Planner · Extra command line**, click **Copy command**.
 2. Open the **Simulation** tab in Mission Planner and paste the copied line into **Extra command line**. These arguments tell ArduRover SITL to use Rover Sim as its physics backend.
-3. Choose the location in the browser. For **Custom · Mission Planner**, move the **H / home marker** on the Mission Planner map to the desired start. For a bundled map, select a preset in the browser and click **Load location**.
+3. Choose the location in the browser. To pick directly on the square map beside FPV, click a start and then **Load location** (**Custom · browser map**). For **Custom · Mission Planner**, move the **H / home marker** on the Mission Planner map to the desired start. For a bundled map, select a preset in the browser and click **Load location**.
 4. In Mission Planner, set heading to **0**, leave **Wipe** unchecked, and click **Rover** to launch SITL with the extra arguments.
 5. Stay disarmed while the terrain loads. When the browser shows **Terrain ready**, click **Start physics**, then arm in Mission Planner.
 
@@ -80,6 +80,12 @@ The five bundled terrain presets work offline. A custom location downloads terra
 If SITL is already connected when you change the location in the browser, disarm and restart SITL from Mission Planner with the same extra command line.
 
 [Mission Planner setup and troubleshooting](docs/mission-planner-start.md) · [Bundled locations](docs/locations.md)
+
+## Cockpit map
+
+FPV now uses a 16:9 panel beside a square pan/zoom map showing the rover, heading, terrain boundary, roads and buildings. In location-selection modes, click the map and then **Load location** to choose a start. Presets and **Custom · Mission Planner** remain available. On small screens the map stacks below FPV; the background camera stream stays full size.
+
+Run `npm.cmd ci` after updating to install the bundled map library. Basemap tiles need internet; loaded OSM roads/buildings remain visible offline. See [map picking, Mission Planner behavior and offline limits](docs/map.md).
 
 ## Terrain, weather and internet access
 
@@ -100,4 +106,4 @@ Data is **[© OpenStreetMap contributors](https://www.openstreetmap.org/copyrigh
 
 ## Checks
 
-Run `npm test` for the automated test suite (local OSM fixtures; no Overpass access). Run `npm run test:osm` for the Chrome road-alignment and building-collision check. See [validation](docs/validation.md) for browser and native SITL integration checks.
+Run `npm test` for the automated test suite (local OSM fixtures; no Overpass access). Run `npm run test:osm` for the Chrome road-alignment and building-collision check, and `npm run test:map` for layout, offline vectors and click-to-select checks. See [validation](docs/validation.md) for browser and native SITL integration checks.

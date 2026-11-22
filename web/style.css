@@ -165,3 +165,27 @@ button:disabled{opacity:.5;cursor:default}
 .mission-planner-setup p{margin:8px 0 0;color:var(--muted)}
 #missionPlannerCopyStatus{display:block;margin-top:6px;color:var(--ok)}
 #missionPlannerCopyStatus:empty{display:none}
+
+/* Equal-height 16:9 camera and square map, with map controls beneath. */
+.view-stage{display:grid;grid-template-columns:minmax(0,16fr) minmax(0,9fr);gap:18px;align-items:start}
+.camera-panel,.map-panel{min-width:0}
+.view-stage .viewbar{min-height:38px}
+.view-stage #viewport{width:100%;min-width:0;height:auto;min-height:0;max-height:none;aspect-ratio:16/9}
+.map-heading{min-height:33px}
+#locationMap{width:100%;aspect-ratio:1;background:#dbe3df;border:1px solid #394352;border-radius:12px;isolation:isolate;font:12px/1.4 -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
+#locationMap.can-pick{cursor:crosshair}
+.map-coordinates,.map-hint{font-size:.75rem;color:var(--muted);margin:8px 0;overflow-wrap:anywhere}
+.map-coordinates{color:var(--text);font-family:ui-monospace,monospace}
+.map-panel .location-picker{margin:10px 0;padding:10px;font-size:.8125rem}
+.map-panel .location-picker select{flex-basis:65%}
+.map-panel .location-picker label{flex-basis:100%}
+.map-panel .location-picker button{flex:1}
+.rover-map-icon{background:none;border:0}
+.rover-bearing{display:grid;place-items:center;width:26px;height:26px;color:#1259b0;text-shadow:0 0 2px #fff,0 0 4px #fff;font-size:26px;line-height:1;transform-origin:center}
+#locationMap .leaflet-control-attribution{font-size:10px;background:#ffffffe6;color:#243b4c}
+#locationMap .leaflet-control-attribution a{color:#175487}
+@media(max-width:1000px){.view-stage{grid-template-columns:minmax(0,1fr)}.map-panel{width:min(100%,560px);justify-self:center}.view-stage #viewport{aspect-ratio:16/9;min-height:230px}}
+@media(max-width:560px){.view-stage{gap:18px}.view-stage #viewport{min-height:220px}.map-panel .location-picker select{flex-basis:100%}}
+html[data-camera-output] .map-panel{display:none}
+html[data-camera-output] .view-stage{display:block}
+html[data-camera-output] .view-stage #viewport{width:100vw;height:100vh;min-height:0;aspect-ratio:auto}
