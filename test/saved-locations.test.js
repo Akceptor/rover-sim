@@ -68,11 +68,17 @@ test('missing storage lists empty, corrupt packages are reported, omitted and pr
 });
 
 test('does not follow package or data file symlinks, and removal isolates the selected package',async t=>{
+ const symlink=async(target,link,type)=>{
+  try{await fs.symlink(target,link,type);return true;}catch(error){
+   if(process.platform==='win32'&&['EPERM','EACCES','ENOTSUP'].includes(error.code)){t.skip(`Windows symlink creation requires unavailable privileges or support (${error.code})`);return false;}
+   throw error;
+  }
+ };
  const root=await temporary(t),directory=path.join(root,'packages'),store=new SavedLocations({directory}),first=await store.save(input()),second=await store.save(input());
  const external=path.join(root,'external');await fs.cp(path.join(directory,uuid(first.id)),external,{recursive:true});
- const linkId='saved:'+randomUUID();await fs.symlink(external,path.join(directory,uuid(linkId)));
+ const linkId='saved:'+randomUUID();if(!await symlink(external,path.join(directory,uuid(linkId)),'dir'))return;
  await assert.rejects(store.read(linkId),/symbolic|directory/i);assert.equal((await store.list()).length,2);await assert.rejects(store.remove(linkId),/symbolic|directory/i);
- const dataFile=path.join(directory,uuid(first.id),'terrain.json');await fs.unlink(dataFile);await fs.symlink(path.join(external,'terrain.json'),dataFile);await assert.rejects(store.read(first.id),/symbolic|file/i);
+ const dataFile=path.join(directory,uuid(first.id),'terrain.json');await fs.unlink(dataFile);if(!await symlink(path.join(external,'terrain.json'),dataFile,'file'))return;await assert.rejects(store.read(first.id),/symbolic|file/i);
  await store.remove(first.id);assert.equal((await store.list()).length,1);assert.equal((await store.read(second.id)).manifest.id,second.id);assert.ok(await fs.stat(path.join(external,'terrain.json')));
  await assert.rejects(store.remove(first.id),/not found|ENOENT/i);
 });
