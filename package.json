@@ -18,6 +18,7 @@
     "test:crawler": "node scripts/crawler-smoke.mjs",
     "test:weather": "node scripts/weather-smoke.mjs",
     "test:map": "node scripts/map-smoke.mjs",
+    "test:map-startup": "node scripts/map-startup-smoke.mjs",
     "test:osm": "node scripts/osm-smoke.mjs",
     "test:terrain": "node scripts/terrain-smoke.mjs",
     "test:launcher": "node scripts/launcher-smoke.mjs",

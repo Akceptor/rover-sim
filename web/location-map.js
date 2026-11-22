@@ -1,7 +1,28 @@
 // Leaflet is served locally. Only visible basemap tiles use the network.
 export function createLocationMap({onPick}){
+ let view=null,failed=false;
+ function fail(error){
+  if(failed)return;failed=true;
+  console.error('Location map failed:',error);
+  try{view?.destroy();}catch(cleanupError){console.error('Location map cleanup failed:',cleanupError);}
+  view=null;
+  document.getElementById('mapTileStatus').textContent='Map unavailable · reload the page to retry. If it persists, check the server terminal for asset errors.';
+  document.getElementById('mapSelectionHint').textContent='Preset locations remain available below.';
+  document.getElementById('recenterMap').disabled=true;
+ }
+ try{view=buildLocationMap({onPick});}catch(error){fail(error);}
+ // A failed optional map must never interrupt world setup or the camera loop.
+ return Object.fromEntries(['setWorld','select','setPicking','update','destroy'].map(method=>[method,(...args)=>{
+  if(!view)return;
+  try{return view[method](...args);}catch(error){fail(error);}
+ }]));
+}
+function buildLocationMap({onPick}){
  const L=window.L,element=document.getElementById('locationMap'),tileStatus=document.getElementById('mapTileStatus'),hint=document.getElementById('mapSelectionHint'),coordinates=document.getElementById('mapCoordinates');
+ if(!L)throw new Error('Leaflet did not load. Check /leaflet.js and the server terminal.');
  const map=L.map(element,{zoomControl:true,attributionControl:true,maxBounds:[[-85,-180],[85,180]],maxBoundsViscosity:.7});
+ let resize;
+ try{
  const attribution='&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer">OpenStreetMap contributors</a>';
  const blank='data:image/svg+xml,'+encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256"><path fill="#dbe3df" d="M0 0h256v256H0z"/><path stroke="#c7d1cd" fill="none" d="M0 0h256v256H0z"/></svg>');
  const tiles=L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,attribution,errorTileUrl:blank,updateWhenIdle:true,keepBuffer:1}).addTo(map);
@@ -18,7 +39,7 @@ export function createLocationMap({onPick}){
  }
  map.on('click',event=>{if(!picking)return;const point={lat:Number(event.latlng.lat.toFixed(7)),lon:Number(event.latlng.wrap().lng.toFixed(7))};select(point,false);onPick(point);});
  document.getElementById('recenterMap').onclick=()=>{const point=rover.getLatLng();map.setView(point,Math.max(map.getZoom(),16));};
- const resize=new ResizeObserver(()=>map.invalidateSize({pan:false}));resize.observe(element);
+ resize=new ResizeObserver(()=>map.invalidateSize({pan:false}));resize.observe(element);
  return {
   setWorld(data){
    if(!data)return;home=data.home;features.clearLayers();
@@ -33,4 +54,5 @@ export function createLocationMap({onPick}){
   update(state){if(state.wallTime===lastTime)return;lastTime=state.wallTime;const p=state.mapPosition??home;if(p){rover.setLatLng([p.lat,p.lon]);const arrow=rover.getElement()?.firstElementChild;if(arrow)arrow.style.transform=`rotate(${state.heading??0}deg)`;}},
   destroy(){resize.disconnect();map.remove();}
  };
+ }catch(error){resize?.disconnect();map.remove();throw error;}
 }

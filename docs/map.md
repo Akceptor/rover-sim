@@ -45,6 +45,12 @@ The local roads, buildings, patch boundary and rover marker remain usable even
 if basemap tiles fail. The map displays a basemap-unavailable message in that
 case; terrain loading and physics do not depend on tile availability.
 
+If the map library fails to load or initialize, the map panel shows **Map
+unavailable** and the camera, video stream, controls and preset location picker
+keep working. Reload the page to retry. For HTTP 500 errors on `/leaflet.js` or
+`/leaflet.css`, the backend terminal logs an `asset-error` with the affected file
+path and filesystem error (such as `ENOENT` for a missing file).
+
 The contextual basemap uses browser requests for visible tiles from
 `https://tile.openstreetmap.org/`, with normal browser caching and a visible
 [© OpenStreetMap contributors](https://www.openstreetmap.org/copyright) credit.
@@ -67,6 +73,11 @@ an offline terrain cache. `npm run test:map` runs Chrome with basemap requests
 blocked and temporary terrain/OSM fixtures: desktop and mobile geometry, real map
 clicks, exact selected coordinates, offline vectors, reload restoration, and
 full-size headless camera output. No automated check needs Overpass.
+
+`npm run test:map-startup` checks real camera streaming and cockpit controls
+with failed Leaflet asset requests and errors during map initialization, world
+setup, selection and live updates. `npm test` also checks server diagnostics for
+unreadable Leaflet files without changing the installed dependencies.
 
 `npm run test:terrain-selector` also runs native SITL and verifies a browser-map
 selection takes effect only after restart, with matching GPS, and that returning
