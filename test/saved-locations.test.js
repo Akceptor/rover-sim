@@ -89,8 +89,8 @@ test('savedLocationsDir configuration requires a nonempty string',async t=>{
 });
 
 test('serialization failure after writing manifest cleans the temporary package',async t=>{
- const directory=await temporary(t),store=new SavedLocations({directory}),data=input();data.terrain.source.unserializable=1n;
- await assert.rejects(store.save(data),/BigInt/);assert.deepEqual(await fs.readdir(directory),[]);assert.deepEqual(await store.list(),[]);
+ const directory=await temporary(t),store=new SavedLocations({directory}),existing=await store.save(input()),data=input();data.terrain.source.unserializable=1n;
+ await assert.rejects(store.save(data),/BigInt/);assert.deepEqual(await fs.readdir(directory),[uuid(existing.id)]);assert.deepEqual(await store.list(),[existing]);assert.equal((await store.read(existing.id)).manifest.id,existing.id);
 });
 
 test('unknown map time zones round trip as null without requiring weather lookup',async t=>{
