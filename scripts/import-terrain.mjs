@@ -8,6 +8,7 @@ import {fromUrl} from 'geotiff';
 import proj4 from 'proj4';
 import {validateTerrain} from '../src/terrain.js';
 import {gemItemUrl} from '../src/gem-source.js';
+import {fillSmallElevationGaps} from '../src/elevation-gaps.js';
 const root=path.resolve(path.dirname(fileURLToPath(import.meta.url)),'..');
 const {values}=parseArgs({options:{lat:{type:'string',default:'50.3375'},lon:{type:'string',default:'30.475'},name:{type:'string',default:'Feofaniya woodland, Kyiv'},size:{type:'string',default:'129'},spacing:{type:'string',default:'7.5'},out:{type:'string',default:path.join(root,'assets/terrain/feofaniya.json')},'imagery-item':{type:'string'},'no-imagery':{type:'boolean'},help:{type:'boolean'}}});
 if(values.help){console.log('npm run terrain:import -- --lat 50.3375 --lon 30.475 --name "Feofaniya woodland, Kyiv" --out assets/terrain/my-map.json\nOptional: --size 129 (odd, 3..257) --spacing 7.5 (metres) --imagery-item STAC_ITEM_URL --no-imagery');process.exit(0);}
@@ -17,7 +18,7 @@ const json=async url=>{const r=await fetch(url,{signal:AbortSignal.timeout(30000
 const local=`+proj=aeqd +lat_0=${lat} +lon_0=${lon} +datum=WGS84 +units=m`;
 const points=[];for(let x=0;x<size;x++)for(let z=0;z<size;z++)points.push([(z-(size-1)/2)*spacing,(x-(size-1)/2)*spacing]);
 function utm(epsg){if(epsg<32601||epsg>32760||epsg%100<1||epsg%100>60)throw Error(`Unsupported raster EPSG:${epsg}`);return `+proj=utm +zone=${epsg%100} ${epsg>=32700?'+south':''} +datum=WGS84 +units=m`;}
-async function sampleAsset(asset,samples){
+async function sampleAsset(asset,samples,{elevation=false}={}){
  console.log(`Reading window: ${asset.href}`);
  const tiff=await fromUrl(asset.href,{allowFullFile:false});
  try{
@@ -30,7 +31,16 @@ async function sampleAsset(asset,samples){
   if(minX<0||minY<0||maxX>image.getWidth()||maxY>image.getHeight())throw Error('Patch crosses a source tile boundary; choose a smaller area or a different centre');
   const bands=await image.readRasters({window:[minX,minY,maxX,maxY],samples});
   const width=maxX-minX,nodata=image.getGDALNoData();
-  return pixels.map(([px,py])=>{
+  let gapFill=null;
+  if(elevation){
+   const repair=fillSmallElevationGaps(bands[0],width,maxY-minY,nodata);bands[0]=repair.values;
+   if(repair.filledCells){
+    const maxRadiusMetres=repair.maxRadiusCells*Math.max(Math.abs(rx),Math.abs(ry));
+    gapFill={method:'inverse-distance weighting of original valid neighbours',filledCells:repair.filledCells,totalCells:width*(maxY-minY),maxRadiusMetres,maxMissingFraction:.01};
+    console.log(`Estimated ${repair.filledCells} missing elevation cells using valid source data within ${maxRadiusMetres} m.`);
+   }
+  }
+  const values=pixels.map(([px,py])=>{
    const x=px-minX,y=py-minY,i=Math.floor(x),j=Math.floor(y),a=x-i,b=y-j,k=j*width+i;
    return samples.map((_,band)=>{
     const v=[bands[band][k],bands[band][k+1],bands[band][k+width],bands[band][k+width+1]];
@@ -38,12 +48,14 @@ async function sampleAsset(asset,samples){
     return v[0]*(1-a)*(1-b)+v[1]*a*(1-b)+v[2]*(1-a)*b+v[3]*a*b;
    });
   });
+  return {values,gapFill};
  }finally{await tiff.close();}
 }
 const itemUrl=gemItemUrl(lat,lon);
-const item=await json(itemUrl),elevations=(await sampleAsset(item.assets.dtm,[0])).map(v=>v[0]);
+const item=await json(itemUrl),elevationSamples=await sampleAsset(item.assets.dtm,[0],{elevation:true}),elevations=elevationSamples.values.map(v=>v[0]);
 const altitude=elevations[(elevations.length-1)/2];
 const terrain={version:1,name:values.name,size,spacing,home:{lat,lon,alt:Number(altitude.toFixed(2))},heights:elevations.map(h=>Number((h-altitude).toFixed(3))),attribution:'GEM-15: This dataset is produced by Google. CC BY 4.0.',sources:{elevation:{item:itemUrl,asset:item.assets.dtm.href,gridMetres:15,verticalDatum:'EGM96',license:'CC-BY-4.0'}},generatedDetails:'Procedural trees and rocks; not surveyed objects. Small level spawn pad.'};
+if(elevationSamples.gapFill){terrain.sources.elevation.gapFill=elevationSamples.gapFill;terrain.generatedDetails+=' Small missing elevation cells estimated from nearby source data; see elevation gapFill metadata.';}
 // A small, explicitly documented level spawn pad avoids starting a parked rover on a slope.
 for(let x=0;x<size;x++)for(let z=0;z<size;z++){
  const r=Math.hypot(x-(size-1)/2,z-(size-1)/2)*spacing;
@@ -60,7 +72,7 @@ if(!values['no-imagery']){
   if(!imageItem)throw Error('No satellite scene found; select --imagery-item or --no-imagery');
   imageItemUrl=imageItem.links.find(l=>l.rel==='self')?.href??search.href;
  }
- terrain.colors=(await sampleAsset(imageItem.assets.visual,[0,1,2])).flat().map(v=>Math.max(0,Math.min(255,Math.round(v))));
+ terrain.colors=(await sampleAsset(imageItem.assets.visual,[0,1,2])).values.flat().map(v=>Math.max(0,Math.min(255,Math.round(v))));
  if(terrain.colors.filter(v=>v===0).length>terrain.colors.length*.1)throw Error('Satellite patch contains too many missing/black pixels');
  const year=imageItem.properties.datetime?.slice(0,4)??'unknown year';
  terrain.attribution+=` Contains modified Copernicus Sentinel data (${year}), via Element 84 Earth Search.`;

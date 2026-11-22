@@ -103,10 +103,15 @@ Options:
   a clear local patch.
 - `--no-imagery`: import elevations with procedural ground colour only.
 
-GEM-15 has coverage exclusions, masked water and other missing pixels. The importer
-rejects missing elevation/colour samples and patches crossing a raster tile
-boundary. Choose a smaller patch or move the centre if that occurs; it does not
-invent replacement ground. Only UTM rasters are supported. The image is one scene,
+GEM-15 has coverage exclusions, masked water and other missing pixels. For small
+elevation gaps, the importer estimates missing cells using inverse-distance
+weighting of original valid neighbours within two source cells (30 m for GEM-15).
+At most 1% of the fetched elevation window may be missing; every repaired cell
+must have original valid data within that radius. Measured cells remain unchanged,
+and the output records the repair count, method and limits in
+`sources.elevation.gapFill`. Larger elevation gaps, missing colour samples and
+patches crossing a raster tile boundary are rejected. Choose a smaller patch or
+move the centre in those cases. Only UTM rasters are supported. The image is one scene,
 so seasons, clouds and image boundaries may affect its appearance. The default
 output is the bundled Feofaniya file; pass `--out` to keep that example unchanged.
 
