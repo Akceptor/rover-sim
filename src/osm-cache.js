@@ -4,6 +4,12 @@ import {fileURLToPath} from 'node:url';
 import {createHash,randomUUID} from 'node:crypto';
 import {processOsm,overlayKey,geographicBounds,OSM_SCHEMA} from './osm.js';
 const root=fileURLToPath(new URL('..',import.meta.url));
+function overpassError(status){
+ if(status===406)return 'Overpass access rejected (406); check endpoint access and application identification';
+ if(status===429)return 'Overpass rate limited (429); wait at least 30 seconds before retrying';
+ if([502,503,504].includes(status))return `Overpass temporarily unavailable (${status}); retry later`;
+ return `Overpass HTTP ${status}`;
+}
 export function overpassQuery(t){const box=geographicBounds(t).join(',');return `[out:json][timeout:25];(way[building](${box});relation[building][type=multipolygon](${box});way[highway](${box}););(._;>;);out body;`;}
 export async function loadOsmOverlay(t,{cacheDir=path.join(root,'.run/osm-cache'),bundledDir=path.join(root,'assets/osm'),endpoint='https://overpass-api.de/api/interpreter',fetcher=fetch,signal,timeoutMs=30000,defaultHeight=6}={}){
  const key=overlayKey(t,OSM_SCHEMA,defaultHeight),hash=createHash('sha256').update(key).digest('hex'),file=path.join(cacheDir,`${hash}.json`);
@@ -22,8 +28,8 @@ export async function loadOsmOverlay(t,{cacheDir=path.join(root,'.run/osm-cache'
  let temp;
  try{
   signal?.throwIfAborted();
-  const response=await fetcher(endpoint,{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:new URLSearchParams({data:overpassQuery(t)}),signal:signal?AbortSignal.any([signal,AbortSignal.timeout(timeoutMs)]):AbortSignal.timeout(timeoutMs)});
-  if(!response.ok)throw Error(response.status===429?'Overpass rate limited (429); retry later':`Overpass HTTP ${response.status}`);
+  const response=await fetcher(endpoint,{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded','User-Agent':'RoverSim/0.1.0 (+https://github.com/Akceptor/rover-sim)'},body:new URLSearchParams({data:overpassQuery(t)}),signal:signal?AbortSignal.any([signal,AbortSignal.timeout(timeoutMs)]):AbortSignal.timeout(timeoutMs)});
+  if(!response.ok)throw Error(overpassError(response.status));
   const overlay=valid(processOsm(await response.json(),t,{defaultHeight}));signal?.throwIfAborted();
   await fs.mkdir(cacheDir,{recursive:true});temp=`${file}.${randomUUID()}.tmp`;await fs.writeFile(temp,JSON.stringify(overlay)+'\n');await fs.rename(temp,file);return result(overlay,false);
  }catch(error){if(signal?.aborted)throw error;return {overlay:null,cached:false,status:'error',message:error.message};}

@@ -5,7 +5,7 @@ import os from 'node:os';
 import path from 'node:path';
 import {osm,terrain} from './fixtures/osm.js';
 import {processOsm,buildingHeight,overlayGeometry,overlayOccupies,overlayKey,terrainProjection} from '../src/osm.js';
-import {loadOsmOverlay} from '../src/osm-cache.js';
+import {loadOsmOverlay,overpassQuery} from '../src/osm-cache.js';
 import {terrainHeight,terrainObjects} from '../src/terrain.js';
 
 test('OSM uses importer projection: +X north, +Z east at the exact terrain origin',()=>{
@@ -52,6 +52,29 @@ test('separate validated overlay cache reuses data offline and keys origin, boun
  const first=await loadOsmOverlay(terrain,{cacheDir:dir,fetcher});assert.equal(first.status,'ready');assert.equal(first.cached,false);
  const second=await loadOsmOverlay(terrain,{cacheDir:dir,fetcher:()=>{throw Error('offline');}});assert.equal(second.cached,true);assert.deepEqual(first.overlay,second.overlay);assert.equal(calls,1);
  assert.notEqual(overlayKey(terrain),overlayKey({...terrain,spacing:6}));assert.notEqual(overlayKey(terrain),overlayKey({...terrain,home:{...terrain.home,lon:1}}));assert.notEqual(overlayKey(terrain),overlayKey(terrain,2));
+ }finally{await fs.rm(dir,{recursive:true,force:true});}
+});
+test('Overpass requests identify Rover Sim and its public project while preserving the encoded query',async()=>{
+ const dir=await fs.mkdtemp(path.join(os.tmpdir(),'osm-identification-'));let request;
+ try{
+  const endpoint='https://overpass.example/api/interpreter';
+  const result=await loadOsmOverlay(terrain,{cacheDir:dir,bundledDir:null,endpoint,fetcher:async(url,options)=>{request={url,...options};return new Response(JSON.stringify(osm));}});
+  assert.equal(result.status,'ready');assert.equal(request.url,endpoint);assert.equal(request.method,'POST');
+  const headers=new Headers(request.headers);
+  assert.equal(headers.get('User-Agent'),'RoverSim/0.1.0 (+https://github.com/Akceptor/rover-sim)');
+  assert.equal(headers.get('Content-Type'),'application/x-www-form-urlencoded');
+  assert.equal(new URLSearchParams(request.body).get('data'),overpassQuery(terrain));
+ }finally{await fs.rm(dir,{recursive:true,force:true});}
+});
+test('Overpass access and capacity errors are actionable and never trigger automatic retries or cache writes',async()=>{
+ const dir=await fs.mkdtemp(path.join(os.tmpdir(),'osm-service-errors-'));
+ try{
+  for(const [status,message]of [[406,/access rejected.*406/i],[429,/rate limited.*429/i],[502,/temporarily unavailable.*502/i],[503,/temporarily unavailable.*503/i],[504,/temporarily unavailable.*504/i]]){
+   let calls=0;
+   const result=await loadOsmOverlay(terrain,{cacheDir:dir,bundledDir:null,fetcher:async()=>{calls++;return new Response('service rejected request',{status});}});
+   assert.equal(result.status,'error');assert.equal(result.overlay,null);assert.match(result.message,message);assert.equal(calls,1);
+   assert.deepEqual(await fs.readdir(dir),[]);
+  }
  }finally{await fs.rm(dir,{recursive:true,force:true});}
 });
 test('failed/limited/partial downloads leave terrain usable, do not poison cache and allow retry; empty is valid',async()=>{

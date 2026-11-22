@@ -27,6 +27,14 @@ multipolygons and highway ways over the terrain patch. Requests have a 30-second
 partial responses produce a visible error and **Retry OSM**; there is no automatic
 retry loop. A valid empty response is displayed and cached as an empty patch.
 
+Requests identify the application as
+`RoverSim/0.1.0 (+https://github.com/Akceptor/rover-sim)` in the `User-Agent`
+header, as required by the public endpoint's
+[operator guidance](https://github.com/drolbr/Overpass-API/issues/791).
+HTTP 406 means access was rejected; HTTP 502/503/504 indicates a temporary server
+or gateway failure. For HTTP 429, wait at least 30 seconds before **Retry OSM**.
+The simulator sends one request per load/retry and reuses successful cached data.
+
 Processed overlays are cached separately under **`.run/osm-cache/`**, as hashed
 JSON files keyed by schema version, exact terrain latitude/longitude, local patch
 bounds and configured default building height. Elevation/imagery files and
