@@ -239,7 +239,7 @@ async function loadPickedStart(){
 
 function saveEligibility(){
  let hint=null;
- if(!environment.terrain||startTerrain&&startTerrain.status!=='ready')hint='Load a location and wait for terrain to be ready.';
+ if(!environment.terrain||startTerrain&&!['ready','restart','verifying'].includes(startTerrain.status))hint='Load a location and wait for terrain to be ready.';
  else if(!Array.isArray(environment.terrain.colors))hint='Satellite RGB imagery is required to save this location.';
  else if(config.osm===false)hint='Enable OpenStreetMap to save an offline location.';
  else if(!overlay||!overlayMesh||!['ready','empty'].includes(osmStatus.status))hint='Wait for OpenStreetMap roads and buildings to be installed; retry OSM if needed.';
