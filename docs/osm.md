@@ -72,6 +72,14 @@ Set `"osm": false` to disable OSM entirely, including downloads and cache use.
 backend's working directory. A different default height uses a different cache
 and does not match the bundled 6 m snapshots.
 
+If the default server is temporarily unavailable, a custom endpoint can be set
+in the backend config selected by the launcher. For European locations, the
+[Dresel Europe instance](https://ovp.dresel.systems/) uses
+`"endpoint": "https://ovp.dresel.systems/api/interpreter"`. That endpoint is
+regional; the operator lists separate endpoints for other continents. It returned
+the custom Kyiv patch successfully during validation. The simulator uses the
+configured endpoint directly and does not rotate servers or retry automatically.
+
 ## Geometry and current limits
 
 Coordinates use the terrain importer's WGS84 azimuthal equidistant projection:
