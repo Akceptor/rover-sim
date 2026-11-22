@@ -98,3 +98,14 @@ test('unknown map time zones round trip as null without requiring weather lookup
  for(const timeZone of [null,undefined]){const summary=await store.save(input({timeZone}));assert.equal(summary.timeZone,null);assert.equal((await store.read(summary.id)).manifest.timeZone,null);}
  await assert.rejects(store.save(input({timeZone:'Not/A_Zone'})),/time zone/i);
 });
+
+test('save rejects fixed-offset time zones while accepting named IANA zones and UTC',async t=>{
+ const store=new SavedLocations({directory:await temporary(t)});
+ for(const timeZone of ['+01:00','-0330','+02'])await assert.rejects(store.save(input({timeZone})),/time zone/i);
+ for(const timeZone of ['UTC','Europe/Kyiv','Etc/GMT+1']){const saved=await store.save(input({timeZone}));assert.equal((await store.read(saved.id)).manifest.timeZone,timeZone);}
+});
+
+test('read rejects fixed-offset time zones in stored manifests',async t=>{
+ const directory=await temporary(t),store=new SavedLocations({directory}),saved=await store.save(input()),file=path.join(directory,uuid(saved.id),'manifest.json'),manifest=JSON.parse(await fs.readFile(file,'utf8'));
+ for(const timeZone of ['+01:00','-0330','+02']){await fs.writeFile(file,JSON.stringify({...manifest,timeZone}));await assert.rejects(store.read(saved.id),/time zone/i);}
+});

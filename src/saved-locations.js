@@ -16,7 +16,7 @@ function validateName(name){
 }
 function validateSettings(timeZone,defaultHeight){
  if(timeZone!==null){
-  if(typeof timeZone!=='string'||!timeZone)throw Error('Invalid saved location time zone');
+  if(typeof timeZone!=='string'||!timeZone||/^[+-]/.test(timeZone))throw Error('Invalid saved location time zone');
   try{new Intl.DateTimeFormat('en',{timeZone});}catch{throw Error('Invalid saved location time zone');}
  }
  if(!Number.isFinite(defaultHeight)||defaultHeight<=0||defaultHeight>500)throw Error('Invalid saved location default height');
