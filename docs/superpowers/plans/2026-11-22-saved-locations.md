@@ -74,7 +74,7 @@ Files: create `web/saved-locations.js`, `scripts/saved-locations-smoke.mjs`; mod
 
 ## Progress
 
-- [ ] Store implemented and reviewed.
+- [x] Store implemented and reviewed (26 targeted tests; spec and quality reviews passed).
 - [ ] Backend integrated and reviewed.
 - [ ] Browser flow implemented and reviewed.
 - [ ] Final verification, integration and push complete.

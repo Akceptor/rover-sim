@@ -1,6 +1,6 @@
 # Saved favorite locations
 
-Status: proposed design for user review.
+Status: approved by the user on 2026-11-22; implementation in progress.
 
 ## User flow
 
