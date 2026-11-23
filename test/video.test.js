@@ -48,3 +48,24 @@ test('MJPEG relay advertises and accepts 25 fps',async()=>{
   assert.equal(f.relay.status().frames,5);
  }finally{ws?.terminate();await f.close();}
 });
+test('MJPEG relay reports recent frame rate, sizes and publisher stats',async()=>{
+ const f=await fixture();let ws;
+ try{ws=await f.source();const big=Buffer.concat([jpeg.subarray(0,2),Buffer.alloc(2046),jpeg.subarray(-2)]);
+  for(let i=0;i<4;i++){ws.send(i%2?big:jpeg);await delay(45);}
+  ws.send(JSON.stringify({type:'stats',renderFps:30,encodeMs:12.5,skippedBacklog:3,oversize:1}));await delay(20);
+  const s=f.relay.status();
+  assert.ok(s.recent.fps>10&&s.recent.fps<=25,`fps ${s.recent.fps}`);
+  assert.equal(s.recent.maxKB,2);assert.ok(s.recent.avgKB>.9&&s.recent.avgKB<1.1,`avg ${s.recent.avgKB}`);
+  assert.deepEqual(s.publisher,{renderFps:30,encodeMs:12.5,skippedBacklog:3,oversize:1});
+  ws.send('not json');ws.send(JSON.stringify({type:'stats',renderFps:'x'}));await delay(20);
+  assert.deepEqual(f.relay.status().publisher,{renderFps:30,encodeMs:12.5,skippedBacklog:3,oversize:1});
+ }finally{ws?.terminate();await f.close();}
+});
+test('MJPEG relay advertises a configured 640x360 size',async()=>{
+ const relay=new VideoRelay({width:640,height:360});
+ const server=http.createServer((req,res)=>{if(!relay.handleHttp(req,res)){res.writeHead(404);res.end();}});
+ server.on('upgrade',(req,socket,head)=>relay.handleUpgrade(req,socket,head));server.listen(0,'127.0.0.1');await once(server,'listening');
+ const url=`http://127.0.0.1:${server.address().port}`;let ws;
+ try{ws=new WebSocket(url.replace('http:','ws:')+'/video-source',{origin:url});const [ready]=await once(ws,'message');const m=JSON.parse(ready);assert.equal(m.width,640);assert.equal(m.height,360);
+ }finally{ws?.terminate();relay.close();server.closeAllConnections();await new Promise(r=>server.close(r));}
+});

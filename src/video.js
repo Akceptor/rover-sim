@@ -2,26 +2,32 @@ import {performance} from 'node:perf_hooks';
 import {WebSocketServer} from 'ws';
 const MAX_FRAME=512*1024;
 export class VideoRelay {
- constructor({staleMs=2000,fps=25}={}){
-  this.staleMs=staleMs;this.fps=fps;this.publisher=null;this.viewers=new Set();this.latest=null;this.last=null;this.frames=0;
+ constructor({staleMs=2000,fps=25,width=960,height=540}={}){
+  this.staleMs=staleMs;this.fps=fps;this.width=width;this.height=height;this.publisher=null;this.viewers=new Set();this.latest=null;this.last=null;this.frames=0;this.recent=[];this.publisherStats=null;
   this.wss=new WebSocketServer({noServer:true,maxPayload:MAX_FRAME});
   this.wss.on('connection',ws=>{
    ws.on('error',()=>{});
    if(this.publisher){ws.close(1008,'Another camera renderer is streaming');return;}
-   this.publisher=ws;this.latest=null;this.last=null;this.frames=0;
-   ws.send(JSON.stringify({type:'ready',width:960,height:540,fps:this.fps}));
+   this.publisher=ws;this.latest=null;this.last=null;this.frames=0;this.recent=[];this.publisherStats=null;
+   ws.send(JSON.stringify({type:'ready',width:this.width,height:this.height,fps:this.fps}));
    ws.on('message',(bytes,binary)=>{
     const now=performance.now();
-    if(!binary||ws!==this.publisher||bytes.length<4||bytes[0]!==255||bytes[1]!==216||bytes.at(-2)!==255||bytes.at(-1)!==217)return;
+    if(!binary){if(ws===this.publisher)this.stats(bytes);return;}
+    if(ws!==this.publisher||bytes.length<4||bytes[0]!==255||bytes[1]!==216||bytes.at(-2)!==255||bytes.at(-1)!==217)return;
     if(this.last!==null&&now-this.last<900/this.fps)return;
-    this.last=now;this.frames++;this.latest=Buffer.concat([Buffer.from(`--rover-frame\r\nContent-Type: image/jpeg\r\nContent-Length: ${bytes.length}\r\n\r\n`),bytes,Buffer.from('\r\n')]);
+    this.last=now;this.frames++;this.recent.push({t:now,bytes:bytes.length});while(this.recent[0].t<now-5000)this.recent.shift();this.latest=Buffer.concat([Buffer.from(`--rover-frame\r\nContent-Type: image/jpeg\r\nContent-Length: ${bytes.length}\r\n\r\n`),bytes,Buffer.from('\r\n')]);
     for(const viewer of this.viewers)this.write(viewer);
    });
    ws.on('close',()=>{if(this.publisher===ws){this.publisher=null;this.latest=null;this.last=null;this.endViewers();}});
   });
   this.timer=setInterval(()=>{if(this.last!==null&&performance.now()-this.last>this.staleMs){this.latest=null;this.endViewers();}},Math.min(250,staleMs));this.timer.unref();
  }
- status(){const ageMs=this.last===null?null:Math.round(performance.now()-this.last);return {state:!this.publisher?'idle':this.latest&&ageMs<=this.staleMs?'streaming':'waiting',viewers:this.viewers.size,frames:this.frames,ageMs};}
+ stats(bytes){let m;try{m=JSON.parse(bytes);}catch{return;}const keys=['renderFps','encodeMs','skippedBacklog','oversize'];if(m?.type==='stats'&&keys.every(k=>Number.isFinite(m[k])))this.publisherStats=Object.fromEntries(keys.map(k=>[k,m[k]]));}
+ status(){
+  const now=performance.now(),ageMs=this.last===null?null:Math.round(now-this.last),r=this.recent.filter(f=>f.t>=now-5000),span=r.length>1?(r.at(-1).t-r[0].t)/1000:0,kb=x=>Math.round(x/102.4)/10;
+  return {state:!this.publisher?'idle':this.latest&&ageMs<=this.staleMs?'streaming':'waiting',viewers:this.viewers.size,frames:this.frames,ageMs,
+   recent:{fps:span?Math.round((r.length-1)/span*10)/10:0,avgKB:r.length?kb(r.reduce((a,f)=>a+f.bytes,0)/r.length):0,maxKB:r.length?kb(Math.max(...r.map(f=>f.bytes))):0},publisher:this.publisherStats};
+ }
  handleUpgrade(req,socket,head){
   if(req.headers.origin!==`http://${req.headers.host}`){socket.end('HTTP/1.1 403 Forbidden\r\nConnection: close\r\n\r\n');return;}
   this.wss.handleUpgrade(req,socket,head,ws=>this.wss.emit('connection',ws,req));

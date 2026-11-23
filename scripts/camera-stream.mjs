@@ -37,7 +37,7 @@ try{
   },{camera:values.camera,fov});
   await page.waitForFunction(()=>document.querySelector('#videoStatus').textContent.startsWith('Streaming'),null,{timeout:15000});
   console.log(`Background camera streaming: ${new URL('/camera.mjpg',url).href}`);
-  console.log(`${values.camera.toUpperCase()} · ${fov}° FPV FOV · 960 × 540 · up to 25 fps. The visible HUD may be closed. Ctrl+C stops video.`);
+  console.log(`${values.camera.toUpperCase()} · ${fov}° FPV FOV · stream size from backend videoSize · up to 25 fps. The visible HUD may be closed. Ctrl+C stops video.`);
   await disconnected;
   if(!stopping)throw Error('Background browser exited unexpectedly; restart npm run video.');
  }

@@ -4,6 +4,7 @@ export function loadConfig(path=new URL('../config/default.json',import.meta.url
   const c=resolveVehicleConfig(JSON.parse(fs.readFileSync(path)));
   for(const k of ['httpPort','udpPort'])if(!Number.isInteger(c[k])||c[k]<1||c[k]>65535)throw Error(`invalid ${k}`);
   if(!(c.timeoutMs>=100&&c.timeoutMs<=30000))throw Error('invalid timeout');
+  if(c.videoSize!==undefined&&!['960x540','640x360'].includes(c.videoSize))throw Error('invalid videoSize: use 960x540 or 640x360');
   if(c.terrain!==undefined&&c.terrain!==null&&(typeof c.terrain!=='string'||!c.terrain.trim()))throw Error('invalid terrain configuration');
   if(c.terrainCacheDir!==undefined&&(typeof c.terrainCacheDir!=='string'||!c.terrainCacheDir))throw Error('invalid terrain cache directory');
   if(c.savedLocationsDir!==undefined&&(typeof c.savedLocationsDir!=='string'||!c.savedLocationsDir.trim()))throw Error('invalid saved locations directory');

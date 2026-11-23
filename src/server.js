@@ -79,7 +79,7 @@ if(mode==='sitl'&&config.mavlink){
 let running=!pendingLocation&&osmStatus.status!=='loading',pending=null,due=performance.now(),malformed=0,lastLog=0,lastConnected=false,resetPending=false;
 session.running=running;
 let keyboard={steering:0,throttle:0,time:0,owner:null};
-const video=new VideoRelay();
+const video=new VideoRelay((([width,height])=>({width,height}))((config.videoSize??'960x540').split('x').map(Number)));
 const profileApi=createProfileApi({activeId:()=>config.vehicle.id,transitioning:()=>vehicleStatus.status!=='ready',activeVehicle:()=>config.vehicle,applyLive:resolved=>{physics.applyTuning(resolved);applyLiveFields(config.vehicle,resolved);},afterSave:()=>{reloadProfiles();choices=vehicleChoices(config);broadcastWorld();}});
 const server=http.createServer(async(req,res)=>{
   if(video.handleHttp(req,res))return;
