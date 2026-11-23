@@ -42,7 +42,6 @@ function setup(m){
   crawler=createVehicle(c);rover.add(crawler.model);wheels=crawler.wheels;rover.userData.vehicleRevision=vehicleRevision;
   // Init is resent on reconnect; replace world instead of duplicating objects.
   if(scene.userData.world){const old=scene.userData.world;scene.remove(old);old.traverse(o=>{o.geometry?.dispose();if(o.material){for(const m of Array.isArray(o.material)?o.material:[o.material]){if(o.name==='real-terrain')m.map?.dispose();m.dispose();}}});}const world=new T.Group();scene.userData.world=world;scene.add(world);
-  scenery.sky.scale.setScalar(m.terrain?10:1);
   if(m.terrain){addTerrain(world,m.terrain,renderer);scene.fog.near=70;scene.fog.far=650;scene.userData.terrain=true;fitFar();}else{scene.fog.near=35;scene.fog.far=95;scene.userData.terrain=false;fitFar();}
   $('landscape').textContent=m.terrain?`${m.terrain.name} · ${(m.terrain.size-1)*m.terrain.spacing} m`:'100 × 100 m playground';
   addOsmOverlay(world,m.overlay,m.terrain);$('osmAttribution').hidden=!m.overlay||!(m.overlay.buildings.length||m.overlay.roads.length);
@@ -94,7 +93,8 @@ $('copyMissionPlannerCommand').onclick=async()=>{
   catch{field.focus();field.select();status.textContent='Command selected · press Ctrl+C or ⌘C to copy';}
 };
 $('fov').oninput=()=>{camera.fov=+$('fov').value;camera.updateProjectionMatrix();$('fovValue').textContent=`${camera.fov}°`;};
-function fitFar(){const far=Math.max(150,scene.fog.far*1.05);for(const c of [camera,chase])if(c.far!==far){c.far=far;c.updateProjectionMatrix();}}
+// Sky dome (r=110) and clouds must stay inside the far plane or they get clipped.
+function fitFar(){const far=Math.max(150,scene.fog.far*1.05);for(const c of [camera,chase])if(c.far!==far){c.far=far;c.updateProjectionMatrix();}scenery.sky.scale.setScalar(Math.min(scene.userData.terrain?10:1,far*.9/110));}
 function selectCamera(value){$('camera').value=value;for(const id of ['fpv','chase'])$(id).setAttribute('aria-pressed',String(id===value));$('cameraLabel').textContent=value==='fpv'?'ONBOARD FPV':'CHASE CAMERA';}
 $('fpv').onclick=()=>selectCamera('fpv');$('chase').onclick=()=>selectCamera('chase');$('camera').onchange=()=>selectCamera($('camera').value);
 $('settings').onclick=()=>{release();settingsDialog.showModal();};$('closeSettings').onclick=()=>settingsDialog.close();
