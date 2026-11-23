@@ -24,7 +24,7 @@
   <section id="viewport" tabindex="0" aria-label="Rover viewport. Focus to drive in standalone mode.">
     <canvas id="view" aria-label="Rover camera view"></canvas>
     <div class="osd">
-      <div class="osd-top-left"><span class="osd-label" id="cameraLabel">ONBOARD FPV</span><span class="osd-sub">SIMULATED CAMERA</span></div>
+      <div class="osd-top-left"><span class="osd-label" id="cameraLabel">ONBOARD FPV</span><span class="osd-sub" id="activeVehicle">Loading vehicle</span></div>
       <div class="osd-top-right"><span class="osd-label"><b id="heading">000°</b></span><span class="osd-sub">HEADING · N +X</span></div>
       <div class="osd-bottom-left"><span class="speed"><b id="speed">0.00</b><small>m/s</small></span><span class="osd-sub">GROUND SPEED</span></div>
       <div class="osd-bottom-right actuator">
@@ -68,6 +68,10 @@
     <section id="locationPicker" class="location-picker" aria-label="Starting location" hidden>
       <label for="locationSelect">Location</label><select id="locationSelect" aria-describedby="locationHint"></select><button id="loadLocation" type="button">Load location</button>
       <p id="locationHint" class="muted"></p>
+    </section>
+    <section id="vehiclePicker" class="vehicle-picker" aria-label="Vehicle selection">
+      <label for="vehicleSelect">Vehicle</label><select id="vehicleSelect"></select><button id="loadVehicle" type="button">Load vehicle</button>
+      <p id="vehicleStatus" class="map-hint" role="status" aria-live="polite"></p>
     </section>
     <section id="savedLocations" class="saved-locations" aria-label="Saved locations">
       <label for="savedLocationName">Location name</label>

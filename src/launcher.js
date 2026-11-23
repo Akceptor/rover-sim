@@ -33,3 +33,24 @@ export async function checkPorts(ports){
  })));
  const failures=results.filter(r=>r.status==='rejected');if(failures.length)throw Error(failures.map(r=>r.reason.message).join('\n'));
 }
+// EEPROM values still override every defaults file. These describe the values
+// expected by the simulator, and also drive the live parameter compatibility gate.
+export function vehicleServoParameters(config){
+ const tracks=config.vehicle.drivetrain==='tracked';
+ const outputs=tracks?[[config.leftTrack,73],[config.rightTrack,74]]:[[config.steering,26],[config.throttle,70]];
+ const parameters={SERVO2_FUNCTION:0,SERVO4_FUNCTION:0};
+ for(const [calibration,fn] of outputs){
+  const prefix=`SERVO${calibration.channel}_`;
+  parameters[prefix+'FUNCTION']=fn;
+  for(const key of ['min','trim','max','reversed'])parameters[prefix+key.toUpperCase()]=Number(calibration[key]);
+ }
+ return parameters;
+}
+export function vehicleDefaults(config,{root,base=path.join(root,'config/rover.parm'),calibration}={}){
+ const [first,...extras]=base.split(',');
+ const id=['mn168','heavy-crawler','tracked-crawler'].includes(config.vehicle.id)?config.vehicle.id:config.vehicle.drivetrain==='tracked'?'tracked-crawler':'mn168';
+ return [first,path.join(root,'config',id+'.parm'),...(calibration?[calibration]:[]),...extras].join(',');
+}
+export function vehicleCalibrationText(config){
+ return '# Generated simulator calibration; saved EEPROM retains precedence.\n'+Object.entries(vehicleServoParameters(config)).map(([key,value])=>`${key} ${value}`).join('\n')+'\n';
+}

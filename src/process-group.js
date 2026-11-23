@@ -19,10 +19,23 @@ export class ProcessGroup {
   for(const stream of [child.stdout,child.stderr]){const lines=createInterface({input:stream});lines.on('line',line=>this.log(`[${name}] ${line}`));}
   entry.done=new Promise(resolve=>child.once('close',(code,signal)=>{
    entry.closed=true;resolve();
-   if(!this.stopping){this.log(`[launcher] ${name} exited (${code??signal}); stopping other services.`);void this.stop(1);}
+   if(!this.stopping&&!entry.intentional){this.log(`[launcher] ${name} exited (${code??signal}); stopping other services.`);void this.stop(1);}
   }));
   child.on('error',error=>{this.log(`[${name}] ${error.message}`);if(!this.stopping)void this.stop(1);});
   return child;
+ }
+ async stopChild(child){
+  const entry=this.children.find(entry=>entry.child===child);
+  if(!entry||entry.closed)return;
+  entry.intentional=true;
+  if(child.connected){try{child.send({type:'shutdown'},()=>{});}catch{}}
+  else if(process.platform==='win32'&&child.pid){await stopWindowsTree(child.pid);}
+  else if(child.pid){try{process.kill(-child.pid,'SIGTERM');}catch{}}
+  await untilClosed(entry.done,this.graceMs);
+  if(process.platform!=='win32'&&child.pid){try{process.kill(-child.pid,'SIGKILL');}catch{}}
+  else if(!entry.closed&&child.pid){await stopWindowsTree(child.pid);}
+  await untilClosed(entry.done,1000);
+  if(!entry.closed)throw Error(`Could not stop ${entry.name}`);
  }
  stop(code=0){
   if(this.stopping)return this.finished;

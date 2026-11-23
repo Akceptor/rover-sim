@@ -59,3 +59,13 @@ test('Windows shutdown terminates non-IPC helpers with their root', {skip:proces
  try{await group.stop();assert.throws(()=>process.kill(pid,0),{code:'ESRCH'});}
  finally{try{process.kill(pid,'SIGKILL');}catch{}}
 });
+
+test('an intentional child stop leaves siblings available for a replacement',async()=>{
+ const group=new ProcessGroup({log:()=>{},graceMs:100});
+ try{
+  const backend=group.start('backend',process.execPath,['-e',worker],{ipc:true});await once(backend,'message');
+  const sitl=group.start('sitl',process.execPath,['-e',worker],{ipc:true});await once(sitl,'message');
+  await group.stopChild(sitl);assert.equal(group.stopping,false);assert.equal(backend.exitCode,null);
+  const replacement=group.start('sitl',process.execPath,['-e',worker],{ipc:true});await once(replacement,'message');
+ }finally{await group.stop();}
+});
