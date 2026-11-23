@@ -2,7 +2,8 @@ import net from 'node:net';
 import dgram from 'node:dgram';
 import fs from 'node:fs';
 import path from 'node:path';
-const vehiclesDir=path.resolve(path.dirname(new URL(import.meta.url).pathname),'..','config','vehicles');
+import {fileURLToPath} from 'node:url';
+const vehiclesDir=fileURLToPath(new URL('../config/vehicles',import.meta.url));
 const vehicleParmIds=fs.readdirSync(vehiclesDir).filter(d=>{try{return fs.statSync(path.join(vehiclesDir,d)).isDirectory()&&fs.existsSync(path.join(vehiclesDir,d,'sitl.parm'));}catch{return false;}});
 export function loadLauncherConfig(file){
  let config;

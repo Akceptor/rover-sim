@@ -17,3 +17,4 @@ config/launcher.local.json
 !assets/textures/*.png
 
 saved-locations/
+.worktrees/
