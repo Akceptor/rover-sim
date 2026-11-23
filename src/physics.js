@@ -27,6 +27,7 @@ export class Physics {
     if(c.drivetrain==='wheeled'){
       this.car=this.world.createVehicleController(this.body);this.car.indexUpAxis=1;this.car.setIndexForwardAxis=0;
       const offsets=c.contactModel==='multi-ray'?[-c.wheelRadius*.55,0,c.wheelRadius*.55]:[0];
+      // Rapier side friction is disabled: resolve_single_bilateral uses a wrong effective mass and fixed 0.2 damping, making lateral grip soft and mass/inertia dependent. stepWheels applies it instead.
       for(const x of [c.wheelbase/2,-c.wheelbase/2])for(const z of [-c.track/2,c.track/2]){
         const group=[];this.wheelPositions.push({x,y:0,z});
         for(const offset of offsets){
@@ -36,7 +37,7 @@ export class Physics {
           const radius=Math.sqrt(c.wheelRadius*c.wheelRadius-offset*offset);
           this.car.addWheel({x:x+offset,y:0,z},{x:0,y:-1,z:0},{x:0,y:0,z:1},c.suspension,radius);
           const t=c.suspensionTuning,n=offsets.length;
-          this.car.setWheelSuspensionStiffness(i,t.stiffness/n);this.car.setWheelSuspensionCompression(i,t.compression/n);this.car.setWheelSuspensionRelaxation(i,t.relaxation/n);this.car.setWheelMaxSuspensionTravel(i,t.travel);this.car.setWheelMaxSuspensionForce(i,t.maxForce/n);this.car.setWheelFrictionSlip(i,t.grip);this.car.setWheelSideFrictionStiffness(i,t.sideGrip);
+          this.car.setWheelSuspensionStiffness(i,t.stiffness/n);this.car.setWheelSuspensionCompression(i,t.compression/n);this.car.setWheelSuspensionRelaxation(i,t.relaxation/n);this.car.setWheelMaxSuspensionTravel(i,t.travel);this.car.setWheelMaxSuspensionForce(i,t.maxForce/n);this.car.setWheelFrictionSlip(i,t.grip);this.car.setWheelSideFrictionStiffness(i,0);
         }
         this.wheelGroups.push(group);
       }
@@ -64,16 +65,28 @@ export class Physics {
     this.acc={x:(this.sensorVelocity.x-oldVelocity.x)/dt,y:(this.sensorVelocity.y-oldVelocity.y)/dt,z:(this.sensorVelocity.z-oldVelocity.z)/dt};
   }
   stepWheels(h,throttle,steering){
-    const c=this.c,q=this.body.rotation(),v=this.body.linvel(),f=rotate(q,{x:1,y:0,z:0});
+    const c=this.c,t=c.suspensionTuning,q=this.body.rotation(),v=this.body.linvel(),f=rotate(q,{x:1,y:0,z:0});
     const speed=dot(v,f),drive=driveStep(this.driveDemand[0],throttle,speed,h,c.drive);this.driveDemand[0]=drive.value;
     const taper=Math.max(0,1-Math.max(0,speed*Math.sign(drive.value))/c.maxSpeed);
+    const com=this.body.worldCom(),m=this.body.mass(),nc=this.wheelGroups.flat().filter(i=>this.car.wheelIsInContact(i)).length;
     for(let g=0;g<4;g++)for(const i of this.wheelGroups[g]){
       this.car.setWheelSteering(i,g<2?-steering*c.maxSteer:0);
       // Rapier applies impulses only to contacting wheels and limits the tire
       // friction budget using suspension load; also cap requested motor force.
       const contact=this.car.wheelIsInContact(i),load=Math.max(0,this.car.wheelSuspensionForce(i)??0);
       const n=this.wheelGroups[g].length,requested=drive.value*c.engineForce*taper/(4*n);
-      this.car.setWheelEngineForce(i,contact?clamp(requested,-load*c.suspensionTuning.grip,load*c.suspensionTuning.grip):0);
+      // Side force acts at CoM height with plain mass (not contact-point mEff, which only rolls the chassis against stiff suspension and leaves the CoM creeping); lat includes this substep's gravity so slopes hold.
+      let engine=0;
+      if(contact){
+        const at=this.car.wheelContactPoint(i),nrm=this.car.wheelContactNormal(i),st=this.car.wheelSteering(i)??0;
+        const ax=rotate(q,{x:Math.sin(st),y:0,z:Math.cos(st)}),axle=normalize(add(ax,scale(nrm,-dot(ax,nrm)))),lift=add(at,scale(nrm,dot({x:com.x-at.x,y:com.y-at.y,z:com.z-at.z},nrm)));
+        const lat=dot(this.body.velocityAtPoint(at),axle)-9.80665*h*axle.y;
+        let F=-lat*t.sideGrip*m/(nc*h);engine=requested;
+        const avail=load*t.grip,mag=Math.hypot(engine,F);
+        if(mag>avail){const k=avail/mag;engine*=k;F*=k;}
+        this.body.addForceAtPoint(scale(axle,F),lift,true);
+      }
+      this.car.setWheelEngineForce(i,engine);
       this.car.setWheelBrake(i,c.brakeImpulse*drive.brake*(h/.005)/n);
     }
     // Rolling loss acts through contacts, never as an airborne body drag force.

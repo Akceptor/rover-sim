@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import R from '@dimforge/rapier3d-compat';
 import {Physics} from '../src/physics.js';
 import {resolveVehicle} from '../src/vehicles.js';
+import {rotate} from '../src/frames.js';
 const run=(p,seconds,t=0,s=0,tracks)=>{for(let i=0;i<seconds*100;i++)p.step(.01,t,s,tracks);return p.state();};
 const using=async(id,fn)=>{const p=await Physics.create(resolveVehicle(id),false);try{run(p,2);await fn(p);}finally{p.free();}};
 
@@ -51,4 +52,29 @@ test('tracked spawn follows track radius, and multi-ray prototype crosses the ra
   const p=await Physics.create({...resolveVehicle('mn168'),contactModel:model},false);
   try{run(p,2);p.world.createCollider(R.ColliderDesc.cuboid(.25,.012,1).setTranslation(.8,.012,0));const s=run(p,7,.7);assert.ok(s.position.y>.05&&s.position.y<.3);assert.ok(model==='ray'?s.position.x<1:s.position.x>2,`${model}: ${s.position.x}`);}finally{p.free();}
  }
+});
+
+const rearSlip=p=>{const q=p.body.rotation(),com=p.body.worldCom(),at={x:com.x+rotate(q,{x:-p.c.wheelbase/2,y:0,z:0}).x,y:com.y,z:com.z+rotate(q,{x:-p.c.wheelbase/2,y:0,z:0}).z},v=p.body.velocityAtPoint(at),r=rotate(q,{x:0,y:0,z:1}),f=rotate(q,{x:1,y:0,z:0});return Math.atan2(Math.abs(v.x*r.x+v.y*r.y+v.z*r.z),Math.abs(v.x*f.x+v.y*f.y+v.z*f.z))*180/Math.PI;};
+test('full-throttle full-lock turn keeps rear-axle slip small',async()=>{
+ for(const id of ['mn168','heavy-crawler'])await using(id,p=>{
+  run(p,2,1,0);const h0=p.state().heading;let max=0;
+  for(let i=0;i<400;i++){p.step(.01,1,1);if(i>=200)max=Math.max(max,rearSlip(p));}
+  const s=p.state(),d=Math.abs(((s.heading-h0+540)%360)-180);
+  console.log(id,'max rear slip',max.toFixed(2));
+  assert.ok(max<5,`${id} rear slip ${max}`);assert.ok(d>20,`${id} heading change ${d}`);
+  assert.ok(rotate(p.body.rotation(),{x:0,y:1,z:0}).y>.9);
+ });
+});
+test('steady turn radius matches kinematic radius within 30%',async()=>using('mn168',p=>{
+ run(p,2,.5,.5);run(p,3,.5,.5);const s=run(p,.5,.5,.5),w=p.body.angvel(),yaw=Math.abs(w.y),v=Math.hypot(s.velocity.x,s.velocity.z),r=v/yaw,k=p.c.wheelbase/Math.tan(.5*p.c.maxSteer);
+ console.log('radius',r.toFixed(3),'kinematic',k.toFixed(3));
+ assert.ok(Math.abs(r-k)/k<.3,`radius ${r} vs ${k}`);
+}));
+test('parked on a 15 degree side slope does not drift',async()=>{
+ const p=await Physics.create(resolveVehicle('mn168'),false);
+ try{
+  const a=15*Math.PI/180;p.world.createCollider(R.ColliderDesc.cuboid(3,.05,3).setTranslation(0,1,0).setRotation({x:Math.sin(a/2),y:0,z:0,w:Math.cos(a/2)}));
+  p.body.setTranslation({x:0,y:1.15,z:0},true);run(p,2);assert.ok(p.state().wheels.every(w=>w.contact));const z0=p.state().position;run(p,10);const z1=p.state().position,d=Math.hypot(z1.x-z0.x,z1.z-z0.z);
+  console.log('slope drift',d.toFixed(4));assert.ok(d<.02,`drift ${d}`);
+ }finally{p.free();}
 });
