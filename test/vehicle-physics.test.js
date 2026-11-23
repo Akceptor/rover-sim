@@ -110,3 +110,19 @@ test('locked diff drives with a lifted wheel, open diff stalls that axle',async(
   assert.ok(moves?sum>0:sum<1e-9,`${mode} ${sum}`);
  });
 });
+const startState=p=>{const s=p.state();return {position:{...s.position},velocity:{...s.velocity},driveDemand:[...s.driveDemand],steerAngle:p.steerAngle};};
+test('applyTuning changes behaviour without disturbing state',async()=>using('mn168',p=>{
+ run(p,1,1,.5);const before=startState(p),engine=p.c.engineForce,wheelbase=p.c.wheelbase;
+ p.applyTuning({...p.c,engineForce:engine*3,mass:6,wheelbase:9});
+ assert.deepEqual(startState(p),before);
+ assert.equal(p.c.engineForce,engine*3);assert.equal(p.c.wheelbase,wheelbase);assert.ok(Math.abs(p.body.mass()-6)<1e-4);
+}));
+test('applyTuning engine force accelerates more than an untouched control',async()=>{
+ const gain=async tune=>{const p=await Physics.create(resolveVehicle('mn168'),false);try{run(p,2);if(tune)p.applyTuning({...p.c,engineForce:p.c.engineForce*3,maxSpeed:20});return run(p,1,1,0).speed;}finally{p.free();}};
+ const control=await gain(false),tuned=await gain(true);assert.ok(tuned>control*1.5,`${tuned} vs ${control}`);
+});
+test('applyTuning grip reaches Rapier',async()=>{
+ const launch=async grip=>{const p=await Physics.create(resolveVehicle('mn168'),false);try{run(p,2);if(grip!==undefined)p.applyTuning({...p.c,suspensionTuning:{...p.c.suspensionTuning,grip}});return run(p,1,1,0).speed;}finally{p.free();}};
+ const base=await launch(),slippery=await launch(.02);assert.ok(slippery<base*.5,`${slippery} vs ${base}`);
+ const p=await Physics.create(resolveVehicle('mn168'),false);try{p.applyTuning({...p.c,suspensionTuning:{...p.c.suspensionTuning,grip:.1,stiffness:40,travel:.03}});const near=(a,b)=>assert.ok(Math.abs(a-b)<1e-5,`${a} vs ${b}`);near(p.car.wheelFrictionSlip(0),.1);near(p.car.wheelMaxSuspensionTravel(0),.03);near(p.car.wheelSuspensionStiffness(0),40);}finally{p.free();}
+});

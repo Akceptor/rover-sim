@@ -1,12 +1,22 @@
 // Metres, kilograms, seconds, newtons, radians. +X forward, +Y up, +Z right.
 // Estimates, not manufacturer specifications: see README calibration procedure.
 import fs from 'node:fs';
-const vehiclesDir=new URL('../config/vehicles',import.meta.url);
-function loadProfile(dir){return JSON.parse(fs.readFileSync(new URL(`${dir}/vehicle.json`,vehiclesDir+'/'),'utf8'));}
+import path from 'node:path';
+import {fileURLToPath} from 'node:url';
+// Read per call so tests and the editor can point at another directory via the environment.
+export const vehiclesDir=()=>process.env.ROVER_VEHICLES_DIR?path.resolve(process.env.ROVER_VEHICLES_DIR):fileURLToPath(new URL('../config/vehicles',import.meta.url));
 function freeze(value){if(value&&typeof value==='object'){Object.values(value).forEach(freeze);Object.freeze(value);}return value;}
-export const vehicleProfiles=freeze(fs.readdirSync(vehiclesDir).filter(d=>fs.statSync(new URL(d,vehiclesDir+'/')).isDirectory()&&fs.existsSync(new URL(`${d}/vehicle.json`,vehiclesDir+'/'))).map(loadProfile).sort((a,b)=>a.id==='mn168'?-1:b.id==='mn168'?1:a.name.localeCompare(b.name)));
+const readProfile=(dir,d)=>JSON.parse(fs.readFileSync(path.join(dir,d,'vehicle.json'),'utf8'));
+function loadProfiles(){const dir=vehiclesDir();return freeze(fs.readdirSync(dir).filter(d=>fs.statSync(path.join(dir,d)).isDirectory()&&fs.existsSync(path.join(dir,d,'vehicle.json'))).map(d=>readProfile(dir,d)).sort((a,b)=>a.id==='mn168'?-1:b.id==='mn168'?1:a.name.localeCompare(b.name)));}
+export let vehicleProfiles=loadProfiles();
+let fields=Object.keys(vehicleProfiles[0]);
+export function reloadProfiles(){const next=loadProfiles();vehicleProfiles=next;fields=Object.keys(next.find(p=>p.id==='mn168')??next[0]);}
+export function readProfileFiles(id){
+ if(!/^[a-z0-9][a-z0-9-]{0,40}$/.test(id))throw Error('invalid profile id');
+ const dir=vehiclesDir(),parm=path.join(dir,id,'sitl.parm');
+ return {profile:readProfile(dir,id),sitlParm:fs.existsSync(parm)?fs.readFileSync(parm,'utf8'):null};
+}
 const calibration=channel=>({channel,min:1000,trim:1500,max:2000,reversed:false});
-const fields=Object.keys(vehicleProfiles[0]);
 function object(value,label){if(!value||typeof value!=='object'||Array.isArray(value))throw Error(`invalid vehicle ${label}`);}
 function range(value,min,max,label,inclusive=false){if(!Number.isFinite(value)||(inclusive?value<min:value<=min)||value>max)throw Error(`invalid vehicle ${label}`);}
 function vector(v,label){object(v,label);for(const key of ['x','y','z']){if(!Number.isFinite(v[key]))throw Error(`invalid vehicle ${label}.${key}`);}if(Object.keys(v).some(k=>!['x','y','z'].includes(k)))throw Error(`unknown vehicle ${label} field`);}

@@ -56,3 +56,14 @@ test('vehicle defaults order retains explicit extras after profile and generated
  const params=launcher.vehicleServoParameters(config);
  assert.equal(params.SERVO6_FUNCTION,73);assert.equal(params.SERVO7_FUNCTION,74);assert.equal(params.SERVO6_TRIM,1450);assert.equal(params.SERVO6_REVERSED,1);assert.equal(params.SERVO2_FUNCTION,0);assert.equal(params.SERVO4_FUNCTION,0);
 });
+test('vehicleDefaults sees sitl.parm added after import',async()=>{
+ const {mkdtempSync,cpSync,mkdirSync,writeFileSync,rmSync}=await import('node:fs');const {tmpdir}=await import('node:os');const path=await import('node:path');
+ const dir=mkdtempSync(path.join(tmpdir(),'rover-vehicles-'));cpSync(new URL('../config/vehicles',import.meta.url),dir,{recursive:true});
+ const old=process.env.ROVER_VEHICLES_DIR;process.env.ROVER_VEHICLES_DIR=dir;
+ try{
+  const config={vehicle:{id:'test-rig',drivetrain:'wheeled'}};
+  assert.doesNotMatch(launcher.vehicleDefaults(config,{root:'/sim'}),/test-rig/);
+  mkdirSync(path.join(dir,'test-rig'));writeFileSync(path.join(dir,'test-rig/sitl.parm'),'X 1\n');
+  assert.ok(launcher.vehicleDefaults(config,{root:'/sim'}).includes(path.join(dir,'test-rig','sitl.parm')));
+ }finally{if(old===undefined)delete process.env.ROVER_VEHICLES_DIR;else process.env.ROVER_VEHICLES_DIR=old;rmSync(dir,{recursive:true,force:true});}
+});
