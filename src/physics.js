@@ -5,6 +5,7 @@ import {playground} from './world.js';
 import {validateTerrain,terrainMesh,terrainObjects} from './terrain.js';
 import {ned,rotate,sensors} from './frames.js';
 import {overlayGeometry} from './osm.js';
+import {LIVE_FIELDS} from './profile-fields.js';
 let init;
 export class Physics {
   static async create(config,obstacles=true,terrain=null,overlay=null,geometry=null){if(terrain)validateTerrain(terrain);init??=R.init();await init;return new Physics(config,obstacles,terrain,overlay,geometry);}
@@ -18,11 +19,8 @@ export class Physics {
       this.world.createCollider(shape.setFriction(.9));
     }
     this.body=this.world.createRigidBody(R.RigidBodyDesc.dynamic().setTranslation(0,this.spawnHeight(),0).setCanSleep(false).setCcdEnabled(true).setLinearDamping(.08).setAngularDamping(.6));
-    // Give collision shells no extra mass; keep total mass and CoG explicit.
-    const inertia={x:c.mass*(c.height*c.height+c.width*c.width)/12,y:c.mass*(c.length*c.length+c.width*c.width)/12,z:c.mass*(c.length*c.length+c.height*c.height)/12};
     for(const box of c.collisionBoxes)this.world.createCollider(R.ColliderDesc.cuboid(...box.size.map(x=>x/2)).setTranslation(...box.position).setMass(0).setFriction(.5),this.body);
-    this.body.setAdditionalMassProperties(c.mass,c.centerOfGravity,inertia,{x:0,y:0,z:0,w:1},true);
-    this.body.recomputeMassPropertiesFromColliders();
+    this.applyMass();
     this.wheelPositions=[];this.wheelGroups=[];this.trackStates=[];
     if(c.drivetrain==='wheeled'){
       this.car=this.world.createVehicleController(this.body);this.car.indexUpAxis=1;this.car.setIndexForwardAxis=0;
@@ -36,8 +34,7 @@ export class Physics {
           // still a compact contact approximation, never a physical wheel body.
           const radius=Math.sqrt(c.wheelRadius*c.wheelRadius-offset*offset);
           this.car.addWheel({x:x+offset,y:0,z},{x:0,y:-1,z:0},{x:0,y:0,z:1},c.suspension,radius);
-          const t=c.suspensionTuning,n=offsets.length;
-          this.car.setWheelSuspensionStiffness(i,t.stiffness/n);this.car.setWheelSuspensionCompression(i,t.compression/n);this.car.setWheelSuspensionRelaxation(i,t.relaxation/n);this.car.setWheelMaxSuspensionTravel(i,t.travel);this.car.setWheelMaxSuspensionForce(i,t.maxForce/n);this.car.setWheelFrictionSlip(i,t.grip);this.car.setWheelSideFrictionStiffness(i,0);
+          this.tuneWheel(i,offsets.length);this.car.setWheelSideFrictionStiffness(i,0);
         }
         this.wheelGroups.push(group);
       }
@@ -45,6 +42,19 @@ export class Physics {
       this.trackStates=['left','right'].map((side,i)=>({side,distance:0,rotation:0,speed:0,contacts:[],z:(i?1:-1)*c.track/2}));
     }
     this.time=0;this.steerAngle=0;this.acc={x:0,y:0,z:0};this.sensorVelocity={x:0,y:0,z:0};this.inputs={throttle:0,steering:0,left:0,right:0};this.driveDemand=c.drivetrain==='tracked'?[0,0]:[0];
+  }
+  applyMass(){
+    const c=this.c;
+    // Give collision shells no extra mass; keep total mass and CoG explicit.
+    const inertia={x:c.mass*(c.height*c.height+c.width*c.width)/12,y:c.mass*(c.length*c.length+c.width*c.width)/12,z:c.mass*(c.length*c.length+c.height*c.height)/12};
+    this.body.setAdditionalMassProperties(c.mass,c.centerOfGravity,inertia,{x:0,y:0,z:0,w:1},true);
+    this.body.recomputeMassPropertiesFromColliders();
+  }
+  tuneWheel(i,n){const t=this.c.suspensionTuning;this.car.setWheelSuspensionStiffness(i,t.stiffness/n);this.car.setWheelSuspensionCompression(i,t.compression/n);this.car.setWheelSuspensionRelaxation(i,t.relaxation/n);this.car.setWheelMaxSuspensionTravel(i,t.travel);this.car.setWheelMaxSuspensionForce(i,t.maxForce/n);this.car.setWheelFrictionSlip(i,t.grip);}
+  applyTuning(v){
+    for(const path of LIVE_FIELDS){const [a,b]=path.split('.');if(b)this.c[a][b]=v[a][b];else this.c[a]=structuredClone(v[a]);}
+    for(const group of this.wheelGroups)for(const i of group)this.tuneWheel(i,group.length);
+    this.applyMass();
   }
   spawnHeight(){return (this.c.drivetrain==='tracked'?this.c.trackGeometry.radius:this.c.wheelRadius)+this.c.suspension;}
   reset(){this.body.setTranslation({x:0,y:this.spawnHeight(),z:0},true);this.body.setRotation({x:0,y:0,z:0,w:1},true);this.body.setLinvel({x:0,y:0,z:0},true);this.body.setAngvel({x:0,y:0,z:0},true);this.body.resetForces(true);this.body.resetTorques(true);this.acc={x:0,y:0,z:0};this.sensorVelocity={x:0,y:0,z:0};this.time=0;this.steerAngle=0;this.driveDemand.fill(0);this.inputs={throttle:0,steering:0,left:0,right:0};for(const t of this.trackStates){t.distance=0;t.rotation=0;t.speed=0;t.contacts=[];}}
