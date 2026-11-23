@@ -34,3 +34,26 @@ test('drivetrain fields default, merge and validate',()=>{
  for(const patch of [{steerRate:0},{steerRate:101},{ackermannFactor:-.1},{ackermannFactor:1.1},{torqueSplit:1.5},{diff:{front:'welded'}},{diff:{middle:'open'}}])assert.throws(()=>resolveVehicle({profile:'mn168',...patch}),undefined,JSON.stringify(patch));
  resolveVehicle({profile:'mn168',torqueSplit:0});resolveVehicle({profile:'mn168',ackermannFactor:0});
 });
+import {fieldClass,LIVE_FIELDS,RELOAD_FIELDS} from '../src/profile-fields.js';
+const tempVehicles=()=>{const dir=fs.mkdtempSync(path.join(os.tmpdir(),'rover-vehicles-'));fs.cpSync(new URL('../config/vehicles',import.meta.url),dir,{recursive:true});return dir;};
+const leaves=(o,p='')=>Object.entries(o).flatMap(([k,x])=>x&&typeof x==='object'&&!Array.isArray(x)?leaves(x,p+k+'.'):[p+k]);
+const matches=(list,leaf)=>list.filter(f=>leaf===f||leaf.startsWith(f+'.'));
+test('reloadProfiles picks up a new profile directory',async()=>{
+ const dir=tempVehicles(),old=process.env.ROVER_VEHICLES_DIR;process.env.ROVER_VEHICLES_DIR=dir;
+ try{
+  const m=await import(`../src/vehicles.js?reload=${Date.now()}`);
+  fs.mkdirSync(path.join(dir,'test-rig'));fs.writeFileSync(path.join(dir,'test-rig/vehicle.json'),JSON.stringify({...resolveVehicle('mn168'),id:'test-rig'}));
+  assert.throws(()=>m.resolveVehicle('test-rig'));
+  m.reloadProfiles();
+  assert.equal(m.resolveVehicle('test-rig').id,'test-rig');assert.ok(m.vehicleProfiles.some(p=>p.id==='test-rig'));assert.equal(m.vehiclesDir(),dir);
+  assert.equal(m.readProfileFiles('test-rig').sitlParm,null);assert.equal(m.readProfileFiles('mn168').profile.id,'mn168');assert.match(m.readProfileFiles('mn168').sitlParm,/\S/);
+  assert.throws(()=>m.readProfileFiles('../mn168'));
+ }finally{if(old===undefined)delete process.env.ROVER_VEHICLES_DIR;else process.env.ROVER_VEHICLES_DIR=old;fs.rmSync(dir,{recursive:true,force:true});}
+});
+test('field classes cover every profile key exactly once',()=>{
+ for(const id of ['mn168','tracked-crawler'])for(const leaf of leaves(resolveVehicle(id))){
+  assert.equal(matches(LIVE_FIELDS,leaf).length+matches(RELOAD_FIELDS,leaf).length,1,leaf);
+ }
+ for(const [p,c] of [['suspensionTuning.grip','live'],['wheelbase','reload'],['trackGeometry.samples','reload'],['trackGeometry.lateralResistance','live'],['diff.front','live'],['drive.riseRate','live'],['collisionBoxes','reload'],['cameraMount.x','reload']])assert.equal(fieldClass(p),c,p);
+ assert.throws(()=>fieldClass('bogus'));
+});

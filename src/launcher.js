@@ -2,9 +2,8 @@ import net from 'node:net';
 import dgram from 'node:dgram';
 import fs from 'node:fs';
 import path from 'node:path';
-import {fileURLToPath} from 'node:url';
-const vehiclesDir=fileURLToPath(new URL('../config/vehicles',import.meta.url));
-const vehicleParmIds=fs.readdirSync(vehiclesDir).filter(d=>{try{return fs.statSync(path.join(vehiclesDir,d)).isDirectory()&&fs.existsSync(path.join(vehiclesDir,d,'sitl.parm'));}catch{return false;}});
+import {vehiclesDir} from './vehicles.js';
+const hasParm=id=>{try{return /^[a-z0-9][a-z0-9-]{0,40}$/.test(id)&&fs.existsSync(path.join(vehiclesDir(),id,'sitl.parm'));}catch{return false;}};
 export function loadLauncherConfig(file){
  let config;
  try{config=JSON.parse(fs.readFileSync(file,'utf8'));}
@@ -51,8 +50,8 @@ export function vehicleServoParameters(config){
 }
 export function vehicleDefaults(config,{root,base=path.join(root,'config/rover.parm'),calibration}={}){
  const [first,...extras]=base.split(',');
- const id=vehicleParmIds.includes(config.vehicle.id)?config.vehicle.id:config.vehicle.drivetrain==='tracked'?'tracked-crawler':'mn168';
- return [first,path.join(root,'config/vehicles',id,'sitl.parm'),...(calibration?[calibration]:[]),...extras].join(',');
+ const id=hasParm(config.vehicle.id)?config.vehicle.id:config.vehicle.drivetrain==='tracked'?'tracked-crawler':'mn168';
+ return [first,(process.env.ROVER_VEHICLES_DIR?path.join(vehiclesDir(),id,'sitl.parm'):path.join(root,'config/vehicles',id,'sitl.parm')),...(calibration?[calibration]:[]),...extras].join(',');
 }
 export function vehicleCalibrationText(config){
  return '# Generated simulator calibration; saved EEPROM retains precedence.\n'+Object.entries(vehicleServoParameters(config)).map(([key,value])=>`${key} ${value}`).join('\n')+'\n';
