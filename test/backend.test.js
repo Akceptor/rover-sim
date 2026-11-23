@@ -7,7 +7,7 @@ import {once} from 'node:events';import dgram from 'node:dgram';
 import {WebSocket} from 'ws';
 async function launch(mode){
  const dir=await fs.mkdtemp(path.join(os.tmpdir(),'rover-test-'));const config=JSON.parse(await fs.readFile(new URL('../config/default.json',import.meta.url)));config.osm=false;config.terrainCacheDir=path.join(dir,'terrain-cache');config.savedLocationsDir=path.join(dir,'saved-locations');config.httpPort=22000+Math.floor(Math.random()*10000);config.udpPort=32000+Math.floor(Math.random()*10000);config.timeoutMs=150;if(mode==='mission-planner')config.mavlink.port=42000+Math.floor(Math.random()*10000);else config.mavlink=null;await fs.writeFile(path.join(dir,'config.json'),JSON.stringify(config));
- const proc=spawn(process.execPath,['src/server.js',...(mode==='mission-planner'?['--mission-planner']:mode==='location-picker'?['--location-picker']:['--flat']),'--config',path.join(dir,'config.json'),...(mode==='standalone'?['--standalone']:[])],{cwd:new URL('..',import.meta.url),stdio:['ignore','pipe','pipe']});let logs='';proc.stdout.on('data',v=>logs+=v);proc.stderr.on('data',v=>logs+=v);
+ const proc=spawn(process.execPath,['src/server.js',...(mode==='mission-planner'?['--mission-planner']:mode==='location-picker'?['--location-picker']:mode==='standalone-picker'?['--standalone','--location-picker']:['--flat']),'--config',path.join(dir,'config.json'),...(mode==='standalone'?['--standalone']:[])],{cwd:new URL('..',import.meta.url),stdio:['ignore','pipe','pipe']});let logs='';proc.stdout.on('data',v=>logs+=v);proc.stderr.on('data',v=>logs+=v);
  const url=`http://127.0.0.1:${config.httpPort}`;
  const state=async()=>{const r=await fetch(url+'/api/state');return r.json();};
  for(let i=0;i<100;i++){if(proc.exitCode!==null)throw Error(logs);try{await state();break;}catch{await delay(30);}}
@@ -33,6 +33,20 @@ test('startup dropdown loads a preset before SITL connects and keeps it locked a
   assert.equal(ready.startTerrain.status,'ready');assert.equal(ready.selectedLocation,'kyiv');assert.equal(ready.home.lat,50.3375);assert.equal(ready.weather.timeZone,'Europe/Kyiv');assert.equal(ready.running,false);
   ws.send(JSON.stringify({type:'selectLocation',id:'lima'}));await delay(50);assert.equal((await s.state()).selectedLocation,'kyiv','selected origin cannot change while launcher may be starting SITL');
  }finally{ws?.terminate();unexpectedSITL.close();await s.close();}
+});
+test('npm run standalone offers the location picker and a selected preset loads and drives',async()=>{
+ assert.match(JSON.parse(await fs.readFile(new URL('../package.json',import.meta.url))).scripts.standalone,/--standalone.*--location-picker/);
+ const s=await launch('standalone-picker');let ws;
+ try{
+  const initial=await s.state();assert.equal(initial.mode,'standalone');assert.equal(initial.startTerrain.status,'selecting');assert.equal(initial.running,false);
+  ws=await s.socket();const init=new Promise(r=>ws.on('message',d=>{const m=JSON.parse(d);if(m.type==='init'&&m.locations?.length)r(m);}));
+  ws.send(JSON.stringify({type:'selectLocation',id:'kyiv'}));
+  let ready;for(let i=0;i<100;i++){ready=await s.state();if(ready.startTerrain.status==='ready')break;await delay(20);}
+  assert.equal(ready.selectedLocation,'kyiv');assert.equal(ready.home.lat,50.3375);
+  const m=await init;assert.equal(m.locationMode,'launcher');assert.ok(m.locations.some(l=>l.id==='kyiv')&&m.locations.some(l=>l.id==='map'));
+  ws.send(JSON.stringify({type:'running',value:true}));ws.send(JSON.stringify({type:'keys',steering:0,throttle:1}));await delay(300);
+  const driving=await s.state();assert.equal(driving.running,true);assert.equal(driving.inputs.throttle,1);
+ }finally{ws?.terminate();await s.close();}
 });
 test('Mission Planner selected start waits for disarm, loads matching terrain and keeps physics held',async()=>{
  const s=await launch('mission-planner'),udp=dgram.createSocket('udp4');let ws;
