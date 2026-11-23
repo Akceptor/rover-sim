@@ -270,3 +270,5 @@ html[data-camera-output] .saved-locations{display:none}
     width: 100%;
   }
 }
+
+.vehicle-picker{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:8px;align-items:center;padding:12px 14px;border-top:1px solid #303741}.vehicle-picker select{min-width:0;width:100%}.vehicle-picker p{grid-column:1/-1;margin:0}.vehicle-picker [data-state="restart"],.vehicle-picker [data-state="error"]{color:#efb86e}

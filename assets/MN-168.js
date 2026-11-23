@@ -98,7 +98,7 @@ export function createCrawler(c){
  b([.027,.028,.271],[.253,.003,0],materials.black,model,'front-bumper');
  b([.025,.026,.257],[-.252,-.001,0],materials.black,model,'rear-bumper');
  // Four independently animated wheels. Tread blocks are instanced to keep draw calls low.
- const wheels=[],tyreWidth=.052*sz,transform=new T.Object3D();
+ const wheels=[],tyreWidth=c.wheelWidth??(.052*sz),transform=new T.Object3D();
  for(let i=0;i<4;i++){
   const steer=new T.Group(),spin=new T.Group();steer.name=`wheel-${i}`;steer.position.set((i<2?1:-1)*wb/2,-c.suspension,(i%2?1:-1)*c.track/2);steer.add(spin);model.add(steer);
   cylinder(r*.94,tyreWidth,[0,0,0],materials.rubber,spin);

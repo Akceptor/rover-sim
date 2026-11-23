@@ -43,3 +43,13 @@ test('RC inputs decode independently of heartbeat, with CRC checks and their own
  const trimmedCentre=Buffer.from('fd29000000010141000002000000dc05dc05dc05dc05dc05dc05dc05dc05dc05dc05dc05dc05dc05dc05dc05dc05dc05dc0508f6d4','hex');
  t.receive(trimmedCentre,5000);assert.deepEqual(t.rcSnapshot(5000).channels.slice(0,4),[1500,1500,1500,1500]);
 });
+
+test('parameter telemetry rejects corrupt values and exposes only current session values',()=>{
+ const t=new HeartbeatTelemetry();
+ // Independent MAVLink v1 PARAM_VALUE wire layout and checksum fixture.
+ const b=Buffer.alloc(33);b.set([254,25,0,1,1,22]);b.writeFloatLE(73,6);b.writeUInt16LE(1,10);b.writeUInt16LE(0,12);b.write('SERVO2_FUNCTION',14);b[30]=9;
+ let crc=65535;for(const byte of [...b.subarray(1,31),220]){let x=byte^(crc&255);x^=(x<<4)&255;crc=((crc>>8)^(x<<8)^(x<<3)^(x>>4))&65535;}b.writeUInt16LE(crc,31);
+ t.receive(b,0);assert.equal(t.parameterSnapshot().SERVO2_FUNCTION,73);
+ const corrupt=Buffer.from(b);corrupt[8]^=1;t.receive(corrupt,5);assert.equal(t.parameterSnapshot().SERVO2_FUNCTION,73);
+ t.clearParameters();assert.deepEqual(t.parameterSnapshot(),{});
+});

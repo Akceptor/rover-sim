@@ -48,3 +48,11 @@ test('Mission Planner copyable command preserves custom ports and quoted Windows
  const defaults='C:\\My Simulator\\config\\rover.parm,C:\\Tuning Files\\drive.parm';
  assert.equal(launcher.missionPlannerCommand(config,defaults),'--model JSON:127.0.0.1 --sim-port-out 9012 --rate 100 --speedup 1 --serial2 udpclient:127.0.0.1:14570 --defaults "'+defaults+'"');
 });
+
+test('vehicle defaults order retains explicit extras after profile and generated calibration',()=>{
+ const config={vehicle:{id:'tracked-crawler',drivetrain:'tracked'},leftTrack:{channel:6,min:1100,trim:1450,max:1900,reversed:true},rightTrack:{channel:7,min:1000,trim:1550,max:2000,reversed:false}};
+ const defaults=launcher.vehicleDefaults(config,{root:'/sim',base:'/sim/config/rover.parm,/custom.parm',calibration:'/run/vehicle.parm'});
+ assert.equal(defaults,'/sim/config/rover.parm,/sim/config/tracked-crawler.parm,/run/vehicle.parm,/custom.parm');
+ const params=launcher.vehicleServoParameters(config);
+ assert.equal(params.SERVO6_FUNCTION,73);assert.equal(params.SERVO7_FUNCTION,74);assert.equal(params.SERVO6_TRIM,1450);assert.equal(params.SERVO6_REVERSED,1);assert.equal(params.SERVO2_FUNCTION,0);assert.equal(params.SERVO4_FUNCTION,0);
+});

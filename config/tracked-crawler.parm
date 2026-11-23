@@ -1,0 +1,6 @@
+# Independent left/right motors. Verified pinned SRV_Channel 73/74.
+SERVO2_FUNCTION 73
+SERVO4_FUNCTION 74
+CRUISE_SPEED 0.8
+WP_SPEED 0.8
+TURN_RADIUS 0

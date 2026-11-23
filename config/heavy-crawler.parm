@@ -1,0 +1,6 @@
+# Larger wheeled crawler. Initial estimates; saved parameters retain precedence.
+SERVO2_FUNCTION 26
+SERVO4_FUNCTION 70
+CRUISE_SPEED 1.0
+WP_SPEED 1.0
+TURN_RADIUS 0.9

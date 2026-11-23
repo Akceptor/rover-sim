@@ -6,14 +6,14 @@ export function createWeatherControls(){
  function render(){
   $('timeMode').value=preferences.timeMode;$('weatherMode').value=preferences.weatherMode;
   $('manualTimeControls').hidden=preferences.timeMode!=='manual';$('manualWeatherControls').hidden=preferences.weatherMode!=='manual';
-  $('timeMinute').value=preferences.minute;$('selectedMinute').textContent=minuteLabel(preferences.minute);$('weatherPreset').value=preferences.preset;
+  if($('timeMinute'))$('timeMinute').value=preferences.minute;if($('selectedMinute'))$('selectedMinute').textContent=minuteLabel(preferences.minute);$('weatherPreset').value=preferences.preset;
  }
  function apply(value){const next=resolvePreferences(value);if(JSON.stringify(next)===JSON.stringify(preferences))return false;preferences=next;savePreferences(storage,preferences);revision++;render();return true;}
  const sync=createPreferenceSync({getPreferences:()=>preferences,applyPreferences:apply,send:message=>send?.(message)??false,isCameraOutput:cameraOutput});
  function change(patch){if(apply({...preferences,...patch}))sync.publish();}
  $('timeMode').addEventListener('change',e=>change({timeMode:e.target.value}));
  $('weatherMode').addEventListener('change',e=>change({weatherMode:e.target.value}));
- $('timeMinute').addEventListener('input',e=>change({minute:Number(e.target.value)}));
+ $('timeMinute')?.addEventListener('input',e=>change({minute:Number(e.target.value)}));
  $('weatherPreset').addEventListener('change',e=>change({preset:e.target.value}));
  for(const button of document.querySelectorAll('[data-time-preset]'))button.addEventListener('click',()=>{const minute=button.dataset.timePreset==='sunset'?sunset:Number(button.dataset.timePreset);if(minute!==null)change({minute});});
  window.addEventListener('storage',event=>{if(event.key===PREFERENCES_KEY||event.key===null){if(apply(loadPreferences(storage))&&!cameraOutput)sync.publish();}});

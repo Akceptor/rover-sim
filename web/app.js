@@ -1,7 +1,7 @@
 import * as T from '/three.js';
 import {terrainApproximationWarning} from '/terrain.js';
 import {CameraVideo} from '/video.js';
-import {createCrawler} from '/assets/MN-168.js';
+import {createVehicle} from '/assets/vehicle.js';
 import {createWeatherView} from '/weather-view.js';
 import {createScenery} from '/scenery.js';
 import {addTerrain,addTreeCrown} from '/terrain-view.js';
@@ -20,7 +20,7 @@ const weatherView=createWeatherView(scene,renderer,sun,ambient,scenery);const ca
 // Rendering and video capture do not own physics or MAVLink control.
 export const fpvOutput={camera,canvas,renderer,scene};
 function box(size,color,parent=scene){const m=new T.Mesh(new T.BoxGeometry(...size),new T.MeshStandardMaterial({color,roughness:.85}));m.castShadow=true;m.receiveShadow=true;parent.add(m);return m;}
-let state=null,config=null,wheels=[],ws,mode='sitl',lastReceive=0,crawler=null,locations=[],baseLocations=[],locationMode=null,mapChoice=null;
+let state=null,config=null,wheels=[],ws,mode='sitl',lastReceive=0,crawler=null,locations=[],baseLocations=[],locationMode=null,mapChoice=null,vehicleRevision=null,activeVehicleId=null;
 const locationMap=document.documentElement.dataset.cameraOutput?null:createLocationMap({onPick:point=>{mapChoice=point;$('locationSelect').value='map';describeLocation();savedLocations?.selection();}});
 function notice(message){$('notice').textContent=message;$('notice').style.display='block';setTimeout(()=>$('notice').style.display='none',7000);}
 const savedLocations=document.documentElement.dataset.cameraOutput?null:createSavedLocations({send,getSelection:()=>({id:$('locationSelect').value,point:mapChoice}),pickerEnabled:()=>baseLocations.length>0,onFavorites:renderLocations});
@@ -31,9 +31,15 @@ function renderLocations(favorites){
  const children=baseLocations.map(option);if(favorites.length){const group=document.createElement('optgroup');group.label='Favorites';group.append(...favorites.map(option));children.push(group);}
  $('locationSelect').replaceChildren(...children);$('locationSelect').value=selection;$('locationPicker').hidden=!locations.length;describeLocation();
 }
-function setup(m){osmSettings?.init(m.osmSettings);$('missionPlannerSetup').hidden=!m.missionPlannerCommand;$('missionPlannerCommand').value=m.missionPlannerCommand??'';locationMode=m.locationMode;baseLocations=m.locations??[];renderLocations(m.favorites??[]);$('locationSelect').value=m.selectedLocation??state?.selectedLocation??locations[0]?.id??'';mapChoice=m.selectedLocation==='map'?m.mapSelection:null;locationMap?.setWorld(m.map);if(mapChoice)locationMap?.select(mapChoice,false);describeLocation();savedLocations?.init(m);config=m.config;mode=m.mode;const c=config.vehicle;$('mode').textContent=mode==='sitl'?'ARDUROVER SITL':'STANDALONE · NO AUTOPILOT';$('help').textContent=mode==='sitl'?'Drive using Mission Planner or your MAVLink companion. Browser keys do not control physics.':'W/S or ↑/↓: forward / brake / reverse. A/D or ←/→: steer. Release to stop. Click the view to focus.';$('keyLegend').hidden=mode!=='standalone';for(const id of ['armState','flightMode'])$(id).hidden=mode!=='sitl';
+function setup(m){
+ const command=m.missionPlannerCommand??'';if($('missionPlannerCommand').value!==command)$('missionPlannerCopyStatus').textContent='';
+ const c=m.config.vehicle,changed=activeVehicleId!==(c.id??'mn168');vehicleRevision=m.vehicleRevision??0;state=null;
+ $('vehicleSelect').replaceChildren(...(m.vehicles??[{id:c.id??'mn168',name:c.name??'MN168'}]).map(v=>{const o=document.createElement('option');o.value=v.id;o.textContent=v.name;return o;}));$('vehicleSelect').value=m.vehicleStatus?.pendingId??m.selectedVehicle??c.id??'mn168';
+ $('activeVehicle').textContent=c.name??'MN168';$('activeVehicle').dataset.vehicle=c.id??'mn168';
+ if(changed){keys.clear();for(const [id,axis] of [['mountX','x'],['mountY','y'],['mountRight','z']])$(id).value=c.cameraMount?.[axis]??({x:.15,y:.16,z:0}[axis]);}activeVehicleId=c.id??'mn168';
+ osmSettings?.init(m.osmSettings);$('missionPlannerSetup').hidden=!m.missionPlannerCommand;$('missionPlannerCommand').value=m.missionPlannerCommand??'';locationMode=m.locationMode;baseLocations=m.locations??[];renderLocations(m.favorites??[]);$('locationSelect').value=m.selectedLocation??state?.selectedLocation??locations[0]?.id??'';mapChoice=m.selectedLocation==='map'?m.mapSelection:null;locationMap?.setWorld(m.map);if(mapChoice)locationMap?.select(mapChoice,false);describeLocation();savedLocations?.init(m);config=m.config;mode=m.mode;$('mode').textContent=mode==='sitl'?'ARDUROVER SITL':'STANDALONE · NO AUTOPILOT';$('help').textContent=mode==='sitl'?'Drive using Mission Planner or your MAVLink companion. Browser keys do not control physics.':'W/S or ↑/↓: forward / brake / reverse. A/D or ←/→: steer. Release to stop. Click the view to focus.';$('keyLegend').hidden=mode!=='standalone';for(const id of ['armState','flightMode'])$(id).hidden=mode!=='sitl';
   if(crawler){rover.remove(crawler.model);crawler.dispose();}
-  crawler=createCrawler(c);rover.add(crawler.model);wheels=crawler.wheels;
+  crawler=createVehicle(c);rover.add(crawler.model);wheels=crawler.wheels;rover.userData.vehicleRevision=vehicleRevision;
   // Init is resent on reconnect; replace world instead of duplicating objects.
   if(scene.userData.world){const old=scene.userData.world;scene.remove(old);old.traverse(o=>{o.geometry?.dispose();if(o.material){for(const m of Array.isArray(o.material)?o.material:[o.material]){if(o.name==='real-terrain')m.map?.dispose();m.dispose();}}});}const world=new T.Group();scene.userData.world=world;scene.add(world);
   scenery.sky.scale.setScalar(m.terrain?10:1);
@@ -48,7 +54,7 @@ function setup(m){osmSettings?.init(m.osmSettings);$('missionPlannerSetup').hidd
 }
 function send(m){if(ws?.readyState!==WebSocket.OPEN)return false;ws.send(JSON.stringify(m));return true;}
 weatherView.setPreferenceSender(send);
-function connect(){ws=new WebSocket(`${location.protocol==='https:'?'wss':'ws'}://${location.host}`);ws.onmessage=e=>{const m=JSON.parse(e.data);osmSettings?.message(m);if(m.type==='init'){weatherView.receivePreferences(m.environmentPreferences??null);setup(m);}if(m.type==='environmentPreferences')weatherView.receivePreferences(m.preferences);if(m.type==='favorites')savedLocations?.message(m);if(m.type==='error'){notice(m.message);savedLocations?.message(m);}if(m.type==='state'){state=m;lastReceive=performance.now();savedLocations?.state(m);osmSettings?.state(m);}};ws.onclose=()=>{osmSettings?.connection(false);savedLocations?.connection(false);keys.clear();$('connection').textContent='Backend offline · reconnecting';$('connection').dataset.state='offline';setTimeout(connect,1000);};}
+function connect(){ws=new WebSocket(`${location.protocol==='https:'?'wss':'ws'}://${location.host}`);ws.onmessage=e=>{const m=JSON.parse(e.data);osmSettings?.message(m);if(m.type==='init'){weatherView.receivePreferences(m.environmentPreferences??null);setup(m);}if(m.type==='environmentPreferences')weatherView.receivePreferences(m.preferences);if(m.type==='favorites')savedLocations?.message(m);if(m.type==='error'){notice(m.message);savedLocations?.message(m);}if(m.type==='state'&&(m.vehicleRevision??0)===vehicleRevision){state=m;lastReceive=performance.now();savedLocations?.state(m);osmSettings?.state(m);}};ws.onclose=()=>{osmSettings?.connection(false);savedLocations?.connection(false);keys.clear();$('connection').textContent='Backend offline · reconnecting';$('connection').dataset.state='offline';setTimeout(connect,1000);};}
 connect();
 $('run').onclick=()=>send({type:'running',value:!state?.running});$('reset').onclick=()=>send({type:'reset'});
 
@@ -79,6 +85,7 @@ if (timeInput) {
 function describeLocation(){const p=locations.find(p=>p.id===$('locationSelect').value);$('locationHint').textContent=p?(p.favorite?'Available offline · saved terrain, satellite colours and OpenStreetMap data':['custom','map'].includes(p.id)?(p.id==='map'&&mapChoice?`Selected start · ${mapChoice.lat.toFixed(7)}, ${mapChoice.lon.toFixed(7)}`:p.description):`${p.description} · 960 m map · ${p.reliefM} m elevation range · bundled offline`):state?.selectedLocation?.startsWith('saved:')?'Loaded favorite was removed. The loaded world remains available to save.':'';}
 $('locationSelect').onchange=()=>{describeLocation();savedLocations?.selection();const p=locations.find(p=>p.id===$('locationSelect').value);if(Number.isFinite(p?.lat))locationMap?.select(p);else locationMap?.select(p?.id==='map'?mapChoice:null);};
 $('loadLocation').onclick=()=>{const id=$('locationSelect').value;if(id==='map'&&!mapChoice){notice('Click the map to choose a starting position.');return;}send({type:'selectLocation',id,...(id==='map'?mapChoice:{})});};
+$('loadVehicle').onclick=()=>{release();send({type:'selectVehicle',id:$('vehicleSelect').value});};
 $('retryOsm').onclick=()=>send({type:'retryOsm'});
 $('retryTerrain').onclick=()=>send({type:'retryTerrain'});
 $('copyMissionPlannerCommand').onclick=async()=>{
@@ -97,9 +104,9 @@ function release(){keys.clear();send({type:'keys',steering:0,throttle:0});}addEv
 setInterval(()=>{if(mode==='standalone')send({type:'keys',throttle:Number(keys.has('w')||keys.has('arrowup'))-Number(keys.has('s')||keys.has('arrowdown')),steering:Number(keys.has('d')||keys.has('arrowright'))-Number(keys.has('a')||keys.has('arrowleft'))});},80);
 const mount=new T.Vector3(),target=new T.Vector3(),chasePosition=new T.Vector3();let previousTime=0,previousWall=0,ratio=0;
 function render(){requestAnimationFrame(render);const width=viewport.clientWidth,height=viewport.clientHeight;if(canvas.width!==Math.floor(width*renderer.getPixelRatio())||canvas.height!==Math.floor(height*renderer.getPixelRatio())){renderer.setSize(width,height,false);for(const c of [camera,chase]){c.aspect=width/height;c.updateProjectionMatrix();}}
-  if(state&&config){const s=state;rover.position.copy(s.position);rover.quaternion.copy(s.rotation);for(let i=0;i<4;i++){const w=s.wheels[i];wheels[i].steer.position.set(w.x,w.y,w.z);wheels[i].steer.rotation.y=i<2?-s.inputs.steering*config.vehicle.maxSteer:0;wheels[i].spin.rotation.z=w.rotation;}
+  if(state&&config){const s=state;rover.position.copy(s.position);rover.quaternion.copy(s.rotation);crawler.update(s);
     mount.set(+$('mountX').value||0,+$('mountY').value||0,(+$('mountRight').value||0)).applyQuaternion(rover.quaternion).add(rover.position);camera.position.copy(mount);const pan=(s.camera?.panDeg??0)*Math.PI/180,tilt=(s.camera?.tiltDeg??0)*Math.PI/180;target.set(Math.cos(tilt)*Math.cos(pan),Math.sin(tilt),Math.cos(tilt)*Math.sin(pan)).applyQuaternion(rover.quaternion).add(mount);camera.up.set(0,1,0).applyQuaternion(rover.quaternion);camera.lookAt(target);
-    chasePosition.set(-1.8,1.05,.5).applyQuaternion(rover.quaternion).add(rover.position);chase.position.lerp(chasePosition,.12);chase.lookAt(rover.position.clone().add(new T.Vector3(0,.1,0)));
+    chasePosition.set(-Math.max(1.8,config.vehicle.length*3),Math.max(1.05,config.vehicle.length*1.5),Math.max(.5,config.vehicle.width*1.5)).applyQuaternion(rover.quaternion).add(rover.position);chase.position.lerp(chasePosition,.12);chase.lookAt(rover.position.clone().add(new T.Vector3(0,.1,0)));
     $('speed').textContent=s.speed.toFixed(2);$('heading').textContent=`${Math.round(s.heading).toString().padStart(3,'0')}°`;$('time').textContent=s.simTime.toFixed(1);$('rate').textContent=s.rate;
     for(const [id,value,index]of [['steer',s.inputs.steering,config.steering.channel-1],['throttle',s.inputs.throttle,config.throttle.channel-1]]){$(id).textContent=`${value.toFixed(2)}${s.raw[index]?` · ${s.raw[index]} µs`:''}`;$(id+'Meter').value=value;}
     const online=performance.now()-lastReceive<2000;const connectionText=!online?'Backend offline':mode==='standalone'?'Standalone physics active':s.connected?'JSON connected':s.resetPending?'Restart SITL to continue':'Waiting for SITL · physics held';if($('connection').textContent!==connectionText)$('connection').textContent=connectionText;$('connection').dataset.state=!online?'offline':s.connected||mode==='standalone'?'online':'waiting';
@@ -108,9 +115,10 @@ function render(){requestAnimationFrame(render);const width=viewport.clientWidth
     for(const [id,text] of [['armState',armText],['flightMode',flightText]])if($(id).textContent!==text)$(id).textContent=text;
     $('armState').dataset.state=autopilot?autopilot.armed?'armed':'disarmed':'unknown';$('flightMode').dataset.state=autopilot?.flightMode?'known':'unknown';
     if(s.wallTime!==previousWall){ratio=(s.simTime-previousTime)/(s.wallTime-previousWall);previousTime=s.simTime;previousWall=s.wallTime;}
-    const terrainMessage=s.startTerrain?.message??'';if($('startTerrainStatus').textContent!==terrainMessage)$('startTerrainStatus').textContent=terrainMessage;$('run').disabled=!!s.startTerrain&&s.startTerrain.status!=='ready'||s.osm?.status==='loading'&&s.osm.hold;
+    const terrainMessage=s.startTerrain?.message??'';if($('startTerrainStatus').textContent!==terrainMessage)$('startTerrainStatus').textContent=terrainMessage;$('run').disabled=!!s.vehicleStatus&&s.vehicleStatus.status!=='ready'||!!s.startTerrain&&s.startTerrain.status!=='ready'||s.osm?.status==='loading'&&s.osm.hold;
     $('osmStatus').textContent=s.osm?.message??'';$('retryOsm').hidden=s.osm?.status!=='error';$('retryOsm').disabled=!online||s.startTerrain?.status==='loading';
     const externalPicker=locationMode==='mission-planner',unsafeSelection=externalPicker&&(s.connected||s.autopilot?.connected)&&s.autopilot?.armed!==false;
+    const vehicleStatus=s.vehicleStatus??{status:'ready',message:''};$('vehicleStatus').textContent=vehicleStatus.message??'';$('vehicleStatus').dataset.state=vehicleStatus.status;const vehicleUnsafe=mode==='sitl'&&(s.connected||s.autopilot?.connected)&&s.autopilot?.armed!==false;$('vehicleSelect').disabled=!online||vehicleUnsafe||vehicleStatus.status==='loading';$('loadVehicle').disabled=$('vehicleSelect').disabled||!$('vehicleSelect').value;
     $('locationSelect').disabled=!baseLocations.length||!online||s.startTerrain?.status==='loading'||(!externalPicker&&s.startTerrain?.status==='ready')||unsafeSelection;$('loadLocation').disabled=$('locationSelect').disabled||!$('locationSelect').value;
     locationMap?.setPicking(baseLocations.length>0&&!$('locationSelect').disabled,unsafeSelection?'Disarm SITL before choosing a new start.':!baseLocations.length?'Use --choose-location or --mission-planner to pick a start.':$('locationSelect').disabled?'Location selection is held while loading or while SITL is active.':'Click a start, then Load location.');locationMap?.update(s);
     $('terrainLoad').hidden=!s.startTerrain;$('retryTerrain').hidden=['ready','restart','verifying'].includes(s.startTerrain?.status)||(baseLocations.length>0&&s.startTerrain?.status==='selecting');$('retryTerrain').disabled=!online||!s.canRetryTerrain;$('retryTerrain').textContent=s.startTerrain?.status==='loading'?'Loading terrain…':'Retry terrain';

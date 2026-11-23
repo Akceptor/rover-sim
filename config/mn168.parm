@@ -1,0 +1,6 @@
+# MN168 wheeled crawler. Initial estimates; saved parameters retain precedence.
+SERVO2_FUNCTION 26
+SERVO4_FUNCTION 70
+CRUISE_SPEED 1.2
+WP_SPEED 1.2
+TURN_RADIUS 0.6

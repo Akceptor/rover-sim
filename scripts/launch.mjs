@@ -51,15 +51,32 @@ try{
  await checkPorts(ports);
  const extra=values['extra-params']?path.resolve(values['extra-params']):null;if(extra)await fs.access(extra);
  const defaults=path.join(root,'config/rover.parm')+(extra?','+extra:'');
- if(values['mission-planner'])console.log(`[launcher] Mission Planner Simulation → Extra command line:\n${missionPlannerCommand(config,defaults)}\n[launcher] Copy this command from the browser's Mission Planner setup panel too. Keep heading 0 and Wipe unchecked.\n`);
+
  const url=`http://${localHost(config.httpHost)}:${config.httpPort}`;
  const state=async()=>{const response=await fetch(url+'/api/state',{signal:AbortSignal.timeout(1000)});if(!response.ok)throw Error('backend not ready');return response.json();};
- group.start('backend',process.execPath,[path.join(root,'src/server.js'),'--config',configPath,...(values.standalone?['--standalone']:[]),...(values['mission-planner']?['--mission-planner','--mission-planner-defaults',defaults]:[]),...(values['choose-location']?['--location-picker']:[]),...(values.flat?['--flat']:[]),...(values.playground?['--playground']:[])],{cwd:root,ipc:true});
+ group.start('backend',process.execPath,[path.join(root,'src/server.js'),'--config',configPath,...(values.standalone?['--standalone']:[]),...(values['mission-planner']?['--mission-planner','--mission-planner-defaults',defaults]:[]),...(!values.standalone&&!values['mission-planner']?['--managed-sitl']:[]),...(!values['mission-planner']&&extra?['--mission-planner-defaults',defaults]:[]),...(values['choose-location']?['--location-picker']:[]),...(values.flat?['--flat']:[]),...(values.playground?['--playground']:[])],{cwd:root,ipc:true});
  await waitFor('backend',state);
- if(values['choose-location']){console.log(`[launcher] Open ${url} and choose a location. All presets are bundled for offline use.`);await waitFor('location selection',async()=>(await state()).startTerrain?.status==='ready',Infinity);}
+ if(values['mission-planner'])console.log(`[launcher] Mission Planner Simulation → Extra command line:\n${missionPlannerCommand(config,(await state()).vehicleStartup.defaults)}\n[launcher] Copy the current command from the browser's Mission Planner setup panel after changing vehicle. Keep heading 0 and Wipe unchecked.\n`);
+ if(values['choose-location']){console.log(`[launcher] Open ${url} and choose a location. All presets are bundled for offline use.`);await waitFor('location selection',async()=>{const current=await state();return current.startTerrain?.status==='ready'&&current.vehicleStatus?.status==='ready';},Infinity);}
  if(!values.standalone&&!values['mission-planner']){
   const runDir=path.resolve(values['run-dir']??path.join(root,'.run',process.platform==='win32'?'sitl-windows':'sitl'));await fs.mkdir(runDir,{recursive:true});
-  group.start('sitl',executable,sitlArguments(config,{defaults,mavlinkPort,wipe:values.wipe,home:values['choose-location']?(await state()).home:environment.home}),{cwd:runDir});
+  const initial=await state();
+  let sitl=group.start('sitl',executable,sitlArguments(config,{defaults:initial.vehicleStartup.defaults,mavlinkPort,wipe:values.wipe,home:values['choose-location']?initial.home:environment.home}),{cwd:runDir});
+  // Restart only the owned SITL child. Keep the run directory/EEPROM, backend,
+  // browser, terrain and video alive throughout a disarmed vehicle transition.
+  void(async()=>{
+   while(!group.stopping){
+    await delay(200,undefined,{signal:group.controller.signal});
+    const current=await state();
+    if(current.vehicleStatus?.status!=='restart')continue;
+    console.log(`[launcher] Restarting SITL for ${current.vehicleStatus.pendingId}; preserving saved parameters.`);
+    await group.stopChild(sitl);
+    await delay(config.timeoutMs+100,undefined,{signal:group.controller.signal});
+    if(group.stopping)return;
+    sitl=group.start('sitl',executable,sitlArguments(config,{defaults:current.vehicleStartup.defaults,mavlinkPort,home:current.home}),{cwd:runDir});
+    await waitFor('vehicle restart',async()=>{const next=await state();return next.vehicleStatus?.status!=='restart'&&next.connected;},40000);
+   }
+  })().catch(error=>{if(!group.stopping){console.error(`[launcher] Vehicle restart failed: ${error.message}`);void group.stop(1);}});
   await waitFor('SITL JSON connection',async()=>(await state()).connected,40000);
  }
  if(!values['no-video']){

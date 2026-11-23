@@ -18,6 +18,17 @@ const terrain={version:1,name:'Exact offline map',home:{lat:12.3456789,lon:23.45
 const overlay=processOsm({elements:[]},terrain);
 overlay.buildings.push({id:'way/offline',outer:[[5,-5],[10,-5],[10,5],[5,5]],holes:[],height:6});
 overlay.roads.push({id:'way/road',points:[[-8,-8],[-8,8]],width:2,paved:true});
+// Fixtures share a socket for actuator and MAVLink traffic. Only the physics
+// endpoint supplies sensor JSON; parameter requests arrive from the telemetry port.
+function sensorReply(socket,physicsPort){
+ return new Promise((resolve,reject)=>{
+  const cleanup=()=>{clearTimeout(timer);socket.off('message',receive);socket.off('error',fail);};
+  const fail=error=>{cleanup();reject(error);};
+  const receive=(bytes,remote)=>{if(remote.port===physicsPort){cleanup();resolve(bytes);}};
+  const timer=setTimeout(()=>fail(Error('Timed out waiting for physics sensor reply')),2000);
+  socket.on('message',receive);socket.once('error',fail);
+ });
+}
 async function until(fn){let value;for(let i=0;i<200;i++){value=await fn();if(value)return value;await delay(20);}throw Error('Timed out');}
 async function fixture({imagery=true,osm=true,badDirectory=false,osmError=false}={}){
  const dir=await fs.mkdtemp(path.join(os.tmpdir(),'saved-backend-'));
@@ -71,7 +82,7 @@ test('saved selection retains safety guards and selected descriptor after deleti
  const f=await fixture(),udp=dgram.createSocket('udp4');try{
   const saved=await f.store.save({name:'Saved held',terrain,overlay});const s=await f.launch();s.send({type:'selectLocation',id:saved.id});await ready(s);
   const packet=n=>{const b=Buffer.alloc(40);b.writeUInt16LE(18458);b.writeUInt16LE(100,2);b.writeUInt32LE(n,4);return b;};
-  const exchange=async n=>{const reply=once(udp,'message',{signal:AbortSignal.timeout(2000)});udp.send(packet(n),f.config.udpPort,'127.0.0.1');return (await reply)[0];};await exchange(2);
+  const exchange=async n=>{const reply=sensorReply(udp,f.config.udpPort);udp.send(packet(n),f.config.udpPort,'127.0.0.1');return reply;};await exchange(2);
   const heartbeat=armed=>udp.send(Buffer.from(armed?'fe0900010100000000000a038104035d04':'fd0900000001010000000f0000000a030104037547','hex'),f.config.mavlink.port,'127.0.0.1');
   s.messages.length=0;s.send({type:'selectLocation',id:saved.id});await message(s,'error');heartbeat(true);await until(async()=>(await s.state()).autopilot.armed===true);s.messages.length=0;s.send({type:'selectLocation',id:saved.id});await message(s,'error');
   heartbeat(false);await until(async()=>(await s.state()).autopilot.armed===false);await delay(270);await exchange(3);s.messages.length=0;s.send({type:'selectLocation',id:saved.id});await message(s,'error');assert.equal((await s.state()).autopilot.armed,null);heartbeat(false);await until(async()=>(await s.state()).autopilot.armed===false);s.send({type:'selectLocation',id:saved.id});await until(async()=>(await s.state()).startTerrain.status==='restart');
@@ -135,7 +146,7 @@ test('selecting Custom blocks saving the previous installed favorite until Custo
   s.send({type:'selectLocation',id:'custom'});const pending=await until(async()=>{const state=await s.state();return state.selectedLocation==='custom'&&state.startTerrain.status==='restart'&&state;});
   assert.ok(pending.worldRevision>loaded.worldRevision);assert.equal(pending.canSaveLocation,false);assert.deepEqual(pending.home,terrain.home);assert.equal(pending.running,false);
   s.messages.length=0;s.send({type:'saveLocation',name:'Wrong Custom world',worldRevision:pending.worldRevision});await message(s,'error');assert.equal((await f.store.list()).length,1);assert.deepEqual(await f.store.read(favorite.id),original);
-  const packet=Buffer.alloc(40);packet.writeUInt16LE(18458);packet.writeUInt16LE(100,2);packet.writeUInt32LE(1,4);const reply=once(udp,'message',{signal:AbortSignal.timeout(2000)});udp.send(packet,f.config.udpPort,'127.0.0.1');await reply;
+  const packet=Buffer.alloc(40);packet.writeUInt16LE(18458);packet.writeUInt16LE(100,2);packet.writeUInt32LE(1,4);const reply=sensorReply(udp,f.config.udpPort);udp.send(packet,f.config.udpPort,'127.0.0.1');await reply;
   for(const hex of ['fd2c0000000101a400000000000000000000000000000000000000000000c3f51cc100000000000000000000000098e4001eb01d2a1253ae','fd0f0000000101210000e803000098e4001eb01d2a1260cf026c8f','fd0900000001010000000f0000000a030104037547'])udp.send(Buffer.from(hex,'hex'),f.config.mavlink.port,'127.0.0.1');
   const custom=await ready(s);assert.equal(custom.selectedLocation,'custom');assert.equal(custom.home.lat,customHome.lat);assert.equal(custom.canSaveLocation,true);assert.equal(custom.running,false);assert.equal(f.requests(),0);
  }finally{udp.close();await f.close();}
