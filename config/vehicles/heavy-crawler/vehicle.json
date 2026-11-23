@@ -1,0 +1,58 @@
+{
+  "id": "heavy-crawler",
+  "name": "Expedition · heavy 4WD",
+  "drivetrain": "wheeled",
+
+  "mass": 9,
+  "length": 0.72,
+  "width": 0.34,
+  "height": 0.16,
+  "wheelbase": 0.46,
+  "track": 0.38,
+  "wheelRadius": 0.095,
+  "wheelWidth": 0.048,
+  "suspension": 0.09,
+  "maxSteer": 0.48,
+
+  "engineForce": 16,
+  "maxSpeed": 1.5,
+  "rollingResistance": 1.4,
+  "brakeImpulse": 0.24,
+
+  "centerOfGravity": { "x": -0.025, "y": -0.015, "z": 0 },
+  "cameraMount": { "x": 0.15, "y": 0.24, "z": 0 },
+
+  "suspensionTuning": {
+    "stiffness": 65,
+    "compression": 4.8,
+    "relaxation": 5.2,
+    "travel": 0.065,
+    "maxForce": 280,
+    "grip": 1.8,
+    "sideGrip": 1
+  },
+
+  "drive": {
+    "deadband": 0.025,
+    "riseRate": 1.1,
+    "fallRate": 2.8,
+    "reverseThreshold": 0.08,
+    "neutralBrake": 1,
+    "reverseBrake": 1
+  },
+
+  "contactModel": "ray",
+
+  "trackGeometry": {
+    "length": 0.36,
+    "width": 0.06,
+    "radius": 0.065,
+    "samples": 5,
+    "lateralResistance": 7
+  },
+
+  "collisionBoxes": [
+    { "size": [0.72, 0.16, 0.34], "position": [0, 0, 0] },
+    { "size": [0.34, 0.22, 0.31], "position": [-0.16, 0.2, 0] }
+  ]
+}

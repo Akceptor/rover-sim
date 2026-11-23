@@ -1,0 +1,58 @@
+{
+  "id": "mn168",
+  "name": "MN168 · 4WD crawler",
+  "drivetrain": "wheeled",
+
+  "mass": 3,
+  "length": 0.48,
+  "width": 0.24,
+  "height": 0.12,
+  "wheelbase": 0.30,
+  "track": 0.26,
+  "wheelRadius": 0.065,
+  "wheelWidth": 0.032,
+  "suspension": 0.07,
+  "maxSteer": 0.52,
+
+  "engineForce": 4.5,
+  "maxSpeed": 1.2,
+  "rollingResistance": 0.5,
+  "brakeImpulse": 0.08,
+
+  "centerOfGravity": { "x": 0, "y": -0.015, "z": 0 },
+  "cameraMount": { "x": 0.1, "y": 0.16, "z": 0 },
+
+  "suspensionTuning": {
+    "stiffness": 80,
+    "compression": 4.4,
+    "relaxation": 4.4,
+    "travel": 0.045,
+    "maxForce": 100,
+    "grip": 2,
+    "sideGrip": 1
+  },
+
+  "drive": {
+    "deadband": 0.025,
+    "riseRate": 2,
+    "fallRate": 4,
+    "reverseThreshold": 0.08,
+    "neutralBrake": 1,
+    "reverseBrake": 1
+  },
+
+  "contactModel": "ray",
+
+  "trackGeometry": {
+    "length": 0.36,
+    "width": 0.06,
+    "radius": 0.065,
+    "samples": 5,
+    "lateralResistance": 7
+  },
+
+  "collisionBoxes": [
+    { "size": [0.48, 0.12, 0.24], "position": [0, 0, 0] },
+    { "size": [0.23, 0.16, 0.22], "position": [-0.11, 0.15, 0] }
+  ]
+}

@@ -1,24 +1,12 @@
 // Metres, kilograms, seconds, newtons, radians. +X forward, +Y up, +Z right.
 // Estimates, not manufacturer specifications: see README calibration procedure.
-const calibration=channel=>({channel,min:1000,trim:1500,max:2000,reversed:false});
-const mn={id:'mn168',name:'MN168 · 4WD crawler',drivetrain:'wheeled',mass:3,length:.48,width:.24,height:.12,wheelbase:.30,track:.26,wheelRadius:.065,wheelWidth:.032,suspension:.07,maxSteer:.52,engineForce:4.5,maxSpeed:1.2,rollingResistance:.5,brakeImpulse:.08,
- centerOfGravity:{x:0,y:-.015,z:0},cameraMount:{x:.1,y:.16,z:0},
- suspensionTuning:{stiffness:80,compression:4.4,relaxation:4.4,travel:.045,maxForce:100,grip:2,sideGrip:1},
- drive:{deadband:.025,riseRate:2,fallRate:4,reverseThreshold:.08,neutralBrake:1,reverseBrake:1},
- contactModel:'ray',trackGeometry:{length:.36,width:.06,radius:.065,samples:5,lateralResistance:7},
- collisionBoxes:[{size:[.48,.12,.24],position:[0,0,0]},{size:[.23,.16,.22],position:[-.11,.15,0]}]};
-const heavy={...mn,id:'heavy-crawler',name:'Expedition · heavy 4WD',mass:9,length:.72,width:.34,height:.16,wheelbase:.46,track:.38,wheelRadius:.095,wheelWidth:.048,suspension:.09,maxSteer:.48,engineForce:16,maxSpeed:1.5,rollingResistance:1.4,brakeImpulse:.24,
- centerOfGravity:{x:-.025,y:-.015,z:0},cameraMount:{x:.15,y:.24,z:0},
- suspensionTuning:{stiffness:65,compression:4.8,relaxation:5.2,travel:.065,maxForce:280,grip:1.8,sideGrip:1},
- drive:{...mn.drive,riseRate:1.1,fallRate:2.8},collisionBoxes:[{size:[.72,.16,.34],position:[0,0,0]},{size:[.34,.22,.31],position:[-.16,.2,0]}]};
-const tracked={...mn,id:'tracked-crawler',name:'Surveyor · twin tracks',drivetrain:'tracked',mass:7,length:.55,width:.29,height:.14,wheelbase:.34,track:.34,wheelRadius:.075,wheelWidth:.075,suspension:.065,maxSteer:.52,engineForce:26,maxSpeed:.85,rollingResistance:1,brakeImpulse:.2,
- centerOfGravity:{x:0,y:-.025,z:0},cameraMount:{x:.13,y:.19,z:0},
- suspensionTuning:{stiffness:380,compression:18,relaxation:18,travel:.04,maxForce:150,grip:1.1,sideGrip:1},
- drive:{...mn.drive,riseRate:1.6,fallRate:3,neutralBrake:1},trackGeometry:{length:.5,width:.075,radius:.075,samples:5,lateralResistance:7},
- collisionBoxes:[{size:[.55,.14,.29],position:[0,0,0]},{size:[.26,.12,.26],position:[-.07,.13,0]}]};
+import fs from 'node:fs';
+const vehiclesDir=new URL('../config/vehicles',import.meta.url);
+function loadProfile(dir){return JSON.parse(fs.readFileSync(new URL(`${dir}/vehicle.json`,vehiclesDir+'/'),'utf8'));}
 function freeze(value){if(value&&typeof value==='object'){Object.values(value).forEach(freeze);Object.freeze(value);}return value;}
-export const vehicleProfiles=freeze([mn,heavy,tracked]);
-const fields=Object.keys(mn);
+export const vehicleProfiles=freeze(fs.readdirSync(vehiclesDir).filter(d=>fs.statSync(new URL(d,vehiclesDir+'/')).isDirectory()&&fs.existsSync(new URL(`${d}/vehicle.json`,vehiclesDir+'/'))).map(loadProfile).sort((a,b)=>a.id==='mn168'?-1:b.id==='mn168'?1:a.name.localeCompare(b.name)));
+const calibration=channel=>({channel,min:1000,trim:1500,max:2000,reversed:false});
+const fields=Object.keys(vehicleProfiles[0]);
 function object(value,label){if(!value||typeof value!=='object'||Array.isArray(value))throw Error(`invalid vehicle ${label}`);}
 function range(value,min,max,label,inclusive=false){if(!Number.isFinite(value)||(inclusive?value<min:value<=min)||value>max)throw Error(`invalid vehicle ${label}`);}
 function vector(v,label){object(v,label);for(const key of ['x','y','z']){if(!Number.isFinite(v[key]))throw Error(`invalid vehicle ${label}.${key}`);}if(Object.keys(v).some(k=>!['x','y','z'].includes(k)))throw Error(`unknown vehicle ${label} field`);}
