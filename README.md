@@ -118,7 +118,7 @@ Choose **Vehicle → Load vehicle** beside the location controls. The HUD shows 
 | `heavy-crawler` | Larger front-steered expedition crawler | 9 kg | 0.46 / 0.38 m | 0.095 m | 1.5 m/s |
 | `tracked-crawler` | Independently driven twin tracks | 7 kg | 0.34 m between tracks | 0.075 m | 0.85 m/s |
 
-These are **starting estimates**, not measured manufacturer specifications. Dimensions, CoG, collision shells, camera mount, suspension, grip and drivetrain tuning live in `src/vehicles.js`, in metres, kilograms, seconds, newtons and radians. Vehicle and location are independent. Bundled terrain works with `"osm": false`.
+These are **starting estimates**, not measured manufacturer specifications. Dimensions, CoG, collision shells, camera mount, suspension, grip and drivetrain tuning live in `config/vehicles/<id>/vehicle.json`, in metres, kilograms, seconds, newtons and radians. Vehicle and location are independent. Bundled terrain works with `"osm": false`.
 
 For SITL changes, **disarm first** and wait for the browser to show fresh disarmed telemetry. The simulator holds physics while switching. The managed launcher restarts only SITL, preserving its saved parameters. In `--mission-planner` mode, stop SITL, **Copy command** again, paste into **Simulation → Extra command line**, and start **Rover**. A changed command clears the copied indicator. Wait for output verification before starting physics. Unknown or armed telemetry blocks changes.
 
@@ -151,7 +151,7 @@ For overrides, use an object with `profile` and the fields you want to change; u
 }
 ```
 
-This fragment belongs in a full backend config. For a permanent built-in, add a complete entry in `src/vehicles.js`, its `.parm` defaults, and validation/geometry/behavior tests. Keep IDs unique. The validator rejects unknown fields, invalid PWM calibration, nonfinite values, invalid contact dimensions and out-of-range tuning. Coordinates use **+X forward, +Y up, +Z right**, relative to the chassis origin; `track` is the left/right centre spacing, not the total outside width. `collisionBoxes` use `{size:[length,height,width], position:[x,y,z]}`; they define solid body parts and the newer models render those same shells.
+This fragment belongs in a full backend config. For a permanent built-in, add a directory `config/vehicles/<id>/` with a complete `vehicle.json` and its `sitl.parm` SITL defaults (without `sitl.parm` the launcher falls back to the MN168 or tracked defaults), and validation/geometry/behavior tests. Keep IDs unique. The validator rejects unknown fields, invalid PWM calibration, nonfinite values, invalid contact dimensions and out-of-range tuning. Coordinates use **+X forward, +Y up, +Z right**, relative to the chassis origin; `track` is the left/right centre spacing, not the total outside width. `collisionBoxes` use `{size:[length,height,width], position:[x,y,z]}`; they define solid body parts and the newer models render those same shells.
 
 Calibrate in this order:
 
