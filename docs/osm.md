@@ -22,7 +22,7 @@ feature counts and license](../assets/osm/README.md). Cusco has mapped roads but
 no mapped buildings in this snapshot.
 
 For other starts, the backend queries Overpass for building ways, building
-multipolygons and highway ways over the terrain patch. Requests have a 30-second client timeout and a
+multipolygons and highway ways over the terrain patch. Requests have a 30-second default client timeout and a
 25-second Overpass execution timeout. Server errors, rate limits, malformed or
 partial responses produce a visible error and **Retry OSM**; there is no automatic
 retry loop. A valid empty response is displayed and cached as an empty patch.
@@ -72,13 +72,39 @@ Set `"osm": false` to disable OSM entirely, including downloads and cache use.
 backend's working directory. A different default height uses a different cache
 and does not match the bundled 6 m snapshots.
 
-If the default server is temporarily unavailable, a custom endpoint can be set
-in the backend config selected by the launcher. For European locations, the
-[Dresel Europe instance](https://ovp.dresel.systems/) uses
-`"endpoint": "https://ovp.dresel.systems/api/interpreter"`. That endpoint is
-regional; the operator lists separate endpoints for other continents. It returned
-the custom Kyiv patch successfully during validation. The simulator uses the
-configured endpoint directly and does not rotate servers or retry automatically.
+### Browser connection settings
+
+Open **Settings → OpenStreetMap connection**, or **Configure OSM** beside a failed
+download. Choose **Automatic by region**, a fixed regional/global server, or a
+custom HTTP/HTTPS URL; the form previews the actual endpoint. Timeout is entered
+in seconds (0.001–120). **Save** changes subsequent requests. **Save & retry OSM**
+also retries the loaded terrain immediately using the existing installation
+guards: after physics starts, downloaded geometry is deferred to the next location
+load. Saving cannot interrupt an active terrain/OSM download. Cached and bundled
+data still take precedence, regardless of server choice.
+
+Automatic is the default when the backend has no explicit `osm.endpoint`. It uses
+the [Dresel regional instances](https://ovp.dresel.systems/) for Europe, North
+America, Central America, South America, Asia, Africa and Oceania. The whole patch
+must fit inside exactly one regional extract; overlapping coverage, boundary
+crossings, missing coverage and unselected locations use the global Overpass
+endpoint. Selection uses the bundled `src/osm-regions.js` extract outlines from
+the [Geofabrik index](https://download.geofabrik.de/technical.html), retrieved
+2026-11-23, without a network lookup. These are extract boundaries rather than
+political continent boundaries. Regional coverage data is © Geofabrik GmbH and
+OpenStreetMap contributors, under [ODbL 1.0](https://opendatacommons.org/licenses/odbl/1-0/).
+There is no automatic retry loop or endpoint rotation after a failure.
+
+An existing explicit backend endpoint stays selected as Custom until changed
+through the form. Browser preferences override only endpoint selection and
+timeout. They persist in `<backend-config-path>.osm-settings.local.json`, beside
+the config selected by the launcher, and are shared by all tabs connected to that
+backend. This file and temporary write files are ignored by Git. The original
+config, including cache paths and default height, is preserved. Invalid saved
+preferences fall back to the backend config and show a warning in Settings;
+failed writes show an error without applying the change. To revert to backend
+defaults, stop the simulator and remove its local settings file. `"osm": false`
+still disables OSM and makes these controls unavailable.
 
 ## Geometry and current limits
 
@@ -147,6 +173,11 @@ that refuses all network calls; its road alignment and Rapier geometry are check
 caches to check rendered roads against terrain heights, linked attribution,
 bundled facade texture loading and UVs, and FPV driving into a rendered building. Screenshots go to `.run/osm-fixture-*.png`.
 Existing browser regression scripts explicitly disable OSM downloads.
+
+`npm run test:osm-settings` checks server selection, endpoint preview, save/retry,
+two-tab edit preservation, restart persistence, offline feedback and mobile layout
+against a local fixture server. Model/backend tests also cover regional coasts
+and boundaries, custom endpoint overrides, validation and failed persistence.
 
 Validation during implementation: `npm test` passed (75 passed, one Windows-only skip). The synthetic village Chrome check, existing terrain Chrome check, Mission Planner command-copy browser check, and terrain-selector browser/native-SITL check passed. An OSM-enabled Custom Mission Planner fixture test also confirmed that arming during a delayed download prevents installation and that a subsequent safe retry reuses the cached overlay.
 The initial default-server requests returned HTTP 406/429. A later download via

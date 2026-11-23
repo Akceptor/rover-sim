@@ -11,6 +11,8 @@ __pycache__/
 
 !docs/*.png
 config/launcher.local.json
+*.osm-settings.local.json
+*.osm-settings.local.json.*.tmp
 
 !assets/textures/*.png
 

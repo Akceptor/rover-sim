@@ -78,7 +78,7 @@
 
     <button id="retryTerrain" type="button">Retry terrain</button>
   </div>
-  <div class="terrain-attribution"><span id="osmStatus" role="status"></span> <button id="retryOsm" type="button" hidden>Retry OSM</button></div>
+  <div class="terrain-attribution"><span id="osmStatus" role="status"></span> <button id="retryOsm" type="button" hidden>Retry OSM</button> <button id="configureOsm" type="button" hidden>Configure OSM</button></div>
   <p id="osmAttribution" class="terrain-attribution" hidden><a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer">© OpenStreetMap contributors</a> · ODbL</p>
   <p id="terrainAttribution" class="terrain-attribution"></p>
   <div class="timing"><span><b id="rate">—</b> Hz physics</span><span><b id="time">0.0</b> s simulated</span><span id="diagnostics">Waiting for timing data</span></div>
@@ -89,7 +89,21 @@
 </main>
 <footer><span id="status">Waiting for backend</span><span class="muted">CRAWLER LAB / LOCAL SIMULATION</span></footer>
 <dialog id="settingsDialog" aria-labelledby="settingsTitle">
-  <div class="drawer-heading"><div><span class="muted eyebrow">CAMERA &amp; VIEW</span><h1 id="settingsTitle">Simulator settings</h1></div><button id="closeSettings" aria-label="Close settings">✕</button></div>
+  <div class="drawer-heading"><div><span class="muted eyebrow">CAMERA &amp; MAP DATA</span><h1 id="settingsTitle">Simulator settings</h1></div><button id="closeSettings" aria-label="Close settings">✕</button></div>
+  <form id="osmSettingsForm">
+   <fieldset id="osmSettingsSection"><legend>OpenStreetMap connection</legend>
+    <p class="muted">Choose the server used to download roads and buildings. Settings are saved on this simulator and survive restarts.</p>
+    <label for="osmServer">Server</label><select id="osmServer" name="server"><option value="auto">Automatic by region</option></select>
+    <label for="osmEndpoint" id="osmEndpointLabel" hidden>Custom endpoint</label><input id="osmEndpoint" name="endpoint" type="url" maxlength="2048" placeholder="https://example.com/api/interpreter" spellcheck="false" hidden>
+    <p id="osmResolvedServer" class="osm-endpoint"></p>
+    <p class="muted" id="osmRegionHint">Automatic uses the loaded terrain’s region. Uncertain boundaries use the global server.</p>
+    <p class="muted">Regional coverage: <a href="https://download.geofabrik.de/technical.html" target="_blank" rel="noopener">Geofabrik / OpenStreetMap contributors</a> · <a href="https://opendatacommons.org/licenses/odbl/1-0/" target="_blank" rel="noopener">ODbL</a></p>
+    <label for="osmTimeout">Timeout (seconds)</label><input id="osmTimeout" name="timeout" type="number" min="0.001" max="120" step="0.001" value="30" required>
+    <div class="osm-settings-actions"><button id="osmSave" type="submit">Save</button><button id="osmSaveRetry" type="button">Save &amp; retry OSM</button></div>
+    <p id="osmSettingsStatus" role="status" aria-live="polite"></p>
+    <p class="muted">Cached map data stays available offline. After physics starts, retried map data applies on the next location load.</p>
+   </fieldset>
+  </form>
   <p class="muted">Camera settings change the view only. In SITL, RC4 pans ±30° and RC2 tilts ±15°; 1500 µs centres the camera.</p>
   <label for="camera">Camera</label><select id="camera"><option value="fpv">Onboard FPV</option><option value="chase">Chase</option></select>
   <label for="fov">FPV field of view <output id="fovValue" for="fov">85°</output></label><input id="fov" type="range" min="40" max="120" value="85">

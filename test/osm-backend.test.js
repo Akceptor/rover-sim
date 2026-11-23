@@ -11,18 +11,55 @@ import {WebSocket} from 'ws';
 import dgram from 'node:dgram';
 import {osm,terrain} from './fixtures/osm.js';
 async function until(fn){for(let i=0;i<250;i++){const v=await fn();if(v)return v;await delay(20);}throw Error('Timed out');}
-async function launch({picker=false,missionPlanner=false}={}){
+async function launch({picker=false,missionPlanner=false,osmEnabled=true}={}){
  const dir=await fs.mkdtemp(path.join(os.tmpdir(),'osm-world-'));let respond,requests=0;
  const overpass=http.createServer((req,res)=>{requests++;respond=res;req.resume();});overpass.listen(0,'127.0.0.1');await once(overpass,'listening');
  const config=JSON.parse(await fs.readFile(new URL('../config/default.json',import.meta.url)));config.savedLocationsDir=path.join(dir,'saved-locations');config.httpPort=23000+Math.floor(Math.random()*5000);config.mavlink=missionPlanner?{...config.mavlink,port:43000+Math.floor(Math.random()*5000)}:null;
  config.terrain=path.join(dir,'terrain.json');config.osm={bundledDir:null,endpoint:`http://127.0.0.1:${overpass.address().port}`,cacheDir:path.join(dir,'osm-cache'),timeoutMs:1000};
+ if(!osmEnabled)config.osm=false;
  await fs.writeFile(config.terrain,JSON.stringify(terrain));await fs.writeFile(path.join(dir,'config.json'),JSON.stringify(config));
  const proc=spawn(process.execPath,['src/server.js',...(missionPlanner?['--mission-planner']:['--standalone']),...(picker?['--location-picker']:[]),'--config',path.join(dir,'config.json')],{stdio:['ignore','pipe','pipe']});let logs='';proc.stdout.on('data',v=>logs+=v);proc.stderr.on('data',v=>logs+=v);
  const url=`http://127.0.0.1:${config.httpPort}`,state=async()=>{const r=await fetch(url+'/api/state');return r.json();};
  await until(async()=>{if(proc.exitCode!==null)throw Error(logs);try{return await state();}catch{return false;}});
- const ws=new WebSocket(url.replace('http:','ws:'),{origin:url});const inits=[];ws.on('message',v=>{const m=JSON.parse(v);if(m.type==='init')inits.push(m);});await once(ws,'open');
- return {state,config,dir,inits,send:m=>ws.send(JSON.stringify(m)),requests:()=>requests,reply:(status=200,data=osm)=>{respond.writeHead(status,{'Content-Type':'application/json'});respond.end(JSON.stringify(data));},async close(){ws.terminate();proc.kill();await once(proc,'exit');overpass.closeAllConnections();await new Promise(r=>overpass.close(r));await fs.rm(dir,{recursive:true,force:true});}};
+ const ws=new WebSocket(url.replace('http:','ws:'),{origin:url});const inits=[],messages=[];ws.on('message',v=>{const m=JSON.parse(v);messages.push(m);if(m.type==='init')inits.push(m);});await once(ws,'open');
+ return {state,config,dir,inits,messages,send:m=>ws.send(JSON.stringify(m)),requests:()=>requests,reply:(status=200,data=osm)=>{respond.writeHead(status,{'Content-Type':'application/json'});respond.end(JSON.stringify(data));},async close(){ws.terminate();proc.kill();await once(proc,'exit');overpass.closeAllConnections();await new Promise(r=>overpass.close(r));await fs.rm(dir,{recursive:true,force:true});}};
 }
+test('OSM settings reject busy and invalid updates; save and retry persists new endpoint without changing the world',async()=>{
+ const s=await launch();let replacement,received=0;
+ try{
+  const beforeFile=await fs.readFile(path.join(s.dir,'config.json'),'utf8');
+  await until(()=>s.requests()===1);
+  const settings={server:'custom',endpoint:s.config.osm.endpoint,timeoutMs:2000};
+  s.send({type:'saveOsmSettings',settings,requestId:'busy'});
+  const busy=await until(()=>s.messages.find(m=>m.type==='osmSettingsResult'&&m.requestId==='busy'));assert.equal(busy.ok,false);assert.match(busy.message,/loading/i);
+  s.reply(504);await until(async()=>(await s.state()).osm.status==='error');const before=await s.state();
+  s.send({type:'saveOsmSettings',settings:{...settings,endpoint:'file:///tmp/no'},requestId:'bad'});
+  assert.equal((await until(()=>s.messages.find(m=>m.requestId==='bad'&&m.type==='osmSettingsResult'))).ok,false);
+  replacement=http.createServer((req,res)=>{received++;req.resume();res.writeHead(200,{'Content-Type':'application/json'});res.end(JSON.stringify(osm));});replacement.listen(0,'127.0.0.1');await once(replacement,'listening');
+  settings.endpoint=`http://127.0.0.1:${replacement.address().port}/interpreter`;
+  s.send({type:'saveOsmSettings',settings,retry:true,requestId:'saved'});
+  const saved=await until(()=>s.messages.find(m=>m.type==='osmSettingsResult'&&m.requestId==='saved'));assert.equal(saved.ok,true);
+  await until(async()=>(await s.state()).osm.status==='deferred');assert.equal(received,1);assert.equal(s.requests(),1);
+  const after=await s.state();assert.equal(after.worldRevision,before.worldRevision);assert.deepEqual(after.osmSettings.settings,settings);assert.equal(after.osmSettings.resolved.endpoint,settings.endpoint);
+  assert.deepEqual(JSON.parse(await fs.readFile(path.join(s.dir,'config.json.osm-settings.local.json'),'utf8')),settings);
+  assert.equal(await fs.readFile(path.join(s.dir,'config.json'),'utf8'),beforeFile);
+ }finally{if(replacement){replacement.closeAllConnections();await new Promise(r=>replacement.close(r));}await s.close();}
+});
+test('a failed OSM settings write is reported and does not change the active settings or retry',async()=>{
+ const s=await launch();try{
+  await until(()=>s.requests()===1);s.reply(504);await until(async()=>(await s.state()).osm.status==='error');
+  const before=(await s.state()).osmSettings.settings;await fs.mkdir(path.join(s.dir,'config.json.osm-settings.local.json'));
+  s.send({type:'saveOsmSettings',settings:{server:'global',endpoint:'',timeoutMs:45000},retry:true,requestId:'failed'});
+  const result=await until(()=>s.messages.find(m=>m.type==='osmSettingsResult'&&m.requestId==='failed'));assert.equal(result.ok,false);
+  assert.deepEqual((await s.state()).osmSettings.settings,before);assert.equal(s.requests(),1);
+ }finally{await s.close();}
+});
+test('OSM settings cannot enable downloads when the backend explicitly disables OSM',async()=>{
+ const s=await launch({osmEnabled:false});try{
+  s.send({type:'saveOsmSettings',settings:{server:'auto',endpoint:'',timeoutMs:30000},retry:true,requestId:'disabled'});
+  const result=await until(()=>s.messages.find(m=>m.type==='osmSettingsResult'&&m.requestId==='disabled'));assert.equal(result.ok,false);assert.match(result.message,/disabled/i);assert.equal(s.requests(),0);
+ }finally{await s.close();}
+});
 test('startup waits for OSM with physics held; browser gets geometry that actually blocks rover',async()=>{
  const s=await launch();try{
  assert.equal((await s.state()).running,false);assert.equal((await s.state()).osm.status,'loading');await until(()=>s.requests()===1);s.reply();

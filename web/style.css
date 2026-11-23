@@ -82,6 +82,15 @@ fieldset p{margin-top:0}
 fieldset label{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-top:12px;font-size:.875rem}
 input[type=number]{width:100px;min-width:0}
 .drawer-note{color:var(--muted);border-top:1px solid var(--line);padding-top:20px;margin-top:28px}
+#osmSettingsForm{min-width:0}
+#osmSettingsSection{min-width:0}
+#osmSettingsSection label{display:block;margin:16px 0 8px}
+#osmSettingsSection input{box-sizing:border-box;width:100%;min-width:0;padding:10px;background:var(--bg);border:1px solid var(--line);border-radius:6px}
+.osm-endpoint{margin-top:12px}
+.osm-endpoint{overflow-wrap:anywhere;font-family:ui-monospace,monospace;font-size:.8125rem}
+.osm-settings-actions{display:flex;flex-wrap:wrap;gap:8px;margin:16px 0}
+#osmSettingsStatus:empty{display:none}
+#osmSettingsStatus[data-error=true]{color:var(--warn)}
 
 @media(min-width:1800px){.cockpit{padding-top:24px}
 }
