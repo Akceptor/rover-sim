@@ -2,14 +2,14 @@ import {performance} from 'node:perf_hooks';
 import {WebSocketServer} from 'ws';
 const MAX_FRAME=512*1024;
 export class VideoRelay {
- constructor({staleMs=2000,fps=25}={}){
-  this.staleMs=staleMs;this.fps=fps;this.publisher=null;this.viewers=new Set();this.latest=null;this.last=null;this.frames=0;this.recent=[];this.publisherStats=null;
+ constructor({staleMs=2000,fps=25,width=960,height=540}={}){
+  this.staleMs=staleMs;this.fps=fps;this.width=width;this.height=height;this.publisher=null;this.viewers=new Set();this.latest=null;this.last=null;this.frames=0;this.recent=[];this.publisherStats=null;
   this.wss=new WebSocketServer({noServer:true,maxPayload:MAX_FRAME});
   this.wss.on('connection',ws=>{
    ws.on('error',()=>{});
    if(this.publisher){ws.close(1008,'Another camera renderer is streaming');return;}
    this.publisher=ws;this.latest=null;this.last=null;this.frames=0;this.recent=[];this.publisherStats=null;
-   ws.send(JSON.stringify({type:'ready',width:960,height:540,fps:this.fps}));
+   ws.send(JSON.stringify({type:'ready',width:this.width,height:this.height,fps:this.fps}));
    ws.on('message',(bytes,binary)=>{
     const now=performance.now();
     if(!binary){if(ws===this.publisher)this.stats(bytes);return;}

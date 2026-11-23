@@ -61,3 +61,11 @@ test('MJPEG relay reports recent frame rate, sizes and publisher stats',async()=
   assert.deepEqual(f.relay.status().publisher,{renderFps:30,encodeMs:12.5,skippedBacklog:3,oversize:1});
  }finally{ws?.terminate();await f.close();}
 });
+test('MJPEG relay advertises a configured 640x360 size',async()=>{
+ const relay=new VideoRelay({width:640,height:360});
+ const server=http.createServer((req,res)=>{if(!relay.handleHttp(req,res)){res.writeHead(404);res.end();}});
+ server.on('upgrade',(req,socket,head)=>relay.handleUpgrade(req,socket,head));server.listen(0,'127.0.0.1');await once(server,'listening');
+ const url=`http://127.0.0.1:${server.address().port}`;let ws;
+ try{ws=new WebSocket(url.replace('http:','ws:')+'/video-source',{origin:url});const [ready]=await once(ws,'message');const m=JSON.parse(ready);assert.equal(m.width,640);assert.equal(m.height,360);
+ }finally{ws?.terminate();relay.close();server.closeAllConnections();await new Promise(r=>server.close(r));}
+});

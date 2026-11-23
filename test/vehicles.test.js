@@ -62,3 +62,9 @@ test('default config resolves mn168 by id',()=>{
  assert.equal(JSON.parse(fs.readFileSync(new URL('../config/default.json',import.meta.url))).vehicle,'mn168');
  const config=loadConfig();assert.equal(config.vehicle.id,'mn168');assert.equal(vehicleChoices(config).some(c=>c.id==='custom'),false);
 });
+test('videoSize config is optional and accepts only known sizes',()=>{
+ const dir=fs.mkdtempSync(path.join(os.tmpdir(),'video-size-')),base=JSON.parse(fs.readFileSync(new URL('../config/default.json',import.meta.url),'utf8'));
+ const load=extra=>{const file=path.join(dir,'c.json');fs.writeFileSync(file,JSON.stringify({...base,...extra}));return loadConfig(file);};
+ assert.equal(load({}).videoSize,undefined);assert.equal(load({videoSize:'640x360'}).videoSize,'640x360');
+ assert.throws(()=>load({videoSize:'1920x1080'}),/invalid videoSize/);
+});

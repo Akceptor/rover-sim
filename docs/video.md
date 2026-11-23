@@ -71,7 +71,12 @@ loopback URL above already points to the correct machine.
 The output is the camera image, without the browser's buttons or OSD; Mission
 Planner draws its own telemetry. It uses the background command's selected view
 (or the visible tab's selected view for manual publishing), fits
-within **960 × 540** with letterboxing, and publishes up to **25 fps**. Browser
+within **960 × 540** with letterboxing, and publishes up to **25 fps**.
+
+To lighten Mission Planner's decoding and HUD drawing (especially with the
+GDI+ HUD), set `"videoSize": "640x360"` in the backend config; the default is
+`"960x540"`. The size applies to every viewer. `curl http://127.0.0.1:8090/api/video`
+reports delivered fps, frame sizes, browser render fps and JPEG encode time. Browser
 JPEG encoding and network speed determine the actual rate. Ground and sky
 textures are included in the stream.
 
