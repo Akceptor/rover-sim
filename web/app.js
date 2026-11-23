@@ -51,6 +51,31 @@ weatherView.setPreferenceSender(send);
 function connect(){ws=new WebSocket(`${location.protocol==='https:'?'wss':'ws'}://${location.host}`);ws.onmessage=e=>{const m=JSON.parse(e.data);osmSettings?.message(m);if(m.type==='init'){weatherView.receivePreferences(m.environmentPreferences??null);setup(m);}if(m.type==='environmentPreferences')weatherView.receivePreferences(m.preferences);if(m.type==='favorites')savedLocations?.message(m);if(m.type==='error'){notice(m.message);savedLocations?.message(m);}if(m.type==='state'){state=m;lastReceive=performance.now();savedLocations?.state(m);osmSettings?.state(m);}};ws.onclose=()=>{osmSettings?.connection(false);savedLocations?.connection(false);keys.clear();$('connection').textContent='Backend offline · reconnecting';$('connection').dataset.state='offline';setTimeout(connect,1000);};}
 connect();
 $('run').onclick=()=>send({type:'running',value:!state?.running});$('reset').onclick=()=>send({type:'reset'});
+
+// Handle time input changes
+const timeInput = $('timeInput');
+if (timeInput) {
+  timeInput.addEventListener('change', function() {
+    // Validate HH:MM format
+    const regex = /^([0-9]{2}):([0-9]{2})$/;
+    const match = this.value.match(regex);
+    if (match) {
+      const hours = parseInt(match[1]);
+      const minutes = parseInt(match[2]);
+      if (hours >= 0 && hours <= 23 && minutes >= 0 && minutes <= 59) {
+        // Convert to minutes since midnight and send to backend
+        const totalMinutes = hours * 60 + minutes;
+        send({type:'setTime',value:totalMinutes});
+      } else {
+        // Invalid time, reset to previous value or default
+        this.value = '12:00';
+      }
+    } else {
+      // Invalid format, reset to previous value or default
+      this.value = '12:00';
+    }
+  });
+}
 function describeLocation(){const p=locations.find(p=>p.id===$('locationSelect').value);$('locationHint').textContent=p?(p.favorite?'Available offline · saved terrain, satellite colours and OpenStreetMap data':['custom','map'].includes(p.id)?(p.id==='map'&&mapChoice?`Selected start · ${mapChoice.lat.toFixed(7)}, ${mapChoice.lon.toFixed(7)}`:p.description):`${p.description} · 960 m map · ${p.reliefM} m elevation range · bundled offline`):state?.selectedLocation?.startsWith('saved:')?'Loaded favorite was removed. The loaded world remains available to save.':'';}
 $('locationSelect').onchange=()=>{describeLocation();savedLocations?.selection();const p=locations.find(p=>p.id===$('locationSelect').value);if(Number.isFinite(p?.lat))locationMap?.select(p);else locationMap?.select(p?.id==='map'?mapChoice:null);};
 $('loadLocation').onclick=()=>{const id=$('locationSelect').value;if(id==='map'&&!mapChoice){notice('Click the map to choose a starting position.');return;}send({type:'selectLocation',id,...(id==='map'?mapChoice:{})});};

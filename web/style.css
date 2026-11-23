@@ -221,3 +221,52 @@ html[data-camera-output] .saved-locations{display:none}
 .time-presets button{padding:5px 10px}
 #sunsetUnavailable{display:block;color:var(--muted);font-size:.75rem;margin-top:6px}
 #sunsetUnavailable[hidden],html[data-camera-output] .environment-controls{display:none}
+
+/* New styles for the restructured controls */
+.time-control, .weather-control {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.time-control select, .weather-control select {
+  flex: 1;
+  min-width: 0;
+}
+#manualTimeControls {
+  margin-top: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+#manualTimeControls input {
+  width: 120px;
+  padding: 6px 8px;
+}
+.environment-controls {
+  margin-top: 12px;
+  padding: 10px 0;
+  border-top: 1px solid var(--line);
+}
+#manualTimeControls .time-presets {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 4px;
+}
+.time-presets button {
+  padding: 5px 10px;
+  font-size: .8125rem;
+}
+@media (max-width: 560px) {
+  .environment-controls {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .time-control, .weather-control {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  #manualTimeControls input {
+    width: 100%;
+  }
+}

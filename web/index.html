@@ -35,15 +35,26 @@
     </div>
     <div id="notice" role="status"></div>
   </section>
+  <!-- Controls positioned right below camera view -->
+  <div class="timing"><span><b id="rate">—</b> Hz physics</span><span><b id="time">0.0</b> s simulated</span><span id="diagnostics">Waiting for timing data</span></div>
+  <section class="controls" aria-label="Simulator controls">
+    <div class="drive-help"><div id="keyLegend" aria-hidden="true"><kbd>W</kbd><span><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd></span></div><p id="help">Drive using Mission Planner or your MAVLink companion.</p></div>
+    <div class="actions"><button id="run">Stop physics</button><button id="reset">Reset vehicle</button></div>
+  </section>
   <div class="environment-controls" aria-label="Time and weather controls">
-    <div><label for="timeMode">Time</label> <select id="timeMode"><option value="auto">Auto</option><option value="manual">Manual</option></select>
-      <div id="manualTimeControls" hidden><label for="timeMinute">Local time <output id="selectedMinute">12:00</output></label>
-        <input id="timeMinute" type="range" min="0" max="1439" step="1" value="720">
+    <div class="time-control">
+      <label for="timeMode">Time</label>
+      <select id="timeMode"><option value="auto">Auto</option><option value="manual">Manual</option></select>
+      <div id="manualTimeControls" hidden>
+        <label for="timeInput">Local time (HH:MM)</label>
+        <input id="timeInput" type="text" pattern="[0-9]{2}:[0-9]{2}" maxlength="5" size="5" value="12:00">
         <div class="time-presets"><button type="button" data-time-preset="480">Morning</button><button type="button" data-time-preset="720">Day</button><button type="button" id="sunsetTime" data-time-preset="sunset">Sunset</button><button type="button" data-time-preset="0">Night</button></div>
         <span id="sunsetUnavailable" hidden>Sunset unavailable on this date</span>
       </div>
     </div>
-    <div><label for="weatherMode">Weather</label> <select id="weatherMode"><option value="auto">Auto</option><option value="manual">Manual</option></select>
+    <div class="weather-control">
+      <label for="weatherMode">Weather</label>
+      <select id="weatherMode"><option value="auto">Auto</option><option value="manual">Manual</option></select>
       <div id="manualWeatherControls" hidden><label for="weatherPreset">Preset</label> <select id="weatherPreset"><option>Clear</option><option>Cloudy</option><option>Fog</option><option>Rain</option><option>Snow</option></select></div>
     </div>
   </div>
