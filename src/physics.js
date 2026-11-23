@@ -5,7 +5,7 @@ import {playground} from './world.js';
 import {validateTerrain,terrainMesh,terrainObjects} from './terrain.js';
 import {ned,rotate,sensors} from './frames.js';
 import {overlayGeometry} from './osm.js';
-import {LIVE_FIELDS} from './profile-fields.js';
+import {applyLiveFields} from './profile-fields.js';
 let init;
 export class Physics {
   static async create(config,obstacles=true,terrain=null,overlay=null,geometry=null){if(terrain)validateTerrain(terrain);init??=R.init();await init;return new Physics(config,obstacles,terrain,overlay,geometry);}
@@ -52,7 +52,7 @@ export class Physics {
   }
   tuneWheel(i,n){const t=this.c.suspensionTuning;this.car.setWheelSuspensionStiffness(i,t.stiffness/n);this.car.setWheelSuspensionCompression(i,t.compression/n);this.car.setWheelSuspensionRelaxation(i,t.relaxation/n);this.car.setWheelMaxSuspensionTravel(i,t.travel);this.car.setWheelMaxSuspensionForce(i,t.maxForce/n);this.car.setWheelFrictionSlip(i,t.grip);}
   applyTuning(v){
-    for(const path of LIVE_FIELDS){const [a,b]=path.split('.');if(b)this.c[a][b]=v[a][b];else this.c[a]=structuredClone(v[a]);}
+    applyLiveFields(this.c,v);
     for(const group of this.wheelGroups)for(const i of group)this.tuneWheel(i,group.length);
     this.applyMass();
   }

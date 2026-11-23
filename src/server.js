@@ -11,7 +11,9 @@ import {Session} from './session.js';
 import {decodeActuators} from './protocol.js';
 import {loadEnvironment} from './environment.js';
 import {HeartbeatTelemetry,parameterRequest} from './mavlink.js';
-import {resolveVehicleConfig,vehicleChoices} from './vehicles.js';
+import {resolveVehicleConfig,vehicleChoices,reloadProfiles} from './vehicles.js';
+import {applyLiveFields} from './profile-fields.js';
+import {createProfileApi} from './profile-api.js';
 import {cameraAim} from './camera.js';
 import {LiveWeather} from './weather.js';
 import {resolvePreferences} from './weather-controls-model.js';
@@ -29,7 +31,7 @@ import {missionPlannerCommand,vehicleDefaults,vehicleCalibrationText,vehicleServ
 const args=process.argv.slice(2),configIndex=args.indexOf('--config');
 let config=loadConfig(configIndex>=0?args[configIndex+1]:undefined);
 const initialConfig=config;
-const choices=vehicleChoices(config);
+let choices=vehicleChoices(config);
 let vehicleRevision=0,selectedVehicle=config.vehicle.id,vehicleStatus={status:'ready',message:`${config.vehicle.name} ready`},vehicleTransition=0,verifyVehicle=false,vehicleAutoStart=false;
 const managedSitl=args.includes('--managed-sitl');
 const externalStart=args.includes('--mission-planner'),locationPicker=args.includes('--location-picker'),pendingLocation=externalStart||locationPicker;
@@ -78,9 +80,11 @@ let running=!pendingLocation&&osmStatus.status!=='loading',pending=null,due=perf
 session.running=running;
 let keyboard={steering:0,throttle:0,time:0,owner:null};
 const video=new VideoRelay();
+const profileApi=createProfileApi({activeId:()=>config.vehicle.id,transitioning:()=>vehicleStatus.status!=='ready',activeVehicle:()=>config.vehicle,applyLive:resolved=>{physics.applyTuning(resolved);applyLiveFields(config.vehicle,resolved);},afterSave:()=>{reloadProfiles();choices=vehicleChoices(config);broadcastWorld();}});
 const server=http.createServer(async(req,res)=>{
   if(video.handleHttp(req,res))return;
   const url=new URL(req.url,'http://localhost');
+  if(await profileApi(req,res,url))return;
   if(url.pathname==='/api/state'){res.setHeader('Content-Type','application/json');res.end(JSON.stringify(snapshot()));return;}
   const files={'/':'web/index.html','/app.js':'web/app.js','/assets/MN-168.js':'assets/MN-168.js','/assets/vehicle.js':'assets/vehicle.js','/style.css':'web/style.css','/video.js':'web/video.js','/scenery.js':'web/scenery.js','/road-textures.js':'web/road-textures.js','/road-surface.js':'web/road-surface.js','/sky-palette.js':'web/sky-palette.js','/weather-view.js':'web/weather-view.js','/weather-controls.js':'web/weather-controls.js','/weather-controls-model.js':'src/weather-controls-model.js','/weather-model.js':'src/weather-model.js','/terrain.js':'src/terrain.js','/terrain-view.js':'web/terrain-view.js','/location-map.js':'web/location-map.js','/saved-locations.js':'web/saved-locations.js','/leaflet.js':'node_modules/leaflet/dist/leaflet.js','/leaflet.css':'node_modules/leaflet/dist/leaflet.css','/osm-settings.js':'web/osm-settings.js','/osm-settings-model.js':'src/osm-settings-model.js','/osm-regions.js':'src/osm-regions.js','/osm-view.js':'web/osm-view.js','/building-surfaces.js':'web/building-surfaces.js','/building-textures.js':'web/building-textures.js','/assets/textures/building-materials.png':'assets/textures/building-materials.png','/osm-footprints.js':'src/osm-footprints.js','/three.js':'node_modules/three/build/three.module.js','/three.core.js':'node_modules/three/build/three.core.js'};
   try{const file=files[url.pathname];if(!file){res.writeHead(404);res.end();return;}res.setHeader('Content-Type',file.endsWith('.js')?'text/javascript':file.endsWith('.css')?'text/css':file.endsWith('.png')?'image/png':'text/html');res.end(await fs.readFile(path.join(root,file)));}catch(error){log('asset-error',{asset:url.pathname,code:error.code,message:error.message});res.writeHead(500);res.end('asset unavailable');}
