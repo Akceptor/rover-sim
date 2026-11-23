@@ -2,18 +2,18 @@ import {performance} from 'node:perf_hooks';
 import {WebSocketServer} from 'ws';
 const MAX_FRAME=512*1024;
 export class VideoRelay {
- constructor({staleMs=2000}={}){
-  this.staleMs=staleMs;this.publisher=null;this.viewers=new Set();this.latest=null;this.last=null;this.frames=0;
+ constructor({staleMs=2000,fps=25}={}){
+  this.staleMs=staleMs;this.fps=fps;this.publisher=null;this.viewers=new Set();this.latest=null;this.last=null;this.frames=0;
   this.wss=new WebSocketServer({noServer:true,maxPayload:MAX_FRAME});
   this.wss.on('connection',ws=>{
    ws.on('error',()=>{});
    if(this.publisher){ws.close(1008,'Another camera renderer is streaming');return;}
    this.publisher=ws;this.latest=null;this.last=null;this.frames=0;
-   ws.send(JSON.stringify({type:'ready',width:960,height:540,fps:10}));
+   ws.send(JSON.stringify({type:'ready',width:960,height:540,fps:this.fps}));
    ws.on('message',(bytes,binary)=>{
     const now=performance.now();
     if(!binary||ws!==this.publisher||bytes.length<4||bytes[0]!==255||bytes[1]!==216||bytes.at(-2)!==255||bytes.at(-1)!==217)return;
-    if(this.last!==null&&now-this.last<90)return;
+    if(this.last!==null&&now-this.last<900/this.fps)return;
     this.last=now;this.frames++;this.latest=Buffer.concat([Buffer.from(`--rover-frame\r\nContent-Type: image/jpeg\r\nContent-Length: ${bytes.length}\r\n\r\n`),bytes,Buffer.from('\r\n')]);
     for(const viewer of this.viewers)this.write(viewer);
    });

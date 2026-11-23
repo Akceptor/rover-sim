@@ -41,3 +41,10 @@ test('video source requires the same origin',async()=>{
   const [error]=await once(ws,'error');assert.match(error.message,/403/);
  }finally{await f.close();}
 });
+test('MJPEG relay advertises and accepts 25 fps',async()=>{
+ const f=await fixture();let ws;
+ try{ws=new WebSocket(f.url.replace('http:','ws:')+'/video-source',{origin:f.url});const [ready]=await once(ws,'message');assert.equal(JSON.parse(ready).fps,25);
+  for(let i=0;i<5;i++){ws.send(jpeg);await delay(45);}
+  assert.equal(f.relay.status().frames,5);
+ }finally{ws?.terminate();await f.close();}
+});
