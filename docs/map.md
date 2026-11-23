@@ -37,6 +37,36 @@ by the backend. The normal launcher picker locks after its initial selection,
 as before; restart it to choose another start. Without a location-selection
 startup flag, the map provides a live preview and shows how to enable picking.
 
+## Save a location for offline use
+
+After **Load location** completes, enter a **Location name** and click **Save
+location**. Saving requires the loaded terrain, satellite RGB colours and a
+successful OpenStreetMap overlay load (an empty overlay is valid). The status
+below the controls explains incomplete data, a missing name, or a disconnected
+backend. A newly selected preset or map pin must be loaded before saving.
+Saving is available while waiting for SITL restart or GPS verification.
+
+Saved entries appear under **Favorites**, marked **Available offline**. Select
+one and click **Load location** to restore its exact terrain, colours, roads and
+buildings without terrain or OSM downloads. The normal startup mode without a
+picker still allows saving the loaded terrain; location selection remains
+read-only. Use the startup flags above to load favorites.
+
+Select a favorite and click **Remove favorite**, then confirm its name in the
+small dialog. Cancel keeps it. Removal deletes that saved copy while leaving
+the current world and rover pose intact; the loaded world can be saved again.
+Saving and removal update other open cockpits without replacing their current
+world or pending map choice.
+
+Each favorite has a dedicated package under the gitignored **`saved-locations/`**
+folder, separate from `.run/` and ordinary terrain/OSM caches. Packages survive
+browser/backend restarts and ordinary cache cleanup. The optional backend
+`savedLocationsDir` setting overrides this folder; relative paths resolve from
+the backend working directory. Keep this folder when moving or backing up your
+saved locations. Source terrain and imagery attribution and OpenStreetMap
+licensing remain attached to the saved data; saving does not change those
+licenses. Weather and the online basemap remain optional live services.
+
 ## Online and offline
 
 Leaflet 1.9.4 is installed locally with npm and served by the backend, not a CDN.
@@ -82,3 +112,10 @@ unreadable Leaflet files without changing the installed dependencies.
 `npm run test:terrain-selector` also runs native SITL and verifies a browser-map
 selection takes effect only after restart, with matching GPS, and that returning
 to Mission Planner's selected start still works.
+
+`npm run test:saved-locations` checks saving, correlated failures, safe names,
+two-tab updates, pending-choice preservation, compact removal confirmation,
+mobile layout, normal startup and empty OSM. It restores synthetic RGB terrain
+and roads/buildings after backend restart with ordinary caches deleted, while
+refusing remote fetches other than optional weather. Review screenshots are
+written to `.run/saved-locations-check/`.

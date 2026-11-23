@@ -12,7 +12,7 @@ test('unreadable map assets report their path and filesystem error in the server
  const dir=await fs.mkdtemp(path.join(os.tmpdir(),'rover-assets-'));let proc,logs='';
  try{
   const config=JSON.parse(await fs.readFile(new URL('../config/default.json',import.meta.url)));
-  config.httpPort=28000+Math.floor(Math.random()*1000);config.terrain=null;config.osm=false;
+  config.savedLocationsDir=path.join(dir,'saved-locations');config.httpPort=28000+Math.floor(Math.random()*1000);config.terrain=null;config.osm=false;
   const configPath=path.join(dir,'config.json'),preload=path.join(dir,'missing-assets.mjs');
   await fs.writeFile(configPath,JSON.stringify(config));
   // Exercise real HTTP handling without changing the installed dependency files.

@@ -10,7 +10,7 @@ import {ProcessGroup} from '../src/process-group.js';
 import {overlayKey} from '../src/osm.js';
 const temp=await fs.mkdtemp(path.join(os.tmpdir(),'rover-map-')),group=new ProcessGroup({graceMs:2000});let browser;
 try{
- const config=JSON.parse(await fs.readFile('config/default.json'));config.httpPort=8107;config.udpPort=9014;config.mavlink.port=14572;config.terrainCacheDir=path.join(temp,'terrain-cache');config.osm={cacheDir:path.join(temp,'osm-cache'),endpoint:'http://127.0.0.1:9',timeoutMs:500};
+ const config=JSON.parse(await fs.readFile('config/default.json'));config.savedLocationsDir=path.join(temp,'saved-locations');config.httpPort=8107;config.udpPort=9014;config.mavlink.port=14572;config.terrainCacheDir=path.join(temp,'terrain-cache');config.osm={cacheDir:path.join(temp,'osm-cache'),endpoint:'http://127.0.0.1:9',timeoutMs:500};
  await fs.writeFile(path.join(temp,'config.json'),JSON.stringify(config));
  group.start('backend',process.execPath,['src/server.js','--mission-planner','--config',path.join(temp,'config.json')],{ipc:true});
  const url='http://127.0.0.1:8107',state=()=>fetch(url+'/api/state').then(r=>r.json());

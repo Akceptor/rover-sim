@@ -17,6 +17,7 @@
     "test:position": "node scripts/position-smoke.mjs",
     "test:crawler": "node scripts/crawler-smoke.mjs",
     "test:weather": "node scripts/weather-smoke.mjs",
+    "test:saved-locations": "node scripts/saved-locations-smoke.mjs",
     "test:map": "node scripts/map-smoke.mjs",
     "test:map-startup": "node scripts/map-startup-smoke.mjs",
     "test:osm": "node scripts/osm-smoke.mjs",

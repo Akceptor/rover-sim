@@ -9,7 +9,7 @@ import {ProcessGroup} from '../src/process-group.js';
 
 const temp=await fs.mkdtemp(path.join(os.tmpdir(),'rover-map-startup-'));let browser,group;
 try{
- const config=JSON.parse(await fs.readFile('config/default.json'));config.httpPort=8108;config.udpPort=9015;config.mavlink.port=14573;config.terrain=null;config.osm=false;
+ const config=JSON.parse(await fs.readFile('config/default.json'));config.savedLocationsDir=path.join(temp,'saved-locations');config.httpPort=8108;config.udpPort=9015;config.mavlink.port=14573;config.terrain=null;config.osm=false;
  await fs.writeFile(path.join(temp,'config.json'),JSON.stringify(config));
  const url='http://127.0.0.1:8108';
  browser=await chromium.launch({channel:'chrome',headless:true});

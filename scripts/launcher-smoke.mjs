@@ -15,7 +15,7 @@ import {loadEnvironment} from '../src/environment.js';
 const root=path.resolve(path.dirname(fileURLToPath(import.meta.url)),'..');
 const {values}=parseArgs({options:{sitl:{type:'string'},'no-video':{type:'boolean'}}});
 const dir=await fs.mkdtemp(path.join(os.tmpdir(),'rover-launcher-smoke-'));
-const config=JSON.parse(await fs.readFile(path.join(root,'config/default.json'),'utf8'));config.osm=false;
+const config=JSON.parse(await fs.readFile(path.join(root,'config/default.json'),'utf8'));config.savedLocationsDir=path.join(dir,'saved-locations');config.osm=false;
 Object.assign(config,{httpPort:8095,udpPort:9005});config.mavlink.port=14563;
 const ports=[{kind:'tcp',host:'127.0.0.1',port:8095,name:'HTTP'},{kind:'udp',host:'127.0.0.1',port:9005,name:'Physics'},{kind:'udp',host:'127.0.0.1',port:14563,name:'HUD'},{kind:'tcp',host:'0.0.0.0',port:5774,name:'MP'},{kind:'tcp',host:'0.0.0.0',port:5776,name:'Companion'}];
 let child,output='',closed;

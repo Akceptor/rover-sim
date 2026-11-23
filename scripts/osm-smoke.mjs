@@ -18,7 +18,7 @@ try{
  overpass=http.createServer((req,res)=>{req.resume();res.setHeader('Content-Type','application/json');res.end(JSON.stringify(osm));});overpass.listen(0,'127.0.0.1');await once(overpass,'listening');
  const t=live?JSON.parse(await fs.readFile(live)): {...fixture,heights:fixture.heights.map((_,i)=>(Math.floor(i/33)-16)*(i%33-16)*.02)};
  const file=path.join(temp,'terrain.json');await fs.writeFile(file,JSON.stringify(t));
- const config=JSON.parse(await fs.readFile('config/default.json'));config.httpPort=8106;config.mavlink=null;config.terrain=file;
+ const config=JSON.parse(await fs.readFile('config/default.json'));config.savedLocationsDir=path.join(temp,'saved-locations');config.httpPort=8106;config.mavlink=null;config.terrain=file;
  config.osm={endpoint:`http://127.0.0.1:${overpass.address().port}`,cacheDir:live?path.resolve('.run/osm-cache'):path.join(temp,'osm-cache')};
  await fs.writeFile(path.join(temp,'config.json'),JSON.stringify(config));
  group.start('backend',process.execPath,['src/server.js','--standalone','--config',path.join(temp,'config.json')],{ipc:true});

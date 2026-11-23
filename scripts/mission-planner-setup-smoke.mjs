@@ -7,7 +7,7 @@ import {setTimeout as delay} from 'node:timers/promises';
 import {ProcessGroup} from '../src/process-group.js';
 const temp=await fs.mkdtemp(path.join(os.tmpdir(),'rover-mp-setup-'));
 let logs='',browser;const group=new ProcessGroup({log:line=>{logs+=line+'\n';}});
-const config=JSON.parse(await fs.readFile('config/default.json'));config.osm=false;config.httpPort=8105;config.udpPort=9012;config.mavlink.port=14570;
+const config=JSON.parse(await fs.readFile('config/default.json'));config.osm=false;config.savedLocationsDir=path.join(temp,'saved-locations');config.httpPort=8105;config.udpPort=9012;config.mavlink.port=14570;
 const extra=path.join(temp,'Extra params.parm');await fs.writeFile(extra,'CRUISE_SPEED 1\n');await fs.writeFile(path.join(temp,'config.json'),JSON.stringify(config));
 const url='http://127.0.0.1:8105';
 try{

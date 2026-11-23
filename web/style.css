@@ -189,3 +189,12 @@ button:disabled{opacity:.5;cursor:default}
 html[data-camera-output] .map-panel{display:none}
 html[data-camera-output] .view-stage{display:block}
 html[data-camera-output] .view-stage #viewport{width:100vw;height:100vh;min-height:0;aspect-ratio:auto}
+
+.saved-locations{padding:10px;border:1px solid var(--line);border-radius:8px;font-size:.8125rem;margin:10px 0}
+.saved-locations label{display:block;margin-bottom:8px}
+.saved-location-actions{display:flex;flex-wrap:wrap;gap:8px;min-width:0}
+.saved-location-actions input{flex:1 1 140px;min-width:0;width:100%;max-width:100%;padding:8px;background:var(--bg);color:var(--text);border:1px solid var(--line);border-radius:6px}
+.saved-location-actions button{flex:1 1 auto;white-space:normal}
+.remove-favorite-dialog{inset:0;margin:auto;height:fit-content;max-height:calc(100dvh - 32px);width:min(380px,calc(100vw - 32px));max-width:calc(100vw - 32px);padding:20px;overflow-wrap:anywhere}
+.remove-favorite-dialog h2{font-size:1rem}
+html[data-camera-output] .saved-locations{display:none}

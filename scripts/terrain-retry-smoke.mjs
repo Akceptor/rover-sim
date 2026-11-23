@@ -7,7 +7,7 @@ import dgram from 'node:dgram';
 import {setTimeout as delay} from 'node:timers/promises';
 import {ProcessGroup} from '../src/process-group.js';
 const temp=await fs.mkdtemp(path.join(os.tmpdir(),'rover-retry-')),group=new ProcessGroup(),udp=dgram.createSocket('udp4');
-const config=JSON.parse(await fs.readFile('config/default.json'));config.osm=false;config.httpPort=8102;config.udpPort=9009;config.mavlink.port=14567;
+const config=JSON.parse(await fs.readFile('config/default.json'));config.osm=false;config.savedLocationsDir=path.join(temp,'saved-locations');config.httpPort=8102;config.udpPort=9009;config.mavlink.port=14567;
 await fs.writeFile(path.join(temp,'config.json'),JSON.stringify(config));let browser;
 const send=hex=>new Promise((resolve,reject)=>udp.send(Buffer.from(hex,'hex'),config.mavlink.port,'127.0.0.1',e=>e?reject(e):resolve()));
 const disarmed='fd0900000001010000000f0000000a030104037547';

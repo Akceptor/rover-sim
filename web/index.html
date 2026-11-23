@@ -46,6 +46,11 @@
       <label for="locationSelect">Location</label><select id="locationSelect" aria-describedby="locationHint"></select><button id="loadLocation" type="button">Load location</button>
       <p id="locationHint" class="muted"></p>
     </section>
+    <section id="savedLocations" class="saved-locations" aria-label="Saved locations">
+      <label for="savedLocationName">Location name</label>
+      <div class="saved-location-actions"><input id="savedLocationName" type="text" maxlength="80" autocomplete="off" aria-describedby="savedLocationStatus"><button id="saveLocation" type="button" disabled>Save location</button><button id="removeFavorite" type="button" hidden>Remove favorite</button></div>
+      <p id="savedLocationStatus" class="map-hint" role="status" aria-live="polite">Waiting for the loaded location.</p>
+    </section>
     <p id="mapTileStatus" class="map-hint" role="status"></p>
   </aside>
   </div>
@@ -93,6 +98,11 @@
 </dialog>
 <script type="importmap">{"imports":{"three":"/three.js"}}</script>
 <script src="/leaflet.js"></script>
+<dialog id="removeFavoriteDialog" class="remove-favorite-dialog" aria-labelledby="removeFavoriteTitle">
+  <h2 id="removeFavoriteTitle">Remove favorite?</h2>
+  <p id="removeFavoriteName"></p><p>The loaded world will stay as it is.</p>
+  <div class="saved-location-actions"><button id="cancelRemoveFavorite" type="button" autofocus>Cancel</button><button id="confirmRemoveFavorite" type="button">Remove favorite</button></div>
+</dialog>
 <script type="module" src="/app.js"></script>
 </body>
 </html>

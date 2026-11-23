@@ -8,7 +8,7 @@ import {WebSocket} from 'ws';
 import {ProcessGroup} from '../src/process-group.js';
 import {sitlArguments} from '../src/launcher.js';
 const root=process.cwd(),temp=await fs.mkdtemp(path.join(os.tmpdir(),'rover-position-')),group=new ProcessGroup();
-const config=JSON.parse(await fs.readFile('config/default.json'));config.osm=false;config.httpPort=8100;config.udpPort=9007;config.mavlink.port=14565;
+const config=JSON.parse(await fs.readFile('config/default.json'));config.osm=false;config.savedLocationsDir=path.join(temp,'saved-locations');config.httpPort=8100;config.udpPort=9007;config.mavlink.port=14565;
 const configPath=path.join(temp,'config.json');await fs.writeFile(configPath,JSON.stringify(config));
 let ws;
 try{

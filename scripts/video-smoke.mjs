@@ -7,7 +7,7 @@ import {spawn} from 'node:child_process';
 import {once} from 'node:events';
 import {setTimeout as delay} from 'node:timers/promises';
 const temp=await fs.mkdtemp(path.join(os.tmpdir(),'rover-video-'));
-const config=JSON.parse(await fs.readFile('config/default.json'));config.osm=false;config.httpPort=8094;
+const config=JSON.parse(await fs.readFile('config/default.json'));config.osm=false;config.savedLocationsDir=path.join(temp,'saved-locations');config.httpPort=8094;
 await fs.writeFile(path.join(temp,'config.json'),JSON.stringify(config));
 const server=spawn(process.execPath,['src/server.js','--standalone','--config',path.join(temp,'config.json')],{stdio:'pipe'});
 let log='',browser,receiver,cameraProcess;server.stdout.on('data',v=>log+=v);server.stderr.on('data',v=>log+=v);
