@@ -41,9 +41,9 @@ try{
   await page.addInitScript(()=>{let seed=1827;Math.random=()=>{seed=(Math.imul(seed,1664525)+1013904223)>>>0;return seed/4294967296;};localStorage.clear();});
   let replayStart=null,frozen=false,forcedPose=null;
   await page.routeWebSocket(url.replace('http:','ws:')+'/',ws=>{const server=ws.connectToServer();server.onMessage(raw=>{const m=JSON.parse(raw);if(m.type==='state'){m.weather=weather;Object.assign(m,forcedPose??pose(frozen ? .5 : replayStart===null?0:Math.min(1,(performance.now()-replayStart)/duration)));}ws.send(JSON.stringify(m));});});
-  await page.goto(url+'/?camera-output');let sceneReady=false;for(let attempt=0;attempt<200;attempt++){sceneReady=await page.evaluate(async()=>{const {fpvOutput:f}=await import('/app.js');let good=true,count=0;f.scene.traverse(o=>{if(o.name.startsWith('osm-building:')){count++;good&&=o.material.every(m=>m.map.userData.photoReady);}});return count>0&&good;});if(sceneReady)break;await delay(50);}assert.ok(sceneReady,JSON.stringify(errors));
+  await page.goto(url+'/?camera-output');let sceneReady=false;for(let attempt=0;attempt<200;attempt++){sceneReady=await page.evaluate(async()=>{const {fpvOutput:f}=await import('/app.js');let good=true,count=0;f.scene.traverse(o=>{if(o.name.startsWith('osm-buildings:')){count++;good&&=o.material.map.userData.photoReady;}});return count>0&&good;});if(sceneReady)break;await delay(50);}assert.ok(sceneReady,JSON.stringify(errors));
   if(version==='after'){
-   const materials=await page.evaluate(async()=>{const {fpvOutput:f}=await import('/app.js'),T=await import('/three.js'),maps=new Set();let roads=0,bases=0;f.scene.traverse(o=>{if(o.name.startsWith('osm-road:')){roads++;if(!o.material.map||o.geometry.attributes.uv?.count!==o.geometry.attributes.position.count)throw Error('Road texture/UV missing');maps.add(o.material.map.uuid);}if(o.name.startsWith('osm-building:')){bases++;if(o.material[2].map.wrapT!==T.ClampToEdgeWrapping)throw Error('Foundation moisture repeats vertically');}});return {roads,bases,maps:maps.size};});
+   const materials=await page.evaluate(async()=>{const {fpvOutput:f}=await import('/app.js'),T=await import('/three.js'),maps=new Set();let roads=0,bases=0;f.scene.traverse(o=>{if(o.name.startsWith('osm-roads:')){roads++;if(!o.material.map||o.geometry.attributes.uv?.count!==o.geometry.attributes.position.count)throw Error('Road texture/UV missing');maps.add(o.material.map.uuid);}if(o.name.startsWith('osm-buildings:base:')){bases++;if(o.material.map.wrapT!==T.ClampToEdgeWrapping)throw Error('Foundation moisture repeats vertically');}});return {roads,bases,maps:maps.size};});
    assert.ok(materials.roads>0&&materials.bases>0,JSON.stringify({materials,errors,names:await page.evaluate(async()=>{const {fpvOutput:f}=await import('/app.js');return f.scene.children.map(o=>[o.name,o.children.length]);})}));assert.ok(materials.maps<=2);
   }
   await page.evaluate(async()=>{
@@ -63,7 +63,7 @@ try{
   if(round===0){
    frozen=true;await delay(150);const fixedCalls=await page.evaluate(async()=>{const {fpvOutput:f}=await import('/app.js');return f.renderer.info.render.calls;});console.log(JSON.stringify({version,fixedRouteDrawCalls:fixedCalls}));results.push({version,fixedRouteDrawCalls:fixedCalls});
    for(const bump of ['current','off','on']){
-    await page.evaluate(async bump=>{const {fpvOutput:f}=await import('/app.js');f.scene.traverse(o=>{if(o.name.startsWith('osm-building:'))for(const i of [1,2]){const m=o.material[i];if(bump!=='current'){m.bumpMap=bump==='on'?m.map:null;m.bumpScale=.025;m.needsUpdate=true;}}});window.captureFrame=true;},bump);await delay(100);
+    await page.evaluate(async bump=>{const {fpvOutput:f}=await import('/app.js');f.scene.traverse(o=>{if(/^osm-buildings:(roof|base):/.test(o.name)){const m=o.material;if(bump!=='current'){m.bumpMap=bump==='on'?m.map:null;m.bumpScale=.025;m.needsUpdate=true;}}});window.captureFrame=true;},bump);await delay(100);
     const png=await page.evaluate(()=>window.captureFrame);await fs.writeFile(path.join(out,`${version}-${bump}.png`),Buffer.from(png.split(',')[1],'base64'));
    }
   }
@@ -76,7 +76,7 @@ try{
     await delay(200);
     const pictures=[];
     for(const bump of ['off','on']){
-     await page.evaluate(async bump=>{const {fpvOutput:f}=await import('/app.js');f.scene.traverse(o=>{if(o.name.startsWith('osm-building:'))for(const i of [1,2]){const m=o.material[i];m.bumpMap=bump==='on'?m.map:null;m.bumpScale=.025;m.needsUpdate=true;}});window.captureFrame=true;},bump);await delay(150);
+     await page.evaluate(async bump=>{const {fpvOutput:f}=await import('/app.js');f.scene.traverse(o=>{if(/^osm-buildings:(roof|base):/.test(o.name)){const m=o.material;m.bumpMap=bump==='on'?m.map:null;m.bumpScale=.025;m.needsUpdate=true;}});window.captureFrame=true;},bump);await delay(150);
      const png=await page.evaluate(()=>window.captureFrame);pictures.push(png);await fs.writeFile(path.join(out,`${version}-building-${distance}m-${bump}.png`),Buffer.from(png.split(',')[1],'base64'));
     }
     const difference=await page.evaluate(async pictures=>{const arrays=[];for(const src of pictures){const image=new Image();image.src=src;await image.decode();const canvas=document.createElement('canvas');canvas.width=image.width;canvas.height=image.height;const c=canvas.getContext('2d');c.drawImage(image,0,0);arrays.push(c.getImageData(0,0,canvas.width,canvas.height).data);}let sum=0,max=0,changed=0;for(let k=0;k<arrays[0].length;k+=4){let delta=0;for(let c=0;c<3;c++){const d=Math.abs(arrays[0][k+c]-arrays[1][k+c]);sum+=d;max=Math.max(max,d);delta=Math.max(delta,d);}if(delta>2)changed++;}return {meanChannelDelta:sum/(arrays[0].length/4*3),maxChannelDelta:max,pixelsOver2:changed,pixelFraction:changed/(arrays[0].length/4)};},pictures);

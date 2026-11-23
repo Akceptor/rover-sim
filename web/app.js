@@ -43,7 +43,7 @@ function setup(m){
   // Init is resent on reconnect; replace world instead of duplicating objects.
   if(scene.userData.world){const old=scene.userData.world;scene.remove(old);old.traverse(o=>{o.geometry?.dispose();if(o.material){for(const m of Array.isArray(o.material)?o.material:[o.material]){if(o.name==='real-terrain')m.map?.dispose();m.dispose();}}});}const world=new T.Group();scene.userData.world=world;scene.add(world);
   scenery.sky.scale.setScalar(m.terrain?10:1);
-  if(m.terrain){addTerrain(world,m.terrain,renderer);scene.fog.near=70;scene.fog.far=650;for(const c of [camera,chase]){c.far=1500;c.updateProjectionMatrix();}}else{scene.fog.near=35;scene.fog.far=95;for(const c of [camera,chase]){c.far=150;c.updateProjectionMatrix();}}
+  if(m.terrain){addTerrain(world,m.terrain,renderer);scene.fog.near=70;scene.fog.far=650;scene.userData.terrain=true;fitFar();}else{scene.fog.near=35;scene.fog.far=95;scene.userData.terrain=false;fitFar();}
   $('landscape').textContent=m.terrain?`${m.terrain.name} · ${(m.terrain.size-1)*m.terrain.spacing} m`:'100 × 100 m playground';
   addOsmOverlay(world,m.overlay,m.terrain);$('osmAttribution').hidden=!m.overlay||!(m.overlay.buildings.length||m.overlay.roads.length);
   const approximation=terrainApproximationWarning(m.terrain);$('terrainWarning').textContent=approximation;$('terrainWarning').hidden=!approximation;
@@ -94,6 +94,7 @@ $('copyMissionPlannerCommand').onclick=async()=>{
   catch{field.focus();field.select();status.textContent='Command selected · press Ctrl+C or ⌘C to copy';}
 };
 $('fov').oninput=()=>{camera.fov=+$('fov').value;camera.updateProjectionMatrix();$('fovValue').textContent=`${camera.fov}°`;};
+function fitFar(){const far=Math.max(150,scene.fog.far*1.05);for(const c of [camera,chase])if(c.far!==far){c.far=far;c.updateProjectionMatrix();}}
 function selectCamera(value){$('camera').value=value;for(const id of ['fpv','chase'])$(id).setAttribute('aria-pressed',String(id===value));$('cameraLabel').textContent=value==='fpv'?'ONBOARD FPV':'CHASE CAMERA';}
 $('fpv').onclick=()=>selectCamera('fpv');$('chase').onclick=()=>selectCamera('chase');$('camera').onchange=()=>selectCamera($('camera').value);
 $('settings').onclick=()=>{release();settingsDialog.showModal();};$('closeSettings').onclick=()=>settingsDialog.close();
@@ -123,5 +124,5 @@ function render(){requestAnimationFrame(render);const width=viewport.clientWidth
     locationMap?.setPicking(baseLocations.length>0&&!$('locationSelect').disabled,unsafeSelection?'Disarm SITL before choosing a new start.':!baseLocations.length?'Use --choose-location or --mission-planner to pick a start.':$('locationSelect').disabled?'Location selection is held while loading or while SITL is active.':'Click a start, then Load location.');locationMap?.update(s);
     $('terrainLoad').hidden=!s.startTerrain;$('retryTerrain').hidden=['ready','restart','verifying'].includes(s.startTerrain?.status)||(baseLocations.length>0&&s.startTerrain?.status==='selecting');$('retryTerrain').disabled=!online||!s.canRetryTerrain;$('retryTerrain').textContent=s.startTerrain?.status==='loading'?'Loading terrain…':'Retry terrain';
     $('run').textContent=s.running?'Stop physics':'Start physics';$('diagnostics').textContent=`RTF ${ratio.toFixed(2)} · packet age ${s.ageMs??'—'} ms · duplicates ${s.stats.duplicates} · skipped ${s.stats.skipped} · malformed ${s.stats.malformed}`;$('status').textContent=s.running?`${$('camera').value==='fpv'?'ONBOARD FPV':'CHASE'} · ${mode==='sitl'?'SITL actuator authority':'keyboard test mode'}`:'PHYSICS STOPPED · sensor time continues in SITL';
-  }const activeCamera=$('camera').value==='fpv'?camera:chase;weatherView.update(state?.weather,state?.home,activeCamera,lastReceive);scenery.sky.position.copy(activeCamera.position);renderer.render(scene,activeCamera);cameraVideo.capture(canvas,performance.now());
+  }const activeCamera=$('camera').value==='fpv'?camera:chase;weatherView.update(state?.weather,state?.home,activeCamera,lastReceive);fitFar();scenery.sky.position.copy(activeCamera.position);renderer.render(scene,activeCamera);cameraVideo.capture(canvas,performance.now());
 }render();
