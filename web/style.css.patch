@@ -1,0 +1,53 @@
+--- /Users/volodymyr.ostapiv/Drones/rover-sim/web/style.css
++++ /Users/volodymyr.ostapiv/Drones/rover-sim/web/style.css
+@@ -210,6 +210,18 @@
+ .environment-controls{display:flex;flex-wrap:wrap;gap:12px 24px;margin-top:10px;font-size:.8125rem}
+ .environment-controls>div{flex:1 1 240px;min-width:0}
+ .environment-controls select{padding:5px 8px}
++#manualTimeControls {
++  margin-top: 8px;
++  display: flex;
++  flex-direction: column;
++  gap: 8px;
++}
++#manualTimeControls input {
++  width: 120px;
++  padding: 6px 8px;
++}
++.time-control, .weather-control {
++  display: flex;
++  align-items: center;
++  gap: 8px;
++}
++.time-control select, .weather-control select {
++  flex: 1;
++  min-width: 0;
++}
++.environment-controls {
++  margin-top: 12px;
++  padding: 10px 0;
++  border-top: 1px solid var(--line);
++}
++#manualTimeControls .time-presets {
++  display: flex;
++  flex-wrap: wrap;
++  gap: 6px;
++  margin-top: 4px;
++}
++.time-presets button {
++  padding: 5px 10px;
++  font-size: .8125rem;
++}
++@media (max-width: 560px) {
++  .environment-controls {
++    flex-direction: column;
++    align-items: stretch;
++  }
++  .time-control, .weather-control {
++    flex-direction: column;
++    align-items: stretch;
++  }
++  #manualTimeControls input {
++    width: 100%;
++  }
++}
