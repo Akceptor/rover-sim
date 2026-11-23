@@ -42,21 +42,16 @@
     <div class="actions"><button id="run">Stop physics</button><button id="reset">Reset vehicle</button></div>
   </section>
   <div class="environment-controls" aria-label="Time and weather controls">
-    <div class="time-control">
-      <label for="timeMode">Time</label>
-      <select id="timeMode"><option value="auto">Auto</option><option value="manual">Manual</option></select>
-      <div id="manualTimeControls" hidden>
-        <label for="timeInput">Local time (HH:MM)</label>
-        <input id="timeInput" type="text" pattern="[0-9]{2}:[0-9]{2}" maxlength="5" size="5" value="12:00">
-        <div class="time-presets"><button type="button" data-time-preset="480">Morning</button><button type="button" data-time-preset="720">Day</button><button type="button" id="sunsetTime" data-time-preset="sunset">Sunset</button><button type="button" data-time-preset="0">Night</button></div>
-        <span id="sunsetUnavailable" hidden>Sunset unavailable on this date</span>
-      </div>
+    <label for="timeMode">Time</label>
+    <select id="timeMode"><option value="auto">Auto</option><option value="manual">Manual</option></select>
+    <div id="manualTimeControls" class="manual-time-inline" hidden>
+      <input id="timeInput" type="text" pattern="[0-9]{2}:[0-9]{2}" maxlength="5" size="5" value="12:00" placeholder="HH:MM">
+      <button type="button" data-time-preset="480">Morning</button><button type="button" data-time-preset="720">Day</button><button type="button" id="sunsetTime" data-time-preset="sunset">Sunset</button><button type="button" data-time-preset="0">Night</button>
+      <span id="sunsetUnavailable" hidden>Sunset unavailable on this date</span>
     </div>
-    <div class="weather-control">
-      <label for="weatherMode">Weather</label>
-      <select id="weatherMode"><option value="auto">Auto</option><option value="manual">Manual</option></select>
-      <div id="manualWeatherControls" hidden><label for="weatherPreset">Preset</label> <select id="weatherPreset"><option>Clear</option><option>Cloudy</option><option>Fog</option><option>Rain</option><option>Snow</option></select></div>
-    </div>
+    <label for="weatherMode">Weather</label>
+    <select id="weatherMode"><option value="auto">Auto</option><option value="manual">Manual</option></select>
+    <div id="manualWeatherControls" class="manual-weather-inline" hidden><label for="weatherPreset">Preset</label> <select id="weatherPreset"><option>Clear</option><option>Cloudy</option><option>Fog</option><option>Rain</option><option>Snow</option></select></div>
   </div>
   <div class="environment-status"><span id="localTime">Waiting for local time</span><span id="weatherStatus">Loading weather…</span><a href="https://open-meteo.com/" target="_blank" rel="noopener noreferrer">Weather by Open-Meteo · CC BY 4.0</a></div>
   </div>
@@ -69,14 +64,14 @@
       <label for="locationSelect">Location</label><select id="locationSelect" aria-describedby="locationHint"></select><button id="loadLocation" type="button">Load location</button>
       <p id="locationHint" class="muted"></p>
     </section>
-    <section id="vehiclePicker" class="vehicle-picker" aria-label="Vehicle selection">
-      <label for="vehicleSelect">Vehicle</label><select id="vehicleSelect"></select><button id="loadVehicle" type="button">Load vehicle</button>
-      <p id="vehicleStatus" class="map-hint" role="status" aria-live="polite"></p>
-    </section>
     <section id="savedLocations" class="saved-locations" aria-label="Saved locations">
       <label for="savedLocationName">Location name</label>
       <div class="saved-location-actions"><input id="savedLocationName" type="text" maxlength="80" autocomplete="off" aria-describedby="savedLocationStatus"><button id="saveLocation" type="button" disabled>Save location</button><button id="removeFavorite" type="button" hidden>Remove favorite</button></div>
       <p id="savedLocationStatus" class="map-hint" role="status" aria-live="polite">Waiting for the loaded location.</p>
+    </section>
+    <section id="vehiclePicker" class="vehicle-picker" aria-label="Vehicle selection">
+      <label for="vehicleSelect">Vehicle</label><select id="vehicleSelect"></select><button id="loadVehicle" type="button">Load vehicle</button>
+      <p id="vehicleStatus" class="map-hint" role="status" aria-live="polite"></p>
     </section>
     <p id="mapTileStatus" class="map-hint" role="status"></p>
   </aside>
