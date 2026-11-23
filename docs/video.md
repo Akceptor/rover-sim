@@ -71,7 +71,7 @@ loopback URL above already points to the correct machine.
 The output is the camera image, without the browser's buttons or OSD; Mission
 Planner draws its own telemetry. It uses the background command's selected view
 (or the visible tab's selected view for manual publishing), fits
-within **960 × 540** with letterboxing, and publishes up to **10 fps**. Browser
+within **960 × 540** with letterboxing, and publishes up to **25 fps**. Browser
 JPEG encoding and network speed determine the actual rate. Ground and sky
 textures are included in the stream.
 
@@ -107,7 +107,7 @@ Receiver references: [Mission Planner live video](https://ardupilot.org/planner/
 ## Implementation and validation plan
 
 Implementation plan: publish the selected Three.js camera as JPEG frames at
-960 × 540, at most 10 fps, through a dedicated same-origin WebSocket. A Node
+960 × 540, at most 25 fps, through a dedicated same-origin WebSocket. A Node
 relay exposes `/camera.mjpg` as HTTP multipart MJPEG. Keep a single publisher,
 limit each frame to 512 KiB, and drop output for slow receivers. Streaming is
 optional, starts from Settings, and never sends MAVLink or changes physics.
