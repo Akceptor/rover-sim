@@ -44,7 +44,7 @@ test('npm run standalone offers the location picker and a selected preset loads 
   let ready;for(let i=0;i<100;i++){ready=await s.state();if(ready.startTerrain.status==='ready')break;await delay(20);}
   assert.equal(ready.selectedLocation,'kyiv');assert.equal(ready.home.lat,50.3375);
   const m=await init;assert.equal(m.locationMode,'launcher');assert.ok(m.locations.some(l=>l.id==='kyiv')&&m.locations.some(l=>l.id==='map'));
-  ws.send(JSON.stringify({type:'running',value:true}));ws.send(JSON.stringify({type:'keys',steering:0,throttle:1}));await delay(300);
+  ws.send(JSON.stringify({type:'running',value:true}));ws.send(JSON.stringify({type:'keys',steering:0,throttle:1}));await delay(100);
   const driving=await s.state();assert.equal(driving.running,true);assert.equal(driving.inputs.throttle,1);
  }finally{ws?.terminate();await s.close();}
 });
