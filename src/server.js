@@ -207,7 +207,7 @@ async function selectVehicle(id){
  running=false;session.running=false;keyboard={steering:0,throttle:0,time:0,owner:null};
  vehicleStatus={status:'loading',message:'Preparing vehicle',pendingId:id};
  try{
-  const next=id===initialConfig.vehicle.id?initialConfig:resolveVehicleConfig(config,id);
+  const next=id==='custom'?initialConfig:resolveVehicleConfig(config,id);
   const defaults=await startupDefaults(next);
   if(shuttingDown||transition!==vehicleTransition||revision!==worldRevision)return;
   const replacement=await Physics.create(next.vehicle,!pendingLocation&&!args.includes('--flat')||!!environment.terrain,environment.terrain,overlay,overlayMesh);

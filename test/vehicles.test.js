@@ -16,7 +16,7 @@ test('three validated distinct built-in profiles with SI dimensions',()=>{
 });
 test('legacy inline vehicle and PWM calibrations survive profile resolution and config loading',()=>{
  const raw=JSON.parse(fs.readFileSync(new URL('../config/default.json',import.meta.url)));
- raw.vehicle.mass=4;raw.steering={channel:7,min:1050,trim:1470,max:1920,reversed:true};raw.throttle.channel=8;
+ raw.vehicle={mass:3,length:0.48,width:0.24,height:0.12,wheelbase:0.30,track:0.26,wheelRadius:0.065,suspension:0.07,maxSteer:0.52,engineForce:4.5,maxSpeed:1.2,rollingResistance:0.5,brakeImpulse:0.08};raw.vehicle.mass=4;raw.steering={channel:7,min:1050,trim:1470,max:1920,reversed:true};raw.throttle.channel=8;
  const c=resolveVehicleConfig(raw);assert.equal(c.vehicle.mass,4);assert.equal(c.vehicle.id,'custom');assert.deepEqual(c.steering,raw.steering);
  const file=path.join(os.tmpdir(),`rover-profile-${process.pid}.json`);try{fs.writeFileSync(file,JSON.stringify(raw));assert.deepEqual(loadConfig(file),c);}finally{fs.unlinkSync(file);}
  const selected=resolveVehicleConfig(c,'tracked-crawler');assert.deepEqual(selected.steering,raw.steering);assert.equal(selected.leftTrack.channel,2);assert.equal(selected.rightTrack.channel,4);
@@ -56,4 +56,9 @@ test('field classes cover every profile key exactly once',()=>{
  }
  for(const [p,c] of [['suspensionTuning.grip','live'],['wheelbase','reload'],['trackGeometry.samples','reload'],['trackGeometry.lateralResistance','live'],['diff.front','live'],['drive.riseRate','live'],['collisionBoxes','reload'],['cameraMount.x','reload']])assert.equal(fieldClass(p),c,p);
  assert.throws(()=>fieldClass('bogus'));
+});
+import {vehicleChoices} from '../src/vehicles.js';
+test('default config resolves mn168 by id',()=>{
+ assert.equal(JSON.parse(fs.readFileSync(new URL('../config/default.json',import.meta.url))).vehicle,'mn168');
+ const config=loadConfig();assert.equal(config.vehicle.id,'mn168');assert.equal(vehicleChoices(config).some(c=>c.id==='custom'),false);
 });
