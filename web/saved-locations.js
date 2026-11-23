@@ -11,6 +11,9 @@ export function createSavedLocations({send,onFavorites,getSelection,pickerEnable
   if(!name.value.trim())return 'Enter a name for this location.';
   return '';
  }
+ function updateDefaultName(){
+  if(!edited&&!pending&&state?.worldRevision===revision&&defaultRevision!==revision&&state.loadedLocationName){name.value=state.loadedLocationName;defaultRevision=revision;}
+ }
  function refresh(){
   const hint=reason();save.disabled=!!pending||!!hint;name.disabled=!!pending;
   remove.hidden=!favorites.some(p=>p.id===getSelection().id);remove.disabled=!connected||!!pending;
@@ -18,7 +21,7 @@ export function createSavedLocations({send,onFavorites,getSelection,pickerEnable
   if(status.textContent!==text)status.textContent=text;
  }
  function request(type,extra){
-  const requestId=globalThis.crypto?.randomUUID?.()??`location:${Date.now()}:${++requestSequence}:${Math.random().toString(36).slice(2)}`;pending={type,requestId};message='';refresh();
+  const requestId=globalThis.crypto?.randomUUID?.()??`location:${Date.now()}:${++requestSequence}:${Math.random().toString(36).slice(2)}`;pending={type,requestId,worldRevision:revision};message='';refresh();
   if(!send({type,...extra,requestId})){pending=null;connected=false;refresh();}
  }
  name.addEventListener('input',()=>{edited=true;message='';refresh();});
@@ -27,8 +30,8 @@ export function createSavedLocations({send,onFavorites,getSelection,pickerEnable
  $('cancelRemoveFavorite').onclick=()=>dialog.close();
  $('confirmRemoveFavorite').onclick=()=>{dialog.close();if(removeId&&!pending&&connected)request('removeLocation',{id:removeId});};
  return {
-  init(m){connected=true;revision=m.worldRevision;state=null;pending=null;message='';favorites=m.favorites??[];onFavorites(favorites);refresh();},
-  state(m){state=m;if(!edited&&defaultRevision!==m.worldRevision&&m.loadedLocationName){name.value=m.loadedLocationName;defaultRevision=m.worldRevision;}refresh();},
+  init(m){connected=true;revision=m.worldRevision;state=null;message='';favorites=m.favorites??[];onFavorites(favorites);refresh();},
+  state(m){state=m;updateDefaultName();refresh();},
   selection:refresh,
   connection(value){connected=value;if(!value){pending=null;message='';if(dialog.open)dialog.close();}refresh();},
   message(m){
@@ -36,7 +39,7 @@ export function createSavedLocations({send,onFavorites,getSelection,pickerEnable
     favorites=m.favorites??[];onFavorites(favorites);
     if(dialog.open&&!favorites.some(p=>p.id===removeId))dialog.close();
    }
-   if(pending&&m.requestId===pending.requestId){if(m.type==='favorites'&&pending.type==='saveLocation')edited=false;message=m.type==='error'?m.message:pending.type==='saveLocation'?'Location saved · Available offline.':'Favorite removed. The loaded world is unchanged.';pending=null;}
+   if(pending&&m.requestId===pending.requestId){if(m.type==='favorites'&&pending.type==='saveLocation'){edited=false;defaultRevision=pending.worldRevision;}message=m.type==='error'?m.message:pending.type==='saveLocation'?'Location saved · Available offline.':'Favorite removed. The loaded world is unchanged.';pending=null;updateDefaultName();}
    refresh();
   }
  };
