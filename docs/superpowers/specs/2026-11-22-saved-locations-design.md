@@ -1,6 +1,6 @@
 # Saved favorite locations
 
-Status: approved by the user on 2026-11-22; implementation in progress.
+Status: approved by the user on 2026-11-22; implemented, verified, merged and pushed on 2026-11-23.
 
 ## User flow
 
