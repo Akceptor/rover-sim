@@ -13,6 +13,10 @@
   "wheelWidth": 0.048,
   "suspension": 0.09,
   "maxSteer": 0.48,
+  "steerRate": 6,
+  "ackermannFactor": 1,
+  "torqueSplit": 0.5,
+  "diff": { "front": "locked", "rear": "locked" },
 
   "engineForce": 16,
   "maxSpeed": 1.5,

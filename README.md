@@ -120,6 +120,8 @@ Choose **Vehicle → Load vehicle** beside the location controls. The HUD shows 
 
 These are **starting estimates**, not measured manufacturer specifications. Dimensions, CoG, collision shells, camera mount, suspension, grip and drivetrain tuning live in `config/vehicles/<id>/vehicle.json`, in metres, kilograms, seconds, newtons and radians. Vehicle and location are independent. Bundled terrain works with `"osm": false`.
 
+Wheeled profiles also take drivetrain fields: `steerRate` (rad/s servo slew, 0–100), `ackermannFactor` (0 parallel steer … 1 true Ackermann), `torqueSplit` (front-axle drive share, 0 RWD … 1 FWD) and `diff` (`{"front","rear"}`, each `"locked"` or `"open"`). `maxSteer` stays the centre (bicycle) angle. Tracked profiles carry but ignore them.
+
 For SITL changes, **disarm first** and wait for the browser to show fresh disarmed telemetry. The simulator holds physics while switching. The managed launcher restarts only SITL, preserving its saved parameters. In `--mission-planner` mode, stop SITL, **Copy command** again, paste into **Simulation → Extra command line**, and start **Rover**. A changed command clears the copied indicator. Wait for output verification before starting physics. Unknown or armed telemetry blocks changes.
 
 ### Track outputs and saved parameters

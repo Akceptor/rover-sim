@@ -28,3 +28,9 @@ test('rejects nonfinite, nonsensical geometry, bad tuning, unknown fields and du
  assert.throws(()=>resolveVehicleConfig({vehicle:'tracked-crawler',leftTrack:{channel:2,min:1000,trim:1500,max:2000,reversed:false},rightTrack:{channel:2,min:1000,trim:1500,max:2000,reversed:false}}));
  const a=resolveVehicle();a.drive.deadband=.5;assert.notEqual(resolveVehicle().drive.deadband,.5);
 });
+test('drivetrain fields default, merge and validate',()=>{
+ const v=resolveVehicle('mn168');assert.equal(v.steerRate,6);assert.equal(v.ackermannFactor,1);assert.equal(v.torqueSplit,.5);assert.deepEqual(v.diff,{front:'locked',rear:'locked'});
+ assert.deepEqual(resolveVehicle({profile:'mn168',diff:{rear:'open'}}).diff,{front:'locked',rear:'open'});
+ for(const patch of [{steerRate:0},{steerRate:101},{ackermannFactor:-.1},{ackermannFactor:1.1},{torqueSplit:1.5},{diff:{front:'welded'}},{diff:{middle:'open'}}])assert.throws(()=>resolveVehicle({profile:'mn168',...patch}),undefined,JSON.stringify(patch));
+ resolveVehicle({profile:'mn168',torqueSplit:0});resolveVehicle({profile:'mn168',ackermannFactor:0});
+});
