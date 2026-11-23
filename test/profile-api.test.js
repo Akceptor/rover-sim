@@ -109,16 +109,21 @@ test('POST /live: 409 for non-active ids and during transitions, otherwise appli
  });
 });
 
-test('backend serves the API: save appears in the cockpit init, live tuning applies, new profile is selectable',async()=>{
- const {spawn}=await import('node:child_process'),{once}=await import('node:events'),{setTimeout:delay}=await import('node:timers/promises'),{WebSocket}=await import('ws');
+async function backend(){
+ const {spawn}=await import('node:child_process'),{once}=await import('node:events'),{setTimeout:delay}=await import('node:timers/promises');
  const tmp=fs.mkdtempSync(path.join(os.tmpdir(),'profile-backend-'));
  const config=JSON.parse(fs.readFileSync(new URL('../config/default.json',import.meta.url)));
  Object.assign(config,{osm:false,mavlink:null,httpPort:22000+Math.floor(Math.random()*10000),udpPort:32000+Math.floor(Math.random()*10000),savedLocationsDir:path.join(tmp,'saved')});
  const file=path.join(tmp,'config.json');fs.writeFileSync(file,JSON.stringify(config));
  const p=spawn(process.execPath,['src/server.js','--standalone','--flat','--config',file],{cwd:new URL('..',import.meta.url),stdio:['ignore','pipe','pipe'],env:process.env});let logs='';p.stderr.on('data',b=>logs+=b);
- const url=`http://127.0.0.1:${config.httpPort}`,send=(method,u,body)=>fetch(url+u,{method,headers:{Origin:url,'Content-Type':'application/json'},body:body&&JSON.stringify(body)});
+ const url=`http://127.0.0.1:${config.httpPort}`;
+ for(let i=0;i<100;i++){if(p.exitCode!==null)throw Error(logs);try{await fetch(url+'/api/state');break;}catch{await delay(30);}}
+ return {url,async close(){p.kill();await once(p,'exit');fs.rmSync(tmp,{recursive:true,force:true});}};
+}
+test('backend serves the API: save appears in the cockpit init, live tuning applies, new profile is selectable',async()=>{
+ const {once}=await import('node:events'),{setTimeout:delay}=await import('node:timers/promises'),{WebSocket}=await import('ws');
+ const b=await backend(),url=b.url,send=(method,u,body)=>fetch(url+u,{method,headers:{Origin:url,'Content-Type':'application/json'},body:body&&JSON.stringify(body)});
  try{
-  for(let i=0;i<100;i++){if(p.exitCode!==null)throw Error(logs);try{await fetch(url+'/api/state');break;}catch{await delay(30);}}
   const init=async()=>{const ws=new WebSocket(url.replace('http:','ws:'),{origin:url});const m=new Promise(r=>ws.once('message',d=>r(JSON.parse(d))));await once(ws,'open');const msg=await m;ws.close();return msg;};
   assert.equal((await init()).vehicles.some(v=>v.id==='backend-rig'),false);
   const rig=profile('backend-rig',{name:'Backend rig'});
@@ -130,5 +135,13 @@ test('backend serves the API: save appears in the cockpit init, live tuning appl
   const ws=new WebSocket(url.replace('http:','ws:'),{origin:url});await once(ws,'open');ws.send(JSON.stringify({type:'selectVehicle',id:'backend-rig'}));
   let state;for(let i=0;i<100;i++){state=await (await fetch(url+'/api/state')).json();if(state.selectedVehicle==='backend-rig'&&state.vehicleStatus.status==='ready')break;await delay(20);}
   assert.equal(state.selectedVehicle,'backend-rig');ws.close();
- }finally{p.kill();await once(p,'exit');fs.rmSync(tmp,{recursive:true,force:true});}
+ }finally{await b.close();}
+});
+test('editor page and modules are served',async()=>{
+ const b=await backend();
+ try{
+  const page=await fetch(b.url+'/profiles.html');assert.equal(page.status,200);assert.match(page.headers.get('content-type'),/text\/html/);assert.match(await page.text(),/<script type="module" src="\/profiles\.js">/);
+  for(const f of ['/profiles.js','/profile-fields.js']){const r=await fetch(b.url+f);assert.equal(r.status,200,f);assert.match(r.headers.get('content-type'),/text\/javascript/);}
+  assert.match(await (await fetch(b.url+'/')).text(),/href="\/profiles\.html"[^>]*target="_blank"/);
+ }finally{await b.close();}
 });

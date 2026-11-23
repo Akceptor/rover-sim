@@ -1,0 +1,21 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Rover Sim · Vehicle profiles</title>
+  <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+  <header class="top"><div class="identity"><strong>VEHICLE PROFILES</strong><span class="muted">Edit config/vehicles/*</span></div><a class="profiles-link" href="/">Cockpit</a></header>
+  <main class="pe">
+    <div class="pe-bar">
+      <label for="profileSelect" class="muted">Profile</label><select id="profileSelect"></select>
+      <button id="duplicate" type="button">Duplicate as…</button><button id="save" type="button">Save</button><button id="revert" type="button">Revert</button>
+      <p id="status" class="pe-status" role="status" aria-live="polite"></p>
+    </div>
+    <form id="form" autocomplete="off" onsubmit="return false"></form>
+  </main>
+  <script type="module" src="/profiles.js"></script>
+</body>
+</html>
