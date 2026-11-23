@@ -17,7 +17,7 @@ export function resolveVehicle(value='mn168'){
  for(const key of Object.keys(value))if(!fields.includes(key)&&key!=='profile')throw Error(`unknown vehicle ${key}`);
  const id=value.profile??(vehicleProfiles.some(p=>p.id===value.id)?value.id:'mn168');
  const base=resolveVehicle(id),v={...base,...value};delete v.profile;
- for(const key of ['centerOfGravity','cameraMount','suspensionTuning','drive','trackGeometry']){object(value[key]??base[key],key);for(const k of Object.keys(value[key]??{}))if(!(k in base[key]))throw Error(`unknown vehicle ${key}.${k}`);v[key]={...base[key],...value[key]};}
+ for(const key of ['centerOfGravity','cameraMount','suspensionTuning','drive','trackGeometry','diff']){object(value[key]??base[key],key);for(const k of Object.keys(value[key]??{}))if(!(k in base[key]))throw Error(`unknown vehicle ${key}.${k}`);v[key]={...base[key],...value[key]};}
  if(!value.id&&!value.profile){v.id=Object.entries(value).some(([k,x])=>JSON.stringify(x)!==JSON.stringify(base[k]))?'custom':base.id;v.name=v.id==='custom'?'Custom · inline vehicle':base.name;}
  if(typeof v.id!=='string'||!v.id||typeof v.name!=='string'||!v.name)throw Error('invalid vehicle identity');
  if(!['wheeled','tracked'].includes(v.drivetrain))throw Error('invalid vehicle drivetrain');
@@ -28,6 +28,8 @@ export function resolveVehicle(value='mn168'){
  if(Math.abs(v.centerOfGravity.x)>v.length/2||Math.abs(v.centerOfGravity.z)>v.width/2||Math.abs(v.centerOfGravity.y)>v.height)throw Error('invalid vehicle centerOfGravity');
  for(const [k,x] of Object.entries(v.suspensionTuning))range(x,0,k==='travel'?1:100000,`suspensionTuning.${k}`);
  for(const [k,x] of Object.entries(v.drive))range(x,0,['deadband','reverseThreshold'].includes(k)?.99:100,`drive.${k}`,['deadband','neutralBrake','reverseBrake'].includes(k));
+ range(v.steerRate,0,100,'steerRate');for(const key of ['ackermannFactor','torqueSplit'])range(v[key],0,1,key,true);
+ for(const [k,x] of Object.entries(v.diff))if(!['locked','open'].includes(x))throw Error(`invalid vehicle diff.${k}`);
  if(!['ray','multi-ray'].includes(v.contactModel))throw Error('invalid vehicle contactModel');
  for(const [k,x] of Object.entries(v.trackGeometry))range(x,0,k==='samples'?9:100,`trackGeometry.${k}`);
  if(!Number.isInteger(v.trackGeometry.samples)||v.trackGeometry.samples<3||v.trackGeometry.length<=v.trackGeometry.radius*2||v.trackGeometry.width>=v.track)throw Error('invalid vehicle trackGeometry');

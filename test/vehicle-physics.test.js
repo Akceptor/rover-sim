@@ -17,7 +17,7 @@ test('deadband, gradual start, neutral stop and brake-before-reverse',async()=>u
 }));
 test('wheeled front steering and profile dimensions follow state and real mass',async()=>using('heavy-crawler',p=>{
  const s=run(p,3,.5,.5);assert.ok(s.position.z>.1);assert.ok(s.heading>10&&s.heading<150);
- assert.equal(s.wheels.length,4);assert.equal(s.wheels[0].x,p.c.wheelbase/2);assert.ok(Math.abs(s.wheels[0].steering+p.c.maxSteer*.5)<1e-6);assert.equal(s.wheels[2].steering,0);assert.ok(Math.abs(p.body.mass()-p.c.mass)<1e-4);
+ assert.equal(s.wheels.length,4);assert.equal(s.wheels[0].x,p.c.wheelbase/2);assert.ok(Math.abs(p.steerAngle+p.c.maxSteer*.5)<1e-6);assert.ok(s.wheels[0].steering<0&&s.wheels[1].steering<s.wheels[0].steering);assert.equal(s.wheels[2].steering,0);assert.ok(Math.abs(p.body.mass()-p.c.mass)<1e-4);
 }));
 test('tracked independent outputs drive straight, turn gradually and pivot in place',async()=>using('tracked-crawler',p=>{
  let s=run(p,3,0,0,{left:.5,right:.5});assert.ok(s.position.x>.35);assert.ok(Math.abs(s.position.z)<.05);assert.ok(Math.abs(s.heading)<2||s.heading>358);
@@ -77,4 +77,36 @@ test('parked on a 15 degree side slope does not drift',async()=>{
   p.body.setTranslation({x:0,y:1.15,z:0},true);run(p,2);assert.ok(p.state().wheels.every(w=>w.contact));const z0=p.state().position;run(p,10);const z1=p.state().position,d=Math.hypot(z1.x-z0.x,z1.z-z0.z);
   console.log('slope drift',d.toFixed(4));assert.ok(d<.02,`drift ${d}`);
  }finally{p.free();}
+});
+const wheeled=async(patch,fn)=>{const p=await Physics.create(resolveVehicle({profile:'mn168',...patch}),false);try{run(p,2);await fn(p);}finally{p.free();}};
+test('steering slews at steerRate',async()=>using('mn168',p=>{
+ p.step(.01,0,1);assert.ok(Math.abs(p.steerAngle)<=6*.01+1e-6,`${p.steerAngle}`);
+ run(p,.19,0,1);assert.ok(Math.abs(Math.abs(p.steerAngle)-p.c.maxSteer)<1e-6);
+ const a=p.steerAngle;run(p,.05,0,-1);assert.ok(Math.abs(p.steerAngle-a)<=6*.05+1e-6);assert.ok(Math.abs(p.steerAngle)<p.c.maxSteer);
+ p.reset();assert.equal(p.steerAngle,0);
+}));
+test('ackermann inner wheel turns more',async()=>{
+ await using('mn168',p=>{const s=run(p,.5,0,.5),[l,r]=s.wheels,t=.5*p.c.maxSteer;
+  assert.ok(Math.abs(r.steering)>Math.abs(l.steering));for(const w of [l,r])assert.ok(Math.abs(Math.abs(w.steering)-t)<.25*t,`${w.steering}`);
+  assert.equal(run(p,.3,0,0).wheels[0].steering,0);});
+ await wheeled({ackermannFactor:0},p=>{const [l,r]=run(p,.5,0,.5).wheels;assert.ok(Math.abs(l.steering-r.steering)<1e-6);});
+ await using('mn168',p=>{p.reset();const [l,r]=run(p,.2,0,0).wheels;assert.equal(l.steering,0);assert.equal(r.steering,0);});
+});
+test('ackermann turn radius matches geometry',async()=>using('mn168',p=>{
+ run(p,3,.3,.5);const s=run(p,.5,.3,.5),w=p.body.angvel(),r=Math.hypot(s.velocity.x,s.velocity.z)/Math.abs(w.y),k=p.c.wheelbase/Math.tan(.5*p.c.maxSteer);
+ console.log('ackermann radius',r.toFixed(3),'geometry',k.toFixed(3));assert.ok(Math.abs(r-k)/k<.15,`radius ${r} vs ${k}`);
+}));
+const record=p=>{const out=Array.from({length:4},()=>[]);for(let g=0;g<4;g++)for(const i of p.wheelGroups[g]){const set=p.car.setWheelEngineForce.bind(p.car);p.car.setWheelEngineForce=(j,f)=>{if(j===i)out[g].push(f);set(j,f);};}return out;};
+test('torqueSplit 0 drives only rear',async()=>wheeled({torqueSplit:0},p=>{
+ const f=record(p),x0=p.state().position.x;run(p,1,1,0);const s=run(p,1,1,0);
+ assert.ok(f[0].every(x=>x===0)&&f[1].every(x=>x===0));assert.ok(f[2].some(x=>x>0));assert.ok(s.position.x-x0>.2);
+}));
+test('locked diff drives with a lifted wheel, open diff stalls that axle',async()=>{
+ for(const [mode,moves] of [['locked',true],['open',false]])await wheeled({torqueSplit:1,diff:{front:mode,rear:'locked'}},p=>{
+  p.world.createCollider(R.ColliderDesc.cuboid(.5,.025,.07).setTranslation(0,.025,-.13));p.world.createCollider(R.ColliderDesc.cuboid(.5,.06,.05).setTranslation(0,.06,0));
+  p.body.setTranslation({x:0,y:.2,z:0},true);p.body.setRotation({x:0,y:0,z:0,w:1},true);p.body.setLinvel({x:0,y:0,z:0},true);run(p,2);
+  const s=p.state();assert.ok(!s.wheels[1].contact&&s.wheels[0].contact,JSON.stringify(s.wheels.map(w=>w.contact)));
+  const f=record(p);run(p,1,1,0);const sum=f[0].reduce((a,b)=>a+Math.abs(b),0)+f[1].reduce((a,b)=>a+Math.abs(b),0);
+  assert.ok(moves?sum>0:sum<1e-9,`${mode} ${sum}`);
+ });
 });

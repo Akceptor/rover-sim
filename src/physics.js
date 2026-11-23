@@ -1,6 +1,6 @@
 import R from '@dimforge/rapier3d-compat';
 import {resolveVehicle} from './vehicles.js';
-import {driveStep,demand,trackDemands} from './drivetrain.js';
+import {driveStep,demand,trackDemands,axleForces} from './drivetrain.js';
 import {playground} from './world.js';
 import {validateTerrain,terrainMesh,terrainObjects} from './terrain.js';
 import {ned,rotate,sensors} from './frames.js';
@@ -44,10 +44,10 @@ export class Physics {
     }else{
       this.trackStates=['left','right'].map((side,i)=>({side,distance:0,rotation:0,speed:0,contacts:[],z:(i?1:-1)*c.track/2}));
     }
-    this.time=0;this.acc={x:0,y:0,z:0};this.sensorVelocity={x:0,y:0,z:0};this.inputs={throttle:0,steering:0,left:0,right:0};this.driveDemand=c.drivetrain==='tracked'?[0,0]:[0];
+    this.time=0;this.steerAngle=0;this.acc={x:0,y:0,z:0};this.sensorVelocity={x:0,y:0,z:0};this.inputs={throttle:0,steering:0,left:0,right:0};this.driveDemand=c.drivetrain==='tracked'?[0,0]:[0];
   }
   spawnHeight(){return (this.c.drivetrain==='tracked'?this.c.trackGeometry.radius:this.c.wheelRadius)+this.c.suspension;}
-  reset(){this.body.setTranslation({x:0,y:this.spawnHeight(),z:0},true);this.body.setRotation({x:0,y:0,z:0,w:1},true);this.body.setLinvel({x:0,y:0,z:0},true);this.body.setAngvel({x:0,y:0,z:0},true);this.body.resetForces(true);this.body.resetTorques(true);this.acc={x:0,y:0,z:0};this.sensorVelocity={x:0,y:0,z:0};this.time=0;this.driveDemand.fill(0);this.inputs={throttle:0,steering:0,left:0,right:0};for(const t of this.trackStates){t.distance=0;t.rotation=0;t.speed=0;t.contacts=[];}}
+  reset(){this.body.setTranslation({x:0,y:this.spawnHeight(),z:0},true);this.body.setRotation({x:0,y:0,z:0,w:1},true);this.body.setLinvel({x:0,y:0,z:0},true);this.body.setAngvel({x:0,y:0,z:0},true);this.body.resetForces(true);this.body.resetTorques(true);this.acc={x:0,y:0,z:0};this.sensorVelocity={x:0,y:0,z:0};this.time=0;this.steerAngle=0;this.driveDemand.fill(0);this.inputs={throttle:0,steering:0,left:0,right:0};for(const t of this.trackStates){t.distance=0;t.rotation=0;t.speed=0;t.contacts=[];}}
   step(dt,throttle,steering,tracks){
     if(!Number.isFinite(dt)||dt<=0||dt>.1)throw Error('invalid physics timestep');
     const start=this.body.translation(),oldVelocity=this.sensorVelocity;
@@ -69,12 +69,19 @@ export class Physics {
     const speed=dot(v,f),drive=driveStep(this.driveDemand[0],throttle,speed,h,c.drive);this.driveDemand[0]=drive.value;
     const taper=Math.max(0,1-Math.max(0,speed*Math.sign(drive.value))/c.maxSpeed);
     const com=this.body.worldCom(),m=this.body.mass(),nc=this.wheelGroups.flat().filter(i=>this.car.wheelIsInContact(i)).length;
-    for(let g=0;g<4;g++)for(const i of this.wheelGroups[g]){
-      this.car.setWheelSteering(i,g<2?-steering*c.maxSteer:0);
+    const L=c.wheelbase,T=c.track,target=-steering*c.maxSteer,d=this.steerAngle=this.steerAngle+clamp(target-this.steerAngle,-c.steerRate*h,c.steerRate*h);
+    const loads=this.wheelGroups.map(group=>group.map(i=>this.car.wheelIsInContact(i)?Math.max(0,this.car.wheelSuspensionForce(i)??0):0));
+    const budget=loads.map(l=>l.reduce((a,b)=>a+b,0)*t.grip),total=drive.value*c.engineForce*taper;
+    const wheelForce=[...axleForces(total*c.torqueSplit,[budget[0],budget[1]],c.diff.front),...axleForces(total*(1-c.torqueSplit),[budget[2],budget[3]],c.diff.rear)];
+    for(let g=0;g<4;g++){
+      const inner=(d<0)===(g===1),ack=d===0?0:Math.sign(d)*Math.atan2(L,L/Math.tan(Math.abs(d))+(inner?-T/2:T/2)),angle=g<2?d+c.ackermannFactor*(ack-d):0;
+      const rays=this.wheelGroups[g].filter(i=>this.car.wheelIsInContact(i)).length;
+      for(const i of this.wheelGroups[g]){
+      this.car.setWheelSteering(i,angle);
       // Rapier applies impulses only to contacting wheels and limits the tire
       // friction budget using suspension load; also cap requested motor force.
       const contact=this.car.wheelIsInContact(i),load=Math.max(0,this.car.wheelSuspensionForce(i)??0);
-      const n=this.wheelGroups[g].length,requested=drive.value*c.engineForce*taper/(4*n);
+      const n=this.wheelGroups[g].length,requested=wheelForce[g]/(rays||1);
       // Side force acts at CoM height with plain mass (not contact-point mEff, which only rolls the chassis against stiff suspension and leaves the CoM creeping); lat includes this substep's gravity so slopes hold.
       let engine=0;
       if(contact){
@@ -88,6 +95,7 @@ export class Physics {
       }
       this.car.setWheelEngineForce(i,engine);
       this.car.setWheelBrake(i,c.brakeImpulse*drive.brake*(h/.005)/n);
+      }
     }
     // Rolling loss acts through contacts, never as an airborne body drag force.
     const contacts=Array.from({length:this.car.numWheels()},(_,i)=>i).filter(i=>this.car.wheelIsInContact(i));
