@@ -20,7 +20,7 @@ On macOS/Linux, use `npm` in place of `npm.cmd` throughout.
 npm.cmd run standalone
 ```
 
-Open [http://127.0.0.1:8090](http://127.0.0.1:8090). Click the view to focus it, then use **W/S** or **↑/↓** for forward, brake and reverse, and **A/D** or **←/→** to steer.
+Open [http://127.0.0.1:8090](http://127.0.0.1:8090). Click the view to focus it, then use **W/S** or **↑/↓** for forward, brake and reverse, and **A/D** or **←/→** to steer. Pick a starting location from the dropdown first, then press **Start physics**. To skip the picker and load the configured terrain, run `node src/server.js --standalone`.
 
 ## Start with ArduRover SITL
 
