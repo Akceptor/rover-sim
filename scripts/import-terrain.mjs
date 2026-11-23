@@ -36,7 +36,7 @@ async function sampleAsset(asset,samples,{elevation=false}={}){
    const repair=fillSmallElevationGaps(bands[0],width,maxY-minY,nodata);bands[0]=repair.values;
    if(repair.filledCells){
     const maxRadiusMetres=repair.maxRadiusCells*Math.max(Math.abs(rx),Math.abs(ry));
-    gapFill={method:'inverse-distance weighting of original valid neighbours',filledCells:repair.filledCells,totalCells:width*(maxY-minY),maxRadiusMetres,maxMissingFraction:.01};
+    gapFill={method:'inverse-distance weighting of original valid neighbours',filledCells:repair.filledCells,totalCells:width*(maxY-minY),maxRadiusMetres,maxMissingFraction:repair.maxMissingFraction};
     console.log(`Estimated ${repair.filledCells} missing elevation cells using valid source data within ${maxRadiusMetres} m.`);
    }
   }

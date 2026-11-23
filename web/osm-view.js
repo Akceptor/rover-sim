@@ -1,6 +1,8 @@
 import * as T from '/three.js';
 import {buildingSurfaces,buildingStyle} from '/building-surfaces.js';
 import {buildingTexture} from '/building-textures.js';
+import {roadTexture} from '/road-textures.js';
+import {roadUV} from '/road-surface.js';
 import {terrainHeight} from '/terrain.js';
 export function addOsmOverlay(world,overlay,terrain){
  if(!overlay)return;
@@ -9,7 +11,7 @@ export function addOsmOverlay(world,overlay,terrain){
   const surfaces=buildingSurfaces(b),style=buildingStyle(b.id),positions=[],uv=[],groups=[],materials=[];
   for(const [kind,part]of [['windows',surfaces.walls],['roof',surfaces.roof],['base',surfaces.foundation]]){
    const start=positions.length/3;positions.push(...part.positions);uv.push(...part.uv);groups.push({start,count:part.positions.length/3,materialIndex:materials.length});
-   const map=buildingTexture(style,kind);materials.push(new T.MeshStandardMaterial({map,bumpMap:map,bumpScale:kind==='windows'?.018:.025,roughness:.92,side:T.DoubleSide}));
+   const map=buildingTexture(style,kind);materials.push(new T.MeshStandardMaterial({map,bumpMap:kind==='windows'?map:null,bumpScale:kind==='windows'?.018:0,roughness:.92,side:T.DoubleSide}));
   }
   const object=mesh(positions,null,materials,`osm-building:${b.id}`,uv);object.geometry.clearGroups();for(const g of groups)object.geometry.addGroup(g.start,g.count,g.materialIndex);object.castShadow=true;
   const door=surfaces.door;
@@ -21,6 +23,6 @@ export function addOsmOverlay(world,overlay,terrain){
   }
  }
  for(const r of overlay.roads){
-  const object=mesh(r.vertices,null,new T.MeshStandardMaterial({color:r.paved?0x66676a:0x9d8866,roughness:1,side:T.DoubleSide,depthWrite:false,polygonOffset:true,polygonOffsetFactor:-1,polygonOffsetUnits:-1}),`osm-road:${r.id}`);object.renderOrder=1;
+  const object=mesh(r.vertices,null,new T.MeshStandardMaterial({map:roadTexture(r.paved),roughness:1,side:T.DoubleSide,depthWrite:false,polygonOffset:true,polygonOffsetFactor:-1,polygonOffsetUnits:-1}),`osm-road:${r.id}`,roadUV(r.vertices));object.renderOrder=1;
  }
 }

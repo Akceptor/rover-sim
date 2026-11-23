@@ -20,7 +20,7 @@ export function buildingSurfaces(b){
    if(end-start<1e-6||high-low<1e-6)return;
    const p=(u,y)=>[a[0]+dx*u/length,y,a[2]+dz*u/length];
    const coords=[[start,low],[end,low],[start,high],[end,low],[end,high],[start,high]];
-   for(const [u,y]of coords){target.positions.push(...p(u,y));target.uv.push(windowed?(u-start)/2.8:u/2.8,windowed?(y-base)/storey:y/3);}
+   for(const [u,y]of coords){target.positions.push(...p(u,y));target.uv.push(windowed?(u-start)/2.8:u/2.8,windowed?(y-base)/storey:(y-b.bottom)/(b.top-b.bottom));}
   }
   quad(foundation,0,length,b.bottom,base);
   const bays=Math.floor(length/2.8),margin=(length-bays*2.8)/2;
@@ -33,4 +33,9 @@ export function buildingSurfaces(b){
   }
  }
  return {walls,foundation,roof,door};
+}
+
+// Periodic staining occupies about the bottom 8–10% of the blank wall texture.
+export function foundationMoisture(){
+ return Array.from({length:65},(_,i)=>{const a=i/64*Math.PI*2;return .085+.008*Math.sin(a*3)+.005*Math.sin(a*7)+.002*Math.sin(a*13);});
 }

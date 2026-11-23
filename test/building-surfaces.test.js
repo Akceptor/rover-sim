@@ -23,3 +23,18 @@ test('all facade vertices remain on the original footprint walls and courtyard s
 test('building styles remain stable across loads and offer different finishes',()=>{
  assert.deepEqual(buildingStyle('way/30'),buildingStyle('way/30'));assert.ok(new Set(Array.from({length:20},(_,i)=>buildingStyle(`way/${i}`).finish)).size>=3);
 });
+test('blank foundation walls span their full texture height without repeating or stretching an edge texel',()=>{
+ const b=overlayGeometry(processOsm(osm,terrain),terrain).buildings[0],shift=17;
+ b.vertices=b.vertices.map((v,i)=>i%3===1?v+shift:v);b.top+=shift;b.bottom+=shift;
+ const s=buildingSurfaces(b);
+ for(let i=0;i<s.foundation.positions.length;i+=3){const y=s.foundation.positions[i+1],v=s.foundation.uv[i/3*2+1];assert.ok(Math.abs(v-(y-b.bottom)/(b.top-b.bottom))<1e-8);}
+ const vertical=s.foundation.uv.filter((_,i)=>i%2===1);
+ assert.equal(Math.min(...vertical),0);assert.equal(Math.max(...vertical),1);assert.ok(vertical.every(v=>v>=0&&v<=1));
+});
+test('foundation moisture has stable subtle uneven traces with matching horizontal tile edges',async()=>{
+ const {foundationMoisture}=await import('../web/building-surfaces.js');
+ assert.equal(typeof foundationMoisture,'function');
+ const traces=foundationMoisture();assert.deepEqual(traces,foundationMoisture());
+ assert.ok(traces.every(v=>v>=.06&&v<=.105));assert.ok(Math.max(...traces)-Math.min(...traces)>.015);
+ assert.ok(Math.abs(traces[0]-traces.at(-1))<1e-12);
+});

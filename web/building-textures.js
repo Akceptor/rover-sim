@@ -1,4 +1,5 @@
 import * as T from '/three.js';
+import {foundationMoisture} from '/building-surfaces.js';
 // A finite shared texture set survives world reloads; per-building materials are disposed normally.
 const records=new Map(),photo=new Image();
 const rects={plaster:[.04,.04,.42,.40],brick:[.54,.04,.42,.40],concrete:[.04,.54,.42,.42],roof:[.54,.54,.42,.42]};
@@ -15,6 +16,12 @@ function paint(record){
   c.fillStyle=tones[finish][tone];c.fillRect(0,0,s,s);
   if(photo.naturalWidth){const r=rects[finish];c.drawImage(photo,r[0]*photo.width,r[1]*photo.height,r[2]*photo.width,r[3]*photo.height,0,0,s,s);c.globalCompositeOperation='multiply';c.fillStyle=tones[finish][tone];c.fillRect(0,0,s,s);c.globalCompositeOperation='source-over';}
   else{c.fillStyle='#00000009';for(let i=0;i<1500;i++)c.fillRect((i*73)%s,(i*113)%s,2,2);}
+  if(kind==='base'){
+   // Full-height V avoids repeating damp bands and stretching top edge pixels on blank margins.
+   const traces=foundationMoisture();c.save();c.beginPath();c.moveTo(0,s);
+   traces.forEach((h,i)=>c.lineTo(i/(traces.length-1)*s,s*(1-h)));c.lineTo(s,s);c.closePath();c.clip();
+   const damp=c.createLinearGradient(0,s,0,s*.89);damp.addColorStop(0,'#343b2c38');damp.addColorStop(.4,'#42483120');damp.addColorStop(1,'#42483100');c.fillStyle=damp;c.fillRect(0,s*.89,s,s*.11);c.restore();
+  }
   if(kind==='windows'){
    const x=137,y=110,w=238,h=252;
    c.fillStyle='#00000035';c.fillRect(x-9,y+7,w+22,h+12);
@@ -37,7 +44,7 @@ export function buildingTexture(style,kind){
  const finish=kind==='roof'?'roof':style.finish,tone=kind==='roof'?style.roof:style.tone,key=kind==='door'?'door':`${finish}:${tone}:${kind}`;
  if(!records.has(key)){
   const canvas=document.createElement('canvas');canvas.width=canvas.height=512;
-  const map=new T.CanvasTexture(canvas);map.colorSpace=T.SRGBColorSpace;map.wrapS=map.wrapT=T.RepeatWrapping;map.anisotropy=4;
+  const map=new T.CanvasTexture(canvas);map.colorSpace=T.SRGBColorSpace;map.wrapS=T.RepeatWrapping;map.wrapT=kind==='base'?T.ClampToEdgeWrapping:T.RepeatWrapping;map.anisotropy=4;
   const record={canvas,map,finish,tone,kind};records.set(key,record);paint(record);
  }
  return records.get(key).map;

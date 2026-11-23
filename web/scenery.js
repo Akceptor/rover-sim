@@ -1,4 +1,5 @@
 import * as T from '/three.js';
+import {skyPalette,paletteChanged} from '/sky-palette.js';
 // Deterministic, local textures: no image downloads or changes to collision geometry.
 function random(seed){return ()=>{seed=(Math.imul(seed,1664525)+1013904223)>>>0;return seed/4294967296;};}
 function texture(size,paint){const canvas=document.createElement('canvas');canvas.width=canvas.height=size;paint(canvas.getContext('2d'),size);const map=new T.CanvasTexture(canvas);map.colorSpace=T.SRGBColorSpace;return map;}
@@ -22,13 +23,26 @@ export function createScenery(renderer){
  });
  markings.anisotropy=grass.anisotropy;
  const sky=new T.Group();
- const skyMap=texture(64,(c,size)=>{const g=c.createLinearGradient(0,0,0,size);g.addColorStop(0,'#4a86b7');g.addColorStop(.5,'#b9d8e8');g.addColorStop(1,'#d7e5e6');c.fillStyle=g;c.fillRect(0,0,size,size);});
+ const skyMap=texture(64,()=>{}),horizon=new T.Color();let lastPalette=null;
+ function updateSky(visual){
+  const palette=skyPalette(visual.elevationDeg??45,visual.cloud);
+  if(paletteChanged(lastPalette,palette)){
+   const c=skyMap.image.getContext('2d'),size=skyMap.image.width,g=c.createLinearGradient(0,0,0,size);
+   const css=rgb=>`rgb(${rgb.map(v=>Math.round(v*255)).join(',')})`;
+   g.addColorStop(0,css(palette.zenith));g.addColorStop(.5,css(palette.horizon));g.addColorStop(1,css(palette.horizon));
+   c.fillStyle=g;c.fillRect(0,0,size,size);skyMap.needsUpdate=true;lastPalette=palette;
+   horizon.setRGB(...palette.horizon,T.SRGBColorSpace);
+  }
+  return horizon;
+ }
+ updateSky({elevationDeg:45,cloud:0});
  const dome=new T.Mesh(new T.SphereGeometry(110,32,16),new T.MeshBasicMaterial({map:skyMap,side:T.BackSide,depthWrite:false,fog:false}));dome.renderOrder=-2;sky.add(dome);
  const cloudMap=texture(256,(c)=>{for(const [x,y,r] of [[62,144,48],[105,111,61],[158,131,57],[199,148,36]]){const g=c.createRadialGradient(x,y,0,x,y,r);g.addColorStop(0,'#ffffffed');g.addColorStop(.65,'#ffffffe0');g.addColorStop(1,'#ffffff00');c.fillStyle=g;c.fillRect(x-r,y-r,r*2,r*2);}});
  for(let i=0;i<15;i++){const a=i*Math.PI*2/15+.1,r=65+rng()*20;const cloud=new T.Sprite(new T.SpriteMaterial({map:cloudMap,depthWrite:false,fog:false,opacity:.78+rng()*.2}));cloud.position.set(Math.cos(a)*r,13+rng()*20,Math.sin(a)*r);cloud.scale.set(18+rng()*16,10+rng()*10,1);cloud.renderOrder=-1;sky.add(cloud);}
  return {sky,setWeather(color,visual){
-  dome.material.color.copy(color);
+  updateSky(visual);
   for(const cloud of sky.children.slice(1)){cloud.material.opacity=visual.cloud*(.25+visual.daylight*.65);cloud.material.color.setScalar(.18+visual.daylight*.82);}
+  return horizon;
  },decorate(world){
   const ground=world.children[0];ground.material.map=grass;ground.material.color.set(0xffffff);ground.material.needsUpdate=true;
   const paint=new T.Mesh(new T.PlaneGeometry(100,100),new T.MeshStandardMaterial({map:markings,transparent:true,depthWrite:false,roughness:1,polygonOffset:true,polygonOffsetFactor:-1}));paint.rotation.x=-Math.PI/2;paint.position.y=.003;paint.receiveShadow=true;world.add(paint);

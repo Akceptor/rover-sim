@@ -22,7 +22,7 @@ test('finite nodata and edge gaps use valid original neighbours, including zero 
 
 test('large missing areas are rejected rather than inventing a landscape',()=>{
  const source=new Float32Array(21*21).fill(100);
- for(let i=0;i<5;i++)source[i]=NaN;
+ for(let i=0;i<23;i++)source[i]=NaN;
  assert.throws(()=>fillSmallElevationGaps(source,21,21,NaN),/too much missing elevation/);
  assert.throws(()=>fillSmallElevationGaps(new Float32Array(441).fill(NaN),21,21,NaN),/too much missing elevation/);
 });
@@ -37,4 +37,22 @@ test('repairs never propagate across a hole using already estimated cells',()=>{
 
 test('raster dimensions are checked before estimating elevations',()=>{
  assert.throws(()=>fillSmallElevationGaps(new Float32Array(4),3,3,NaN),/dimensions/);
+});
+
+// Observed GEM-15 mask at 48.9164579,24.7467362: 49/4624 cells, all within sqrt(2) cells of measured data.
+test('narrow Ivano-Frankivsk voids slightly above one percent remain locally repairable',()=>{
+ const width=68,source=Float32Array.from({length:width*width},(_,k)=>250+k%width*.1+Math.floor(k/width)*.2);
+ const missing=[42, 43, 109, 110, 111, 176, 177, 178, 243, 244, 245, 311, 378, 445, 647, 714, 715, 781, 782, 849, 916, 983, 984, 1051, 1118, 1185, 1186, 1253, 1320, 1388, 1994, 3486, 3893, 3961, 3962, 4029, 4030, 4097, 4098, 4165, 4166, 4233, 4234, 4301, 4302, 4369, 4437, 4505, 4573];
+ for(const k of missing)source[k]=NaN;
+ const result=fillSmallElevationGaps(source,width,width,NaN);
+ assert.equal(result.filledCells,49);assert.equal(result.maxMissingFraction,.05);
+ assert.ok(result.values.every(Number.isFinite));
+ for(let k=0;k<source.length;k++)if(Number.isFinite(source[k]))assert.equal(result.values[k],source[k]);
+});
+
+test('five percent narrow gaps are repaired but more than five percent is rejected',()=>{
+ const source=new Float32Array(100*100).fill(100);
+ for(let y=0;y<100;y++)for(let x=0;x<5;x++)source[y*100+x*20]=NaN;
+ const result=fillSmallElevationGaps(source,100,100,NaN);assert.equal(result.filledCells,500);assert.ok(result.values.every(Number.isFinite));
+ source[1]=NaN;assert.throws(()=>fillSmallElevationGaps(source,100,100,NaN),/too much missing elevation/);
 });

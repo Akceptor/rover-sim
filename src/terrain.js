@@ -43,3 +43,10 @@ export function terrainObjects(t,overlay=null){
  }
  return overlay?out.filter(o=>!['tree','rock'].includes(o.kind)||!overlayOccupies(overlay,o.position[0],o.position[2],o.kind==='tree'?o.size[1]*.32:Math.max(...o.size))):out;
 }
+
+export function terrainApproximationWarning(terrain){
+ const gap=terrain?.sources?.elevation?.gapFill;
+ if(!gap||!Number.isFinite(gap.filledCells)||!Number.isFinite(gap.totalCells)||gap.filledCells<=0||gap.totalCells<gap.filledCells)return '';
+ const fraction=gap.filledCells/gap.totalCells,signs=fraction>=.05?3:fraction>=.04?2:1;
+ return `${'⚠'.repeat(signs)} ${(fraction*100).toFixed(2)}% of source elevation approximated`;
+}

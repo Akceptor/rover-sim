@@ -31,5 +31,5 @@ export function appearance(solar,conditions){
  const daylight=clamp((solar.elevationDeg+6)/16),cloud=(conditions?.cloudCover??20)/100;
  const code=conditions?.code,precipitation=conditions&&([71,73,75,77,85,86].includes(code)||conditions.snowCm>0)?'snow':conditions&&(conditions.rainMm>0||[51,53,55,56,57,61,63,65,66,67,80,81,82,95,96,99].includes(code))?'rain':null;
  const fog=[45,48].includes(code);
- return {daylight,cloud,sunIntensity:solar.elevationDeg>0?3*clamp(solar.elevationDeg/12)*(1-cloud*.9):0,ambientIntensity:.12+daylight*(2-cloud*.7),visibility:fog?85:precipitation?280:650,precipitation,precipitationStrength:precipitation?clamp((conditions.rainMm+conditions.snowCm)/3,.15,1):0};
+ return {elevationDeg:solar.elevationDeg,daylight,cloud,sunIntensity:solar.elevationDeg>0?3*clamp(solar.elevationDeg/12)*(1-cloud*.9):0,ambientIntensity:.12+daylight*(2-cloud*.7),visibility:conditions?.visibility??(fog?85:precipitation?280:650),precipitation,precipitationStrength:precipitation?clamp((conditions.rainMm+conditions.snowCm)/3,.15,1):0};
 }

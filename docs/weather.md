@@ -46,3 +46,34 @@ failure, expiry, and cancellation checks. `npm run test:weather` uses installed
 Chrome and deterministic weather snapshots through a real backend connection to
 check day/night rendering, clouds, precipitation, fog, stale/offline display,
 timezone, narrow layout, and the background camera page. It reserves HTTP 8098.
+
+The cockpit has independent **Time** and **Weather** Auto/Manual selectors.
+Auto time follows the real clock in the selected location's timezone. Manual time
+freezes a local minute, selected with the 00:00–23:59 slider or Morning (08:00),
+Day (12:00), Sunset, and Night (00:00). Solar position still uses the selected
+coordinates and that location's current local date, including when locations
+change. Sunset finds the descending solar elevation crossing at approximately
+−0.833° for that date and location; it is disabled when no sunset occurs, such
+as polar day or night. The result is rounded to the nearest slider minute.
+On a spring daylight saving transition, a nonexistent local minute resolves to
+the next valid time using the offset before the transition.
+
+Manual weather works offline and offers Clear (0% clouds), Cloudy (100% clouds),
+Fog (85 m visibility), Rain (2 mm, 280 m visibility), and Snow (1.5 cm, 280 m
+visibility). Clear and Cloudy use 650 m visibility. These presets use the same
+lighting, fog, and particle renderer as live weather. Manual status shows the
+preset instead of a model temperature or data age. Choosing Auto resumes the
+existing provider conditions and freshness display. All four time/weather mode
+combinations work independently.
+
+Both modes and manual values persist in browser local storage. Invalid entries
+fall back to defaults; blocked storage leaves controls usable for the current
+page. Values belong to the browser rather than terrain saves or telemetry.
+Changing location preserves the chosen local minute and recomputes sunlight.
+The backend relays sanitized preferences over the existing WebSocket, so even
+the dedicated MJPEG camera's separate browser profile inherits the same time and
+weather and follows later changes. Relay state lasts until the backend stops;
+the first regular cockpit seeds it from its persisted preferences. Camera-only
+pages never seed or overwrite it at startup. Other tabs also follow local
+storage events. Unsent cockpit edits remain authoritative during a disconnect and are relayed
+on reconnection. No provider observations, physics state, or sensor time change.

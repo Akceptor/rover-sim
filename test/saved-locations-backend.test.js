@@ -140,3 +140,39 @@ test('selecting Custom blocks saving the previous installed favorite until Custo
   const custom=await ready(s);assert.equal(custom.selectedLocation,'custom');assert.equal(custom.home.lat,customHome.lat);assert.equal(custom.canSaveLocation,true);assert.equal(custom.running,false);assert.equal(f.requests(),0);
  }finally{udp.close();await f.close();}
 });
+
+
+test('failed map selection can retry before SITL exists and reports a concise importer error',async()=>{
+ const f=await fixture({osm:false});try{
+  const s=await f.launch(),cache=path.join(f.config.terrainCacheDir,`${terrain.home.lat.toFixed(7)}_${terrain.home.lon.toFixed(7)}.json`);
+  await fs.rm(cache);s.select();
+  const failed=await until(async()=>{const v=await s.state();return v.startTerrain.status==='error'&&v;});
+  assert.equal(failed.autopilot.armed,null);assert.equal(failed.connected,false);
+  assert.equal(failed.canRetryTerrain,true);
+  assert.match(failed.startTerrain.message,/External network forbidden/);
+  assert.ok(failed.startTerrain.message.length<300);
+  await fs.writeFile(cache,JSON.stringify(terrain));s.send({type:'retryTerrain'});
+  const loaded=await ready(s);assert.equal(loaded.running,false);assert.deepEqual(loaded.home,terrain.home);
+  assert.equal(loaded.canRetryTerrain,false);assert.equal(f.requests(),0);
+ }finally{await f.close();}
+});
+
+
+test('map retry eligibility follows fresh arming telemetry while Custom also requires start coordinates',async()=>{
+ const f=await fixture({osm:false}),udp=dgram.createSocket('udp4');try{
+  const s=await f.launch();assert.equal((await s.state()).canRetryTerrain,false);
+  const send=hex=>new Promise((resolve,reject)=>udp.send(Buffer.from(hex,'hex'),f.config.mavlink.port,'127.0.0.1',e=>e?reject(e):resolve()));
+  // Missing cache forces the offline importer error.
+  await fs.rm(f.config.terrainCacheDir,{recursive:true});s.select();
+  await until(async()=>(await s.state()).startTerrain.status==='error');
+  assert.equal((await s.state()).canRetryTerrain,true);
+  await send('fe0900010100000000000a038104035d04');
+  await until(async()=>(await s.state()).autopilot.armed===true);
+  assert.equal((await s.state()).canRetryTerrain,false);
+  s.send({type:'retryTerrain'});const denied=await message(s,'error');assert.match(denied.message,/Disarm SITL/);
+  await send('fd0900000001010000000f0000000a030104037547');
+  await until(async()=>(await s.state()).autopilot.armed===false);assert.equal((await s.state()).canRetryTerrain,true);
+  s.send({type:'selectLocation',id:'custom'});await until(async()=>(await s.state()).selectedLocation==='custom');
+  assert.equal((await s.state()).canRetryTerrain,false,'Custom needs fresh coordinates as well as disarmed telemetry');
+ }finally{udp.close();await f.close();}
+});

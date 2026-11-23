@@ -13,6 +13,7 @@ import {loadEnvironment} from './environment.js';
 import {HeartbeatTelemetry} from './mavlink.js';
 import {cameraAim} from './camera.js';
 import {LiveWeather} from './weather.js';
+import {resolvePreferences} from './weather-controls-model.js';
 import {loadStartTerrain} from './start-terrain.js';
 import {loadOsmOverlay} from './osm-cache.js';
 import {SavedLocations} from './saved-locations.js';
@@ -62,7 +63,7 @@ const server=http.createServer(async(req,res)=>{
   if(video.handleHttp(req,res))return;
   const url=new URL(req.url,'http://localhost');
   if(url.pathname==='/api/state'){res.setHeader('Content-Type','application/json');res.end(JSON.stringify(snapshot()));return;}
-  const files={'/':'web/index.html','/app.js':'web/app.js','/assets/MN-168.js':'assets/MN-168.js','/style.css':'web/style.css','/video.js':'web/video.js','/scenery.js':'web/scenery.js','/weather-view.js':'web/weather-view.js','/weather-model.js':'src/weather-model.js','/terrain.js':'src/terrain.js','/terrain-view.js':'web/terrain-view.js','/location-map.js':'web/location-map.js','/saved-locations.js':'web/saved-locations.js','/leaflet.js':'node_modules/leaflet/dist/leaflet.js','/leaflet.css':'node_modules/leaflet/dist/leaflet.css','/osm-view.js':'web/osm-view.js','/building-surfaces.js':'web/building-surfaces.js','/building-textures.js':'web/building-textures.js','/assets/textures/building-materials.png':'assets/textures/building-materials.png','/osm-footprints.js':'src/osm-footprints.js','/three.js':'node_modules/three/build/three.module.js','/three.core.js':'node_modules/three/build/three.core.js'};
+  const files={'/':'web/index.html','/app.js':'web/app.js','/assets/MN-168.js':'assets/MN-168.js','/style.css':'web/style.css','/video.js':'web/video.js','/scenery.js':'web/scenery.js','/road-textures.js':'web/road-textures.js','/road-surface.js':'web/road-surface.js','/sky-palette.js':'web/sky-palette.js','/weather-view.js':'web/weather-view.js','/weather-controls.js':'web/weather-controls.js','/weather-controls-model.js':'src/weather-controls-model.js','/weather-model.js':'src/weather-model.js','/terrain.js':'src/terrain.js','/terrain-view.js':'web/terrain-view.js','/location-map.js':'web/location-map.js','/saved-locations.js':'web/saved-locations.js','/leaflet.js':'node_modules/leaflet/dist/leaflet.js','/leaflet.css':'node_modules/leaflet/dist/leaflet.css','/osm-view.js':'web/osm-view.js','/building-surfaces.js':'web/building-surfaces.js','/building-textures.js':'web/building-textures.js','/assets/textures/building-materials.png':'assets/textures/building-materials.png','/osm-footprints.js':'src/osm-footprints.js','/three.js':'node_modules/three/build/three.module.js','/three.core.js':'node_modules/three/build/three.core.js'};
   try{const file=files[url.pathname];if(!file){res.writeHead(404);res.end();return;}res.setHeader('Content-Type',file.endsWith('.js')?'text/javascript':file.endsWith('.css')?'text/css':file.endsWith('.png')?'image/png':'text/html');res.end(await fs.readFile(path.join(root,file)));}catch(error){log('asset-error',{asset:url.pathname,code:error.code,message:error.message});res.writeHead(500);res.end('asset unavailable');}
 });
 // Browser control is local, same-origin only; no MAVLink proxy on this socket.
@@ -73,11 +74,19 @@ server.on('upgrade',(req,socket,head)=>{
   else if(pathname==='/')wss.handleUpgrade(req,socket,head,ws=>wss.emit('connection',ws,req));
   else socket.destroy();
 });
+let environmentPreferences=null;
 wss.on('connection',ws=>{
   ws.send(JSON.stringify(initialState()));
   ws.on('message',data=>{try{
     const m=JSON.parse(data);let error;
-    if(m.type==='keys'&&mode==='standalone'){
+    if(m.type==='environmentPreferences'){
+      if(m.seed===true&&environmentPreferences!==null)ws.send(JSON.stringify({type:'environmentPreferences',preferences:environmentPreferences}));
+      else{
+        environmentPreferences=resolvePreferences(m.preferences);
+        const message=JSON.stringify({type:'environmentPreferences',preferences:environmentPreferences});
+        for(const client of wss.clients)if(client.readyState===WebSocket.OPEN)client.send(message);
+      }
+    } else if(m.type==='keys'&&mode==='standalone'){
       if(keyboard.owner&&keyboard.owner!==ws&&performance.now()-keyboard.time<300)return;
       const steering=Math.max(-1,Math.min(1,Number(m.steering)||0)),throttle=Math.max(-1,Math.min(1,Number(m.throttle)||0));
       keyboard={steering,throttle,time:performance.now(),owner:steering||throttle?ws:null};
@@ -92,6 +101,7 @@ wss.on('connection',ws=>{
     } else if(m.type==='retryTerrain'){
       if((locationPicker||externalStart)&&startTerrain.status==='error'&&selectedLocation&&selectedLocation!=='custom'){
         if(externalStart&&sitlActive()&&telemetry.snapshot(performance.now()).armed!==false)error='Disarm SITL before retrying the location.';
+        else if(locationPicker&&mode==='sitl'&&sitlActive())error='Stop SITL before retrying the location.';
         else void loadPreset(selectedPreset(selectedLocation));
       }
       else if(!externalStart)error='Terrain retry is available in Mission Planner start-selection mode.';
@@ -146,14 +156,25 @@ const tick=setInterval(()=>{const now=performance.now();if(mode==='standalone'){
 }previous=now;
 const connected=mode==='sitl'&&now-session.last<config.timeoutMs;if(connected!==lastConnected){log(connected?'sitl-connected':'sitl-timeout',{peer:session.peer});lastConnected=connected;}
 },5);
-function snapshot(){const state=physics.state();return {type:'state',mode,running,worldRevision,...saveEligibility(),loadedLocationName:loadedFavorite?.name??environment.terrain?.name??null,startTerrain,osm:osmStatus,selectedLocation,mapSelection:selectedMapLocation,mapPosition:mapPosition(environment.home,state.position),environment:environment.terrain?.name??'Test playground',home:environment.home,weather:weather.snapshot(),camera:cameraAim(mode==='sitl'?telemetry.rcSnapshot(performance.now()):null),autopilot:mode==='sitl'?{...telemetry.snapshot(performance.now()),position:telemetry.positionSnapshot(performance.now())}:null,connected:mode==='standalone'||performance.now()-session.last<config.timeoutMs,resetPending,...state,simTime:mode==='sitl'?session.time:physics.time,rate:session.rate??100,ageMs:Number.isFinite(session.last)?Math.round(performance.now()-session.last):null,raw:session.raw??[],stats:{...session.stats,malformed,lagDropped},wallTime:performance.now()/1000};}
+function snapshot(){const state=physics.state();return {type:'state',mode,running,worldRevision,...saveEligibility(),canRetryTerrain:canRetryTerrain(),loadedLocationName:loadedFavorite?.name??environment.terrain?.name??null,startTerrain,osm:osmStatus,selectedLocation,mapSelection:selectedMapLocation,mapPosition:mapPosition(environment.home,state.position),environment:environment.terrain?.name??'Test playground',home:environment.home,weather:weather.snapshot(),camera:cameraAim(mode==='sitl'?telemetry.rcSnapshot(performance.now()):null),autopilot:mode==='sitl'?{...telemetry.snapshot(performance.now()),position:telemetry.positionSnapshot(performance.now())}:null,connected:mode==='standalone'||performance.now()-session.last<config.timeoutMs,resetPending,...state,simTime:mode==='sitl'?session.time:physics.time,rate:session.rate??100,ageMs:Number.isFinite(session.last)?Math.round(performance.now()-session.last):null,raw:session.raw??[],stats:{...session.stats,malformed,lagDropped},wallTime:performance.now()/1000};}
 const broadcast=setInterval(()=>{const msg=JSON.stringify(snapshot());for(const ws of wss.clients)if(ws.readyState===WebSocket.OPEN&&ws.bufferedAmount<65536)ws.send(msg);},50);
 wss.on('error',e=>{log('websocket-error',{message:e.message});process.exitCode=1;});
 server.on('error',e=>{log('http-error',{message:e.message});process.exitCode=1;shutdown();});
 server.listen(config.httpPort,config.httpHost,()=>{log('ready',{url:`http://${config.httpHost}:${config.httpPort}`,mode});if(environment.terrain&&osmStatus.status==='loading')void loadInitialOverlay();});
 let shuttingDown=false;
-function initialState(){return {type:'init',mode,config,favorites,worldRevision,missionPlannerCommand:plannerCommand,locations:externalStart?[...locationPresets,{id:'custom',name:'Custom · Mission Planner',description:'Fetch terrain at Mission Planner’s selected start'},{id:'map',name:'Custom · browser map',description:'Click the map, then Load location'}]:locationPicker?[...locationPresets,{id:'map',name:'Custom · browser map',description:'Click the map, then Load location'}]:[],selectedLocation,mapSelection:selectedMapLocation,map:worldMap,locationMode:externalStart?'mission-planner':locationPicker?'launcher':null,world:environment.world,terrain:environment.terrain,overlay:overlayMesh?{buildings:overlayMesh.buildings.map(({prisms,...b})=>b),roads:overlayMesh.roads}:null};}
+function initialState(){return {type:'init',environmentPreferences,mode,config,favorites,worldRevision,missionPlannerCommand:plannerCommand,locations:externalStart?[...locationPresets,{id:'custom',name:'Custom · Mission Planner',description:'Fetch terrain at Mission Planner’s selected start'},{id:'map',name:'Custom · browser map',description:'Click the map, then Load location'}]:locationPicker?[...locationPresets,{id:'map',name:'Custom · browser map',description:'Click the map, then Load location'}]:[],selectedLocation,mapSelection:selectedMapLocation,map:worldMap,locationMode:externalStart?'mission-planner':locationPicker?'launcher':null,world:environment.world,terrain:environment.terrain,overlay:overlayMesh?{buildings:overlayMesh.buildings.map(({prisms,...b})=>b),roads:overlayMesh.roads}:null};}
 function sitlActive(){return performance.now()-session.last<config.timeoutMs||telemetry.snapshot(performance.now()).connected;}
+function canRetryTerrain(){
+ if(!startTerrain||['loading','ready','restart','verifying'].includes(startTerrain.status))return false;
+ const now=performance.now(),armed=telemetry.snapshot(now).armed;
+ if((locationPicker||externalStart)&&startTerrain.status==='error'&&selectedLocation&&selectedLocation!=='custom'){
+  return !(externalStart&&sitlActive()&&armed!==false)&&!(locationPicker&&mode==='sitl'&&sitlActive());
+ }
+ return externalStart&&armed===false&&!!telemetry.positionSnapshot(now);
+}
+function terrainFailureReason(error){
+ return error.stderr?.match(/(?:^|\n)[A-Za-z]*Error(?: \[[^\]]+\])?: ([^\n]+)/)?.[1]??error.message.split('\n')[0];
+}
 function selectCustom(){
  worldRevision++;
  selectedLocation='custom';running=false;session.running=false;
@@ -205,7 +226,7 @@ async function loadPreset(preset){
   }
   const init=JSON.stringify(initialState());for(const ws of wss.clients)if(ws.readyState===WebSocket.OPEN)ws.send(init);
   log('location-selected',{id:preset.id,home:terrain.home,cached});
- }catch(error){if(!shuttingDown&&revision===worldRevision)startTerrain={status:'error',message:`Location load failed: ${error.message}. Use Retry terrain.`,home:preset};}
+ }catch(error){if(!shuttingDown&&revision===worldRevision)startTerrain={status:'error',message:`Location load failed: ${terrainFailureReason(error)}. Use Retry terrain.`,home:preset};}
 }
 async function loadPickedStart(){
  if(!externalStart||selectedLocation!=='custom'||startTerrain.status!=='waiting'||shuttingDown)return;
@@ -232,7 +253,7 @@ async function loadPickedStart(){
   const init=JSON.stringify(initialState());for(const ws of wss.clients)if(ws.readyState===WebSocket.OPEN)ws.send(init);
   log('terrain-start-ready',{home,cached});
  }catch(error){if(!shuttingDown&&revision===worldRevision){
-  const reason=error.stderr?.match(/(?:^|\n)[A-Za-z]*Error(?: \[[^\]]+\])?: ([^\n]+)/)?.[1]??error.message.split('\n')[0];
+  const reason=terrainFailureReason(error);
   startTerrain={status:'error',message:`Terrain load failed: ${reason}. Use Retry terrain when ready.`,home};log('terrain-start-error',{message:error.message});
  }}
 }

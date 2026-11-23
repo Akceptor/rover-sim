@@ -1,6 +1,6 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
-import {validateTerrain,terrainMesh,terrainHeight} from '../src/terrain.js';
+import {validateTerrain,terrainMesh,terrainHeight,terrainApproximationWarning} from '../src/terrain.js';
 import {Physics} from '../src/physics.js';
 import {loadConfig} from '../src/config.js';
 const slope=()=>({version:1,name:'Test slope',size:3,spacing:2,heights:[-.3,-.1,.1,-.2,0,.2,-.1,.1,.3],home:{lat:50,lon:30,alt:150},attribution:'Synthetic test terrain'});
@@ -56,4 +56,12 @@ test('GEM tile IDs use catalog encoding in every hemisphere',async()=>{
  assert.ok(gemItemUrl(50.3375,30.475).endsWith('/p50_p30/w30s50/w30s50.json'));
  assert.ok(gemItemUrl(40.7,-73.9).endsWith('/p40_m80/wm74s40/wm74s40.json'));
  assert.ok(gemItemUrl(-33.9,151.2).endsWith('/m40_p150/w151sm34/w151sm34.json'));
+});
+
+test('approximated elevation warnings show the measured fraction and one, two or three signs',()=>{
+ const terrain=filledCells=>({sources:{elevation:{gapFill:{filledCells,totalCells:10000}}}});
+ assert.equal(terrainApproximationWarning(null),'');assert.equal(terrainApproximationWarning(slope()),'');
+ for(const [cells,signs]of [[106,1],[300,1],[399,1],[400,2],[499,2],[500,3]]){
+  const warning=terrainApproximationWarning(terrain(cells));assert.equal(warning.match(/⚠/g).length,signs);assert.ok(warning.includes((cells/100).toFixed(2)+'%'));
+ }
 });
