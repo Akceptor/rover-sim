@@ -29,9 +29,9 @@ try{
  const page=await browser.newPage({viewport:{width:1440,height:900}}),errors=[];page.on('pageerror',e=>errors.push(e.message));
  await page.goto(url);await page.waitForFunction(()=>!document.querySelector('#osmAttribution').hidden);
  assert.equal(await page.locator('#osmAttribution a').getAttribute('href'),'https://www.openstreetmap.org/copyright');
- await page.waitForFunction(async()=>{const {fpvOutput}=await import('/app.js');const buildings=[];fpvOutput.scene.traverse(o=>{if(o.name.startsWith('osm-building:'))buildings.push(o);});return buildings.length&&buildings.every(o=>o.geometry.attributes.uv?.count===o.geometry.attributes.position.count&&o.material.every(m=>m.map?.userData.photoReady));});
- const geometry=await page.evaluate(async()=>{const {fpvOutput}=await import('/app.js');const roads=[],buildings=[];fpvOutput.scene.traverse(o=>{if(o.name.startsWith('osm-road:'))roads.push(Array.from(o.geometry.attributes.position.array));if(o.name.startsWith('osm-building:'))buildings.push({name:o.name,vertices:o.geometry.attributes.position.count,groups:o.geometry.groups.length});});return {roads,buildings};});
- assert.ok(geometry.roads.length&&geometry.buildings.length);assert.ok(geometry.buildings.every(b=>b.groups===3),'separate facade, roof and foundation materials');
+ await page.waitForFunction(async()=>{const {fpvOutput}=await import('/app.js');const buildings=[];fpvOutput.scene.traverse(o=>{if(o.name.startsWith('osm-buildings:'))buildings.push(o);});return buildings.length&&buildings.every(o=>o.geometry.attributes.uv?.count===o.geometry.attributes.position.count&&o.material.map?.userData.photoReady);});
+ const geometry=await page.evaluate(async()=>{const {fpvOutput}=await import('/app.js');const roads=[],buildings=[];fpvOutput.scene.traverse(o=>{if(o.name.startsWith('osm-roads:'))roads.push(Array.from(o.geometry.attributes.position.array));if(o.name.startsWith('osm-buildings:'))buildings.push({name:o.name,vertices:o.geometry.attributes.position.count,kind:o.name.split(':')[1]});});return {roads,buildings};});
+ assert.ok(geometry.roads.length&&geometry.buildings.length);for(const kind of ['windows','roof','base'])assert.ok(geometry.buildings.some(b=>b.kind===kind),`${kind} batch`);
  for(const vertices of geometry.roads)for(let i=0;i<vertices.length;i+=3){const [x,y,z]=vertices.slice(i,i+3);assert.ok(Math.abs(y-terrainHeight(t,x,z)-.035)<.001,'road follows exact terrain surface');}
  await page.screenshot({path:live?'.run/osm-town/fpv.png':'.run/osm-fixture-fpv.png'});
  if(!live){

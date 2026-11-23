@@ -22,7 +22,7 @@ export function createWeatherView(scene,renderer,sun,ambient,scenery){
    const solar=solarPosition(home,weather.now);visual=appearance(solar,weather.conditions);
    sky.copy(night).lerp(day,visual.daylight).lerp(overcast,visual.cloud*.7*visual.daylight);
    renderer.setClearColor(sky);scene.fog.color.copy(sky);
-   const terrain=camera.far>500;scene.fog.near=terrain?Math.min(70,visual.visibility*.15):Math.min(35,visual.visibility*.15);scene.fog.far=terrain?visual.visibility:Math.min(95,visual.visibility);
+   const terrain=scene.userData.terrain;scene.fog.near=terrain?Math.min(70,visual.visibility*.15):Math.min(35,visual.visibility*.15);scene.fog.far=terrain?visual.visibility:Math.min(95,visual.visibility);
    ambient.intensity=visual.ambientIntensity;sun.intensity=visual.sunIntensity;
    sun.position.fromArray(solar.direction).multiplyScalar(40).add(scene.userData.roverPosition??new T.Vector3());
    sun.target.position.copy(scene.userData.roverPosition??new T.Vector3());sun.target.updateMatrixWorld();
