@@ -13,6 +13,7 @@ import {setTimeout as delay} from 'node:timers/promises';
 import {WebSocket} from 'ws';
 import {processOsm,overlayKey} from '../src/osm.js';
 import {SavedLocations} from '../src/saved-locations.js';
+import {loadStartTerrain} from '../src/start-terrain.js';
 const terrain={version:1,name:'Exact offline map',home:{lat:12.3456789,lon:23.4567891,alt:123.45},size:5,spacing:5,heights:Array(25).fill(0),colors:Array(75).fill(137),attribution:'Synthetic imagery'};
 const overlay=processOsm({elements:[]},terrain);
 overlay.buildings.push({id:'way/offline',outer:[[5,-5],[10,-5],[10,5],[5,5]],holes:[],height:6});
@@ -122,4 +123,20 @@ test('favorite loads offline with explicitly disabled OSM and refuses saving inc
 });
 test('corrupted favorite is rejected without importer or Overpass fallback',async()=>{
  const f=await fixture();try{const saved=await f.store.save({name:'Corrupt',terrain,overlay});const s=await f.launch();await fs.writeFile(path.join(f.config.savedLocationsDir,saved.id.slice(6),'manifest.json'),'{}');s.send({type:'selectLocation',id:saved.id});await until(async()=>(await s.state()).startTerrain.status==='error');assert.match((await s.state()).startTerrain.message,/Invalid saved location manifest/);assert.equal(f.requests(),0);assert.equal((await s.state()).environment,'Test playground');}finally{await f.close();}
+});
+
+test('selecting Custom blocks saving the previous installed favorite until Custom terrain loads',async()=>{
+ const f=await fixture(),udp=dgram.createSocket('udp4');try{
+  const favorite=await f.store.save({name:'Original favorite',terrain,overlay});const original=await f.store.read(favorite.id);
+  const customHome={lat:50.3375,lon:30.475};const {terrain:customTerrain}=await loadStartTerrain(customHome,{cacheDir:f.config.terrainCacheDir});const customOverlay=processOsm({elements:[]},customTerrain);
+  await fs.writeFile(path.join(f.config.osm.cacheDir,createHash('sha256').update(overlayKey(customTerrain)).digest('hex')+'.json'),JSON.stringify(customOverlay));
+  const s=await f.launch();s.send({type:'selectLocation',id:favorite.id});const loaded=await ready(s);assert.equal(loaded.canSaveLocation,true);
+  // No actuator packets have arrived: the preset's session.home alone requires restarting Custom.
+  s.send({type:'selectLocation',id:'custom'});const pending=await until(async()=>{const state=await s.state();return state.selectedLocation==='custom'&&state.startTerrain.status==='restart'&&state;});
+  assert.ok(pending.worldRevision>loaded.worldRevision);assert.equal(pending.canSaveLocation,false);assert.deepEqual(pending.home,terrain.home);assert.equal(pending.running,false);
+  s.messages.length=0;s.send({type:'saveLocation',name:'Wrong Custom world',worldRevision:pending.worldRevision});await message(s,'error');assert.equal((await f.store.list()).length,1);assert.deepEqual(await f.store.read(favorite.id),original);
+  const packet=Buffer.alloc(40);packet.writeUInt16LE(18458);packet.writeUInt16LE(100,2);packet.writeUInt32LE(1,4);const reply=once(udp,'message',{signal:AbortSignal.timeout(2000)});udp.send(packet,f.config.udpPort,'127.0.0.1');await reply;
+  for(const hex of ['fd2c0000000101a400000000000000000000000000000000000000000000c3f51cc100000000000000000000000098e4001eb01d2a1253ae','fd0f0000000101210000e803000098e4001eb01d2a1260cf026c8f','fd0900000001010000000f0000000a030104037547'])udp.send(Buffer.from(hex,'hex'),f.config.mavlink.port,'127.0.0.1');
+  const custom=await ready(s);assert.equal(custom.selectedLocation,'custom');assert.equal(custom.home.lat,customHome.lat);assert.equal(custom.canSaveLocation,true);assert.equal(custom.running,false);assert.equal(f.requests(),0);
+ }finally{udp.close();await f.close();}
 });
