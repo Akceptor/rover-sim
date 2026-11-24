@@ -69,3 +69,14 @@ test('MJPEG relay advertises a configured 640x360 size',async()=>{
  try{ws=new WebSocket(url.replace('http:','ws:')+'/video-source',{origin:url});const [ready]=await once(ws,'message');const m=JSON.parse(ready);assert.equal(m.width,640);assert.equal(m.height,360);
  }finally{ws?.terminate();relay.close();server.closeAllConnections();await new Promise(r=>server.close(r));}
 });
+test('camera page initializes cleanly without settings camera/fov controls in DOM',async()=>{
+ const fs=await import('node:fs/promises');
+ const html=await fs.readFile(new URL('../web/index.html',import.meta.url),'utf8');
+ assert.equal(html.includes('id="fov"'),false,'settings dialog must not contain fov input');
+ assert.equal(html.includes('id="mountX"'),false,'settings dialog must not contain mountX input');
+ assert.equal(html.includes('id="mountY"'),false,'settings dialog must not contain mountY input');
+ assert.equal(html.includes('id="mountRight"'),false,'settings dialog must not contain mountRight input');
+ const app=await fs.readFile(new URL('../web/app.js',import.meta.url),'utf8');
+ assert.equal(app.includes("$('mountX')"),false,'app must not read mount inputs from settings DOM');
+ assert.equal(app.includes("$('fov')"),false,'app must not listen to fov slider in settings DOM');
+});

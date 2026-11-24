@@ -8,7 +8,7 @@ import {loadConfig} from '../src/config.js';
 
 test('three validated distinct built-in profiles with SI dimensions',()=>{
  assert.equal(vehicleProfiles.length,3);
- for(const v of vehicleProfiles){assert.deepEqual(resolveVehicle(v),v);assert.ok(v.mass>0);assert.ok(v.cameraMount.y>v.height/2);}
+ for(const v of vehicleProfiles){assert.deepEqual(resolveVehicle(v),v);assert.ok(v.mass>0);assert.ok(v.cameraMount.y>v.height/2);assert.ok(Number.isFinite(v.fpvFov)&&v.fpvFov>=40&&v.fpvFov<=120);}
  assert.equal(resolveVehicle().id,'mn168');
  const a=resolveVehicle('mn168'),b=resolveVehicle('heavy-crawler'),t=resolveVehicle('tracked-crawler');
  for(const k of ['wheelbase','track','wheelRadius','mass','engineForce'])assert.notEqual(a[k],b[k]);
