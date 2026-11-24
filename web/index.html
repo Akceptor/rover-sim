@@ -101,14 +101,30 @@
     <p id="mapTileStatus" class="map-hint" role="status"></p>
   </aside>
   </div>
-  <div id="terrainLoad" class="terrain-load" hidden>
-    <p id="startTerrainStatus" class="terrain-attribution" role="status"></p>
-
-    <button id="retryTerrain" type="button">Retry terrain</button>
-  </div>
-  <div class="terrain-attribution"><span id="osmStatus" role="status"></span> <button id="retryOsm" type="button" hidden>Retry OSM</button> <button id="configureOsm" type="button" hidden>Configure OSM</button></div>
-  <p id="osmAttribution" class="terrain-attribution" hidden><a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer">© OpenStreetMap contributors</a> · ODbL</p>
-  <p id="terrainAttribution" class="terrain-attribution"></p>
+  <section id="loadStatusWindow" class="load-window" aria-label="Load status and logs">
+    <div class="load-window-heading"><span class="view-title">LOAD STATUS &amp; LOGS</span></div>
+    <div id="terrainLoad" class="load-row" hidden>
+      <div class="load-log-content">
+        <span class="load-log-tag">TERRAIN</span>
+        <p id="startTerrainStatus" class="load-log-text" role="status"></p>
+      </div>
+      <button id="retryTerrain" type="button">Retry terrain</button>
+    </div>
+    <div id="osmLoad" class="load-row">
+      <div class="load-log-content">
+        <span class="load-log-tag">MAP DATA</span>
+        <p id="osmStatus" class="load-log-text" role="status"></p>
+      </div>
+      <div class="load-actions">
+        <button id="retryOsm" type="button" hidden>Retry OSM</button>
+        <button id="configureOsm" type="button" hidden>Configure OSM</button>
+      </div>
+    </div>
+    <div class="load-attributions">
+      <p id="osmAttribution" class="terrain-attribution" hidden><a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer">© OpenStreetMap contributors</a> · ODbL</p>
+      <p id="terrainAttribution" class="terrain-attribution"></p>
+    </div>
+  </section>
 </main>
 <footer><span id="status">Waiting for backend</span><span class="muted">CRAWLER LAB / LOCAL SIMULATION</span></footer>
 <dialog id="settingsDialog" aria-labelledby="settingsTitle">

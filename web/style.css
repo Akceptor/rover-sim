@@ -155,9 +155,19 @@ html[data-camera-output] #viewport{width:100vw;height:100vh;min-height:0;max-hei
 .environment-status a{color:#aac5ff}
 #weatherStatus[data-state=stale]{color:var(--warn)}
 html[data-camera-output] .environment-status{display:none}
-.terrain-load{display:flex;align-items:center;flex-wrap:wrap;gap:12px;margin-top:8px}
-.terrain-load[hidden],html[data-camera-output] .terrain-load{display:none}
-.terrain-load>p{flex:1;min-width:0}
+.load-window{margin:18px 0 12px;padding:12px 14px;background:var(--panel);border:1px solid var(--line);border-radius:8px;font-size:.8125rem}
+.load-window-heading{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px}
+.load-window-heading .view-title{font-size:.75rem;letter-spacing:.08em;color:var(--muted)}
+.load-row{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:8px 10px;background:var(--bg);border:1px solid var(--line);border-radius:6px;margin-bottom:8px}
+.load-row[hidden]{display:none}
+.load-log-content{display:flex;align-items:baseline;gap:10px;flex:1;min-width:0;overflow:hidden}
+.load-log-tag{font-size:.6875rem;font-weight:600;letter-spacing:.05em;color:var(--muted);background:var(--panel);border:1px solid var(--line);border-radius:4px;padding:2px 6px;flex-shrink:0}
+.load-log-text{margin:0;font-family:ui-monospace,monospace;font-size:.75rem;color:var(--text);word-break:break-word}
+.load-actions{display:flex;gap:8px;flex-shrink:0}
+.load-attributions{font-size:.7rem;color:var(--muted);line-height:1.4}
+.load-attributions p{margin:4px 0}
+.load-attributions a{color:#aac5ff}
+html[data-camera-output] .load-window{display:none}
 button:disabled{opacity:.5;cursor:default}
 .location-picker{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:12px;padding:12px;background:var(--panel);border:1px solid var(--line);border-radius:8px;font-size:.875rem}
 .location-picker[hidden],html[data-camera-output] .location-picker{display:none}

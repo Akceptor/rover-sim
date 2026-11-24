@@ -3,14 +3,15 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 import {fileURLToPath} from 'node:url';
 import {parseArgs} from 'node:util';
+import {spawn} from 'node:child_process';
 import {setTimeout as delay} from 'node:timers/promises';
 import {loadConfig} from '../src/config.js';
 import {loadEnvironment} from '../src/environment.js';
 import {ProcessGroup} from '../src/process-group.js';
 import {sitlArguments,missionPlannerCommand,checkPorts,localHost,loadLauncherConfig} from '../src/launcher.js';
 const root=path.resolve(path.dirname(fileURLToPath(import.meta.url)),'..');
-const {values}=parseArgs({options:{sitl:{type:'string'},'launcher-config':{type:'string'},config:{type:'string'},'extra-params':{type:'string'},'mavlink-port':{type:'string',default:'5760'},'run-dir':{type:'string'},'no-video':{type:'boolean'},standalone:{type:'boolean'},'mission-planner':{type:'boolean'},'choose-location':{type:'boolean'},flat:{type:'boolean'},playground:{type:'boolean'},wipe:{type:'boolean'},camera:{type:'string',default:'fpv'},fov:{type:'string',default:'85'},browser:{type:'string',default:'auto'},help:{type:'boolean'}}});
-if(values.help){console.log(`npm run sim -- [--launcher-config config/launcher.local.json] [--no-video] [--standalone] [--mission-planner] [--choose-location] [--flat] [--playground] [--wipe]
+const {values}=parseArgs({options:{sitl:{type:'string'},'launcher-config':{type:'string'},config:{type:'string'},'extra-params':{type:'string'},'mavlink-port':{type:'string',default:'5760'},'run-dir':{type:'string'},'no-video':{type:'boolean'},standalone:{type:'boolean'},'mission-planner':{type:'boolean'},'choose-location':{type:'boolean'},flat:{type:'boolean'},playground:{type:'boolean'},wipe:{type:'boolean'},camera:{type:'string',default:'fpv'},fov:{type:'string',default:'85'},browser:{type:'string',default:'auto'},open:{type:'boolean'},'no-open':{type:'boolean'},help:{type:'boolean'}}});
+if(values.help){console.log(`npm run sim -- [--launcher-config config/launcher.local.json] [--no-video] [--standalone] [--mission-planner] [--choose-location] [--flat] [--playground] [--wipe] [--open] [--no-open]
 Set sitlExe and backendConfig in config/launcher.local.json (copy launcher.example.json).
 Overrides: --sitl "path/to/ArduRover.exe" --config path/to/backend.json
 Camera: --camera fpv|chase --fov 40..120 --browser auto|chrome|msedge
@@ -19,6 +20,14 @@ Preset dropdown: --choose-location waits for a browser selection before starting
 Mission Planner Simulation map: --mission-planner starts backend/camera only; see docs/mission-planner-start.md.
 Config paths are relative to the config file; command-line paths are relative to the current directory.
 --wipe is NEVER saved. Ctrl+C stops all services.`);process.exit(0);}
+function openBrowser(targetUrl){
+ const platform=process.platform;
+ try{
+  if(platform==='darwin')spawn('open',[targetUrl],{detached:true,stdio:'ignore'}).unref();
+  else if(platform==='win32')spawn('cmd.exe',['/c','start','',targetUrl],{detached:true,stdio:'ignore'}).unref();
+  else spawn('xdg-open',[targetUrl],{detached:true,stdio:'ignore'}).unref();
+ }catch{}
+}
 const group=new ProcessGroup();
 const stop=()=>void group.stop();process.on('SIGINT',stop);process.on('SIGTERM',stop);
 process.on('message',m=>{if(m?.type==='shutdown')stop();});
@@ -84,6 +93,8 @@ try{
   await waitFor('background camera',async()=>{const response=await fetch(url+'/api/video',{signal:AbortSignal.timeout(1000)});return (await response.json()).state==='streaming';},30000);
  }
  console.log(`\n[launcher] READY · ${url}\n[launcher] Terrain: ${values['mission-planner']?'waiting for selected start':values['choose-location']?(await state()).environment:environment.terrain?.name??'Test playground'}\n[launcher] Video: ${values['no-video']?'disabled':url+'/camera.mjpg'}\n[launcher] ${values['mission-planner']?'Waiting for Mission Planner Simulation start; see docs/mission-planner-start.md':values.standalone?'Standalone keyboard mode':`Mission Planner TCP ${mavlinkPort} · companion ${mavlinkPort+2}`}\n[launcher] Ctrl+C stops ${values['mission-planner']?'backend and video; stop SITL in Mission Planner':'video, SITL and backend'}. Saved parameters are ${values.wipe?'being reset for this run':'preserved'}.\n`);
+ const shouldOpen=!values['no-open']&&(values.open||settings.openBrowser||(settings.openBrowser!==false&&process.stdout.isTTY&&!process.env.CI));
+ if(shouldOpen)openBrowser(url);
  process.exitCode=await group.finished;
 }catch(error){if(!group.stopping){console.error(`[launcher] ${error.message}`);process.exitCode=await group.stop(1);}else process.exitCode=await group.finished;}
 finally{if(process.connected)process.disconnect();}
