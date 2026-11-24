@@ -54,6 +54,25 @@
     <div id="manualWeatherControls" class="manual-weather-inline" hidden><label for="weatherPreset">Preset</label> <select id="weatherPreset"><option>Clear</option><option>Cloudy</option><option>Fog</option><option>Rain</option><option>Snow</option></select></div>
   </div>
   <div class="environment-status"><span id="localTime">Waiting for local time</span><span id="weatherStatus">Loading weather…</span><a href="https://open-meteo.com/" target="_blank" rel="noopener noreferrer">Weather by Open-Meteo · CC BY 4.0</a></div>
+  <section id="missionPlannerSetup" class="mission-planner-setup" aria-label="Mission Planner setup" hidden>
+    <div class="setup-box">
+      <div class="setup-heading"><label for="missionPlannerCommand">Mission Planner · Extra command line</label><button id="copyMissionPlannerCommand" type="button">Copy command</button></div>
+      <textarea id="missionPlannerCommand" rows="3" readonly spellcheck="false" aria-describedby="missionPlannerHint"></textarea>
+      <p id="missionPlannerHint">Paste into Mission Planner → Simulation → Extra command line, then start Rover. Keep heading 0 and Wipe unchecked.</p>
+      <span id="missionPlannerCopyStatus" class="setup-copy-status" role="status"></span>
+    </div>
+    <div class="setup-box">
+      <div class="setup-heading"><label for="videoUrl">Stream URL</label><button id="copyVideoUrl" type="button">Copy command</button></div>
+      <input id="videoUrl" type="text" readonly spellcheck="false">
+      <span id="videoUrlCopyStatus" class="setup-copy-status" role="status"></span>
+    </div>
+    <div class="setup-box">
+      <div class="setup-heading"><label for="videoPipeline">Mission Planner GStreamer source</label><button id="copyVideoPipeline" type="button">Copy command</button></div>
+      <textarea id="videoPipeline" rows="4" readonly spellcheck="false" aria-describedby="videoPipelineHint"></textarea>
+      <p id="videoPipelineHint">Right-click Mission Planner’s HUD → Video → Set GStreamer Source, then paste the pipeline above.</p>
+      <span id="videoPipelineCopyStatus" class="setup-copy-status" role="status"></span>
+    </div>
+  </section>
   </div>
   <aside class="map-panel" aria-label="Location map panel">
     <div class="viewbar map-heading"><span class="view-title">LOCATION MAP</span><button id="recenterMap" type="button">Recenter rover</button></div>
@@ -76,26 +95,6 @@
     <p id="mapTileStatus" class="map-hint" role="status"></p>
   </aside>
   </div>
-
-  <section id="missionPlannerSetup" class="mission-planner-setup" aria-label="Mission Planner setup" hidden>
-    <div class="setup-box">
-      <div class="setup-heading"><label for="missionPlannerCommand">Mission Planner · Extra command line</label><button id="copyMissionPlannerCommand" type="button">Copy command</button></div>
-      <textarea id="missionPlannerCommand" rows="3" readonly spellcheck="false" aria-describedby="missionPlannerHint"></textarea>
-      <p id="missionPlannerHint">Paste into Mission Planner → Simulation → Extra command line, then start Rover. Keep heading 0 and Wipe unchecked.</p>
-      <span id="missionPlannerCopyStatus" class="setup-copy-status" role="status"></span>
-    </div>
-    <div class="setup-box">
-      <div class="setup-heading"><label for="videoUrl">Stream URL</label><button id="copyVideoUrl" type="button">Copy command</button></div>
-      <input id="videoUrl" type="text" readonly spellcheck="false">
-      <span id="videoUrlCopyStatus" class="setup-copy-status" role="status"></span>
-    </div>
-    <div class="setup-box">
-      <div class="setup-heading"><label for="videoPipeline">Mission Planner GStreamer source</label><button id="copyVideoPipeline" type="button">Copy command</button></div>
-      <textarea id="videoPipeline" rows="4" readonly spellcheck="false" aria-describedby="videoPipelineHint"></textarea>
-      <p id="videoPipelineHint">Right-click Mission Planner’s HUD → Video → Set GStreamer Source, then paste the pipeline above.</p>
-      <span id="videoPipelineCopyStatus" class="setup-copy-status" role="status"></span>
-    </div>
-  </section>
   <div id="terrainLoad" class="terrain-load" hidden>
     <p id="startTerrainStatus" class="terrain-attribution" role="status"></p>
 
