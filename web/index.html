@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <meta name="theme-color" content="#0c0f13">
 <title>Crawler Lab · Rover SITL</title>
+<script>(function(){try{var s=localStorage.getItem('theme');var light=s?s==='light':matchMedia('(prefers-color-scheme: light)').matches;if(light){document.documentElement.dataset.theme='light';document.querySelector('meta[name=theme-color]').content='#eef1f5';}}catch{}})();</script>
 <link rel="stylesheet" href="/leaflet.css">
 <link rel="stylesheet" href="/style.css">
 </head>
@@ -12,6 +13,7 @@
 <header class="top">
   <div class="identity"><strong>CRAWLER LAB</strong><span class="muted">Rover simulator</span></div>
   <div class="connection-state"><span id="mode" class="pill">CONNECTING</span><span id="connection" class="pill" role="status">Backend offline</span><span id="armState" class="pill vehicle-state" role="status" hidden>ARM UNKNOWN</span><span id="flightMode" class="pill vehicle-state" role="status" hidden>MODE UNKNOWN</span></div>
+  <button id="themeToggle" type="button" title="Toggle color theme" aria-label="Toggle color theme">◐</button>
   <button id="settings" aria-haspopup="dialog">Settings</button>
 </header>
 <main class="cockpit">
@@ -158,6 +160,7 @@
   <p id="removeFavoriteName"></p><p>The loaded world will stay as it is.</p>
   <div class="saved-location-actions"><button id="cancelRemoveFavorite" type="button" autofocus>Cancel</button><button id="confirmRemoveFavorite" type="button">Remove favorite</button></div>
 </dialog>
+<script>document.getElementById('themeToggle')?.addEventListener('click',function(){var light=document.documentElement.dataset.theme!=='light';document.documentElement.dataset.theme=light?'light':'';try{localStorage.setItem('theme',light?'light':'dark')}catch{}document.querySelector('meta[name=theme-color]').content=light?'#eef1f5':'#0c0f13';});</script>
 <script type="module" src="/app.js"></script>
 </body>
 </html>

@@ -262,3 +262,23 @@ html[data-camera-output] .saved-locations{display:none}
 .pe-badge[data-class=live]{color:var(--ok);border-color:#315c45}.pe-badge[data-class=reload]{color:var(--warn);border-color:#655337}
 .pe-error{color:#ff9292;font-size:.75rem;min-height:0}.pe-error:empty{display:none}
 .pe-field.invalid input,.pe-field.invalid select,.pe-field.invalid textarea{border-color:#ff9292}
+
+/* Light theme — switched via <html data-theme="light"> */
+:root[data-theme="light"]{color-scheme:light;--bg:#eef1f5;--panel:#ffffff;--text:#1c2631;--muted:#5a6b7d;--line:#d4dbe4;--accent:#2456c4;--ok:#177a42;--warn:#96630a}
+:root[data-theme="light"] button:hover{background:#e4e9f0;border-color:#b8c3d0}
+:root[data-theme="light"] #connection[data-state=online]{border-color:#a9d8b9}
+:root[data-theme="light"] #connection[data-state=waiting]{border-color:#dcbb6f}
+:root[data-theme="light"] #connection[data-state=offline]{color:#c0392b;border-color:#e3a199}
+:root[data-theme="light"] #viewport{border-color:#c4ccd6}
+:root[data-theme="light"] kbd{border-color:#b8c3d0}
+:root[data-theme="light"] #run{border-color:#b5813d}
+:root[data-theme="light"] footer>span:first-child{color:#4b5a6b}
+:root[data-theme="light"] dialog{border-left-color:#c4ccd6}
+:root[data-theme="light"] #armState[data-state=disarmed]{border-color:#a9d8b9}
+:root[data-theme="light"] #flightMode[data-state=known]{color:#2456c4;border-color:#a9c0e8}
+:root[data-theme="light"] #videoToggle{color:#2456c4}
+:root[data-theme="light"] .environment-status a,:root[data-theme="light"] .load-attributions a{color:#2456c4}
+:root[data-theme="light"] #locationMap{border-color:#c4ccd6}
+:root[data-theme="light"] .terrain-warning:not([hidden]){color:#96630a}
+:root[data-theme="light"] .pe-status[data-tone=error],:root[data-theme="light"] .pe-error,:root[data-theme="light"] .pe-field.invalid input,:root[data-theme="light"] .pe-field.invalid select,:root[data-theme="light"] .pe-field.invalid textarea{color:#c0392b;border-color:#c0392b}
+.top #themeToggle{margin-left:auto}

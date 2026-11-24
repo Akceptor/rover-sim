@@ -3,11 +3,13 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="theme-color" content="#0c0f13">
   <title>Rover Sim · Vehicle profiles</title>
+  <script>(function(){try{var s=localStorage.getItem('theme');var light=s?s==='light':matchMedia('(prefers-color-scheme: light)').matches;if(light){document.documentElement.dataset.theme='light';document.querySelector('meta[name=theme-color]').content='#eef1f5';}}catch{}})();</script>
   <link rel="stylesheet" href="/style.css">
 </head>
 <body>
-  <header class="top"><div class="identity"><strong>VEHICLE PROFILES</strong><span class="muted">Edit config/vehicles/*</span></div><a class="profiles-link" href="/">Cockpit</a></header>
+  <header class="top"><div class="identity"><strong>VEHICLE PROFILES</strong><span class="muted">Edit config/vehicles/*</span></div><button id="themeToggle" type="button" title="Toggle color theme" aria-label="Toggle color theme">◐</button><a class="profiles-link" href="/">Cockpit</a></header>
   <main class="pe">
     <div class="pe-bar">
       <label for="profileSelect" class="muted">Profile</label><select id="profileSelect"></select>
@@ -16,6 +18,7 @@
     </div>
     <form id="form" autocomplete="off" onsubmit="return false"></form>
   </main>
+  <script>document.getElementById('themeToggle')?.addEventListener('click',function(){var light=document.documentElement.dataset.theme!=='light';document.documentElement.dataset.theme=light?'light':'';try{localStorage.setItem('theme',light?'light':'dark')}catch{}document.querySelector('meta[name=theme-color]').content=light?'#eef1f5':'#0c0f13';});</script>
   <script type="module" src="/profiles.js"></script>
 </body>
 </html>
