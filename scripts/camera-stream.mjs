@@ -31,8 +31,8 @@ try{
   await page.goto(url.href,{timeout:15000});
   await page.waitForFunction(()=>document.querySelector('#connection')?.textContent!=='Backend offline',null,{timeout:10000});
   await page.evaluate(({camera,fov})=>{
-   const select=document.getElementById('camera');select.value=camera;select.dispatchEvent(new Event('change'));
-   const input=document.getElementById('fov');input.value=String(fov);input.dispatchEvent(new Event('input'));
+   const select=document.getElementById('camera');if(select){select.value=camera;select.dispatchEvent(new Event('change'));}
+   const input=document.getElementById('fov');if(input){input.value=String(fov);input.dispatchEvent(new Event('input'));}
    document.getElementById('videoToggle').click();
   },{camera:values.camera,fov});
   await page.waitForFunction(()=>document.querySelector('#videoStatus').textContent.startsWith('Streaming'),null,{timeout:15000});
