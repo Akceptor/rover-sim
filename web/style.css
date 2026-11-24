@@ -182,7 +182,9 @@ button:disabled{opacity:.5;cursor:default}
 .camera-panel,.map-panel{min-width:0}
 .view-stage .viewbar{min-height:38px}
 .view-stage #viewport{width:100%;min-width:0;height:auto;min-height:0;max-height:none;aspect-ratio:16/9}
-.map-heading{min-height:33px}
+.map-heading{min-height:38px}
+.map-heading .actions{display:flex;align-items:center;gap:8px;flex-direction:row;flex-wrap:wrap}
+.map-heading .actions button{padding:6px 10px;font-size:.8125rem}
 #locationMap{width:100%;aspect-ratio:1;background:#dbe3df;border:1px solid #394352;border-radius:12px;isolation:isolate;font:12px/1.4 -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
 #locationMap.can-pick{cursor:crosshair}
 .map-coordinates,.map-hint{font-size:.75rem;color:var(--muted);margin:8px 0;overflow-wrap:anywhere}

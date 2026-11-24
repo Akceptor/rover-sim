@@ -39,7 +39,6 @@
   <div class="timing"><span><b id="rate">—</b> Hz physics</span><span><b id="time">0.0</b> s simulated</span><span id="diagnostics">Waiting for timing data</span></div>
   <section class="controls" aria-label="Simulator controls">
     <div class="drive-help"><div id="keyLegend" aria-hidden="true"><kbd>W</kbd><span><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd></span></div><p id="help">Drive using Mission Planner or your MAVLink companion.</p></div>
-    <div class="actions"><button id="run">Stop physics</button><button id="reset">Reset vehicle</button></div>
   </section>
   <div class="environment-controls" aria-label="Time and weather controls">
     <label for="timeMode">Time</label>
@@ -75,7 +74,14 @@
   </section>
   </div>
   <aside class="map-panel" aria-label="Location map panel">
-    <div class="viewbar map-heading"><span class="view-title">LOCATION MAP</span><button id="recenterMap" type="button">Recenter rover</button></div>
+    <div class="viewbar map-heading">
+      <span class="view-title">LOCATION MAP</span>
+      <div class="actions">
+        <button id="run">Stop physics</button>
+        <button id="reset">Reset vehicle</button>
+        <button id="recenterMap" type="button">Recenter rover</button>
+      </div>
+    </div>
     <div id="locationMap" tabindex="0" aria-label="Location map. Click to choose a starting position."></div>
     <p id="mapCoordinates" class="map-coordinates">Click the map to choose a start</p>
     <p id="mapSelectionHint" class="map-hint"></p>
@@ -103,11 +109,6 @@
   <div class="terrain-attribution"><span id="osmStatus" role="status"></span> <button id="retryOsm" type="button" hidden>Retry OSM</button> <button id="configureOsm" type="button" hidden>Configure OSM</button></div>
   <p id="osmAttribution" class="terrain-attribution" hidden><a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer">© OpenStreetMap contributors</a> · ODbL</p>
   <p id="terrainAttribution" class="terrain-attribution"></p>
-  <div class="timing"><span><b id="rate">—</b> Hz physics</span><span><b id="time">0.0</b> s simulated</span><span id="diagnostics">Waiting for timing data</span></div>
-  <section class="controls" aria-label="Simulator controls">
-    <div class="drive-help"><div id="keyLegend" aria-hidden="true"><kbd>W</kbd><span><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd></span></div><p id="help">Drive using Mission Planner or your MAVLink companion.</p></div>
-    <div class="actions"><button id="run">Stop physics</button><button id="reset">Reset vehicle</button></div>
-  </section>
 </main>
 <footer><span id="status">Waiting for backend</span><span class="muted">CRAWLER LAB / LOCAL SIMULATION</span></footer>
 <dialog id="settingsDialog" aria-labelledby="settingsTitle">
