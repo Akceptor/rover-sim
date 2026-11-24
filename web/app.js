@@ -36,7 +36,8 @@ function setup(m){
  const c=m.config.vehicle,changed=activeVehicleId!==(c.id??'mn168');vehicleRevision=m.vehicleRevision??0;state=null;
  $('vehicleSelect').replaceChildren(...(m.vehicles??[{id:c.id??'mn168',name:c.name??'MN168'}]).map(v=>{const o=document.createElement('option');o.value=v.id;o.textContent=v.name;return o;}));$('vehicleSelect').value=m.vehicleStatus?.pendingId??m.selectedVehicle??c.id??'mn168';
  $('activeVehicle').textContent=c.name??'MN168';$('activeVehicle').dataset.vehicle=c.id??'mn168';
- if(changed){keys.clear();for(const [id,axis] of [['mountX','x'],['mountY','y'],['mountRight','z']])$(id).value=c.cameraMount?.[axis]??({x:.15,y:.16,z:0}[axis]);}activeVehicleId=c.id??'mn168';
+ if(changed){keys.clear();}activeVehicleId=c.id??'mn168';
+ if(c.fpvFov&&camera.fov!==c.fpvFov){camera.fov=c.fpvFov;camera.updateProjectionMatrix();}
  osmSettings?.init(m.osmSettings);$('missionPlannerSetup').hidden=!m.missionPlannerCommand;$('missionPlannerCommand').value=m.missionPlannerCommand??'';locationMode=m.locationMode;baseLocations=m.locations??[];renderLocations(m.favorites??[]);$('locationSelect').value=m.selectedLocation??state?.selectedLocation??locations[0]?.id??'';mapChoice=m.selectedLocation==='map'?m.mapSelection:null;locationMap?.setWorld(m.map);if(mapChoice)locationMap?.select(mapChoice,false);describeLocation();savedLocations?.init(m);config=m.config;mode=m.mode;$('mode').textContent=mode==='sitl'?'ARDUROVER SITL':'STANDALONE · NO AUTOPILOT';$('help').textContent=mode==='sitl'?'Drive using Mission Planner or your MAVLink companion. Browser keys do not control physics.':'W/S or ↑/↓: forward / brake / reverse. A/D or ←/→: steer. Release to stop. Click the view to focus.';$('keyLegend').hidden=mode!=='standalone';for(const id of ['armState','flightMode'])$(id).hidden=mode!=='sitl';
   if(crawler){rover.remove(crawler.model);crawler.dispose();}
   crawler=createVehicle(c);rover.add(crawler.model);wheels=crawler.wheels;rover.userData.vehicleRevision=vehicleRevision;
@@ -92,7 +93,6 @@ $('copyMissionPlannerCommand').onclick=async()=>{
   try{await navigator.clipboard.writeText(field.value);status.textContent='Copied';}
   catch{field.focus();field.select();status.textContent='Command selected · press Ctrl+C or ⌘C to copy';}
 };
-$('fov').oninput=()=>{camera.fov=+$('fov').value;camera.updateProjectionMatrix();$('fovValue').textContent=`${camera.fov}°`;};
 // Sky dome (r=110) and clouds must stay inside the far plane or they get clipped.
 function fitFar(){const far=Math.max(150,scene.fog.far*1.05);for(const c of [camera,chase])if(c.far!==far){c.far=far;c.updateProjectionMatrix();}scenery.sky.scale.setScalar(Math.min(scene.userData.terrain?10:1,far*.9/110));}
 function selectCamera(value){$('camera').value=value;for(const id of ['fpv','chase'])$(id).setAttribute('aria-pressed',String(id===value));$('cameraLabel').textContent=value==='fpv'?'ONBOARD FPV':'CHASE CAMERA';}
@@ -105,8 +105,8 @@ function release(){keys.clear();send({type:'keys',steering:0,throttle:0});}addEv
 setInterval(()=>{if(mode==='standalone')send({type:'keys',throttle:Number(keys.has('w')||keys.has('arrowup'))-Number(keys.has('s')||keys.has('arrowdown')),steering:Number(keys.has('d')||keys.has('arrowright'))-Number(keys.has('a')||keys.has('arrowleft'))});},80);
 const mount=new T.Vector3(),target=new T.Vector3(),chasePosition=new T.Vector3();let previousTime=0,previousWall=0,ratio=0;
 function render(){requestAnimationFrame(render);const width=viewport.clientWidth,height=viewport.clientHeight;if(canvas.width!==Math.floor(width*renderer.getPixelRatio())||canvas.height!==Math.floor(height*renderer.getPixelRatio())){renderer.setSize(width,height,false);for(const c of [camera,chase]){c.aspect=width/height;c.updateProjectionMatrix();}}
-  if(state&&config){const s=state;rover.position.copy(s.position);rover.quaternion.copy(s.rotation);crawler.update(s);
-    mount.set(+$('mountX').value||0,+$('mountY').value||0,(+$('mountRight').value||0)).applyQuaternion(rover.quaternion).add(rover.position);camera.position.copy(mount);const pan=(s.camera?.panDeg??0)*Math.PI/180,tilt=(s.camera?.tiltDeg??0)*Math.PI/180;target.set(Math.cos(tilt)*Math.cos(pan),Math.sin(tilt),Math.cos(tilt)*Math.sin(pan)).applyQuaternion(rover.quaternion).add(mount);camera.up.set(0,1,0).applyQuaternion(rover.quaternion);camera.lookAt(target);
+  if(state&&config){const s=state,v=config.vehicle;rover.position.copy(s.position);rover.quaternion.copy(s.rotation);crawler.update(s);
+    mount.set(v.cameraMount?.x||0,v.cameraMount?.y||0,v.cameraMount?.z||0).applyQuaternion(rover.quaternion).add(rover.position);camera.position.copy(mount);const pan=(s.camera?.panDeg??0)*Math.PI/180,tilt=(s.camera?.tiltDeg??0)*Math.PI/180;target.set(Math.cos(tilt)*Math.cos(pan),Math.sin(tilt),Math.cos(tilt)*Math.sin(pan)).applyQuaternion(rover.quaternion).add(mount);camera.up.set(0,1,0).applyQuaternion(rover.quaternion);camera.lookAt(target);
     chasePosition.set(-Math.max(1.8,config.vehicle.length*3),Math.max(1.05,config.vehicle.length*1.5),Math.max(.5,config.vehicle.width*1.5)).applyQuaternion(rover.quaternion).add(rover.position);chase.position.lerp(chasePosition,.12);chase.lookAt(rover.position.clone().add(new T.Vector3(0,.1,0)));
     $('speed').textContent=s.speed.toFixed(2);$('heading').textContent=`${Math.round(s.heading).toString().padStart(3,'0')}°`;$('time').textContent=s.simTime.toFixed(1);$('rate').textContent=s.rate;
     for(const [id,value,index]of [['steer',s.inputs.steering,config.steering.channel-1],['throttle',s.inputs.throttle,config.throttle.channel-1]]){$(id).textContent=`${value.toFixed(2)}${s.raw[index]?` · ${s.raw[index]} µs`:''}`;$(id+'Meter').value=value;}

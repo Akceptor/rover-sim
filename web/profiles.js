@@ -13,7 +13,7 @@ const SECTIONS=[
  ['Drive response',[['deadband',''],['riseRate','1/s'],['fallRate','1/s'],['reverseThreshold',''],['neutralBrake',''],['reverseBrake','']].map(([k,u])=>num(`drive.${k}`,k,u,.005)).flat()],
  ['Suspension & tyres',[['stiffness',''],['compression',''],['relaxation',''],['travel','m'],['maxForce','N'],['grip',''],['sideGrip','']].map(([k,u])=>num(`suspensionTuning.${k}`,k,u,k==='travel'?.005:.1))],
  ['Tracks',[['length','m',.01],['width','m',.01],['radius','m',.005],['samples','',1],['lateralResistance','',.5]].map(([k,u,s])=>num(`trackGeometry.${k}`,k,u,s))],
- ['Camera',xyz('cameraMount','mount')],
+ ['Camera',[num('fpvFov','FPV field of view','°',1),...xyz('cameraMount','mount')]],
  ['Collision boxes',[{path:'collisionBoxes',label:'boxes: [{size:[x,y,z],position:[x,y,z]}]',type:'json'}]],
  ['SITL defaults',[{path:'@sitl',label:'sitl.parm',type:'sitl'}]]
 ];

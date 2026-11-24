@@ -99,7 +99,7 @@
 </main>
 <footer><span id="status">Waiting for backend</span><span class="muted">CRAWLER LAB / LOCAL SIMULATION</span></footer>
 <dialog id="settingsDialog" aria-labelledby="settingsTitle">
-  <div class="drawer-heading"><div><span class="muted eyebrow">CAMERA &amp; MAP DATA</span><h1 id="settingsTitle">Simulator settings</h1></div><button id="closeSettings" aria-label="Close settings">✕</button></div>
+  <div class="drawer-heading"><div><span class="muted eyebrow">MAP DATA &amp; VIDEO</span><h1 id="settingsTitle">Simulator settings</h1></div><button id="closeSettings" aria-label="Close settings">✕</button></div>
   <form id="osmSettingsForm">
    <fieldset id="osmSettingsSection"><legend>OpenStreetMap connection</legend>
     <p class="muted">Choose the server used to download roads and buildings. Settings are saved on this simulator and survive restarts.</p>
@@ -114,14 +114,7 @@
     <p class="muted">Cached map data stays available offline. After physics starts, retried map data applies on the next location load.</p>
    </fieldset>
   </form>
-  <p class="muted">Camera settings change the view only. In SITL, RC4 pans ±30° and RC2 tilts ±15°; 1500 µs centres the camera.</p>
-  <label for="camera">Camera</label><select id="camera"><option value="fpv">Onboard FPV</option><option value="chase">Chase</option></select>
-  <label for="fov">FPV field of view <output id="fovValue" for="fov">85°</output></label><input id="fov" type="range" min="40" max="120" value="85">
-  <fieldset><legend>FPV mount</legend><p class="muted">Metres from the chassis origin. Height is above the chassis, not the ground.</p>
-    <label for="mountX">Forward <input id="mountX" type="number" step="0.01" value="0.15"></label>
-    <label for="mountY">Height <input id="mountY" type="number" step="0.01" value="0.16"></label>
-    <label for="mountRight">Right <input id="mountRight" type="number" step="0.01" value="0"></label>
-  </fieldset>
+  <select id="camera" hidden><option value="fpv">Onboard FPV</option><option value="chase">Chase</option></select>
   <fieldset class="video-settings"><legend>Mission Planner video</legend>
     <p class="muted">Stream this tab’s camera view, or run npm run video in another terminal for a background camera that keeps working when this window is closed.</p>
     <button id="videoToggle" type="button">Start video</button>

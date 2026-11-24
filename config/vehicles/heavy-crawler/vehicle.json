@@ -25,6 +25,7 @@
 
   "centerOfGravity": { "x": -0.025, "y": -0.015, "z": 0 },
   "cameraMount": { "x": 0.15, "y": 0.24, "z": 0 },
+  "fpvFov": 85,
 
   "suspensionTuning": {
     "stiffness": 65,
