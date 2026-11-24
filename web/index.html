@@ -78,10 +78,23 @@
   </div>
 
   <section id="missionPlannerSetup" class="mission-planner-setup" aria-label="Mission Planner setup" hidden>
-    <div class="setup-heading"><label for="missionPlannerCommand">Mission Planner · Extra command line</label><button id="copyMissionPlannerCommand" type="button">Copy command</button></div>
-    <textarea id="missionPlannerCommand" rows="3" readonly spellcheck="false" aria-describedby="missionPlannerHint"></textarea>
-    <p id="missionPlannerHint">Paste into Mission Planner → Simulation → Extra command line, then start Rover. Keep heading 0 and Wipe unchecked.</p>
-    <span id="missionPlannerCopyStatus" role="status"></span>
+    <div class="setup-box">
+      <div class="setup-heading"><label for="missionPlannerCommand">Mission Planner · Extra command line</label><button id="copyMissionPlannerCommand" type="button">Copy command</button></div>
+      <textarea id="missionPlannerCommand" rows="3" readonly spellcheck="false" aria-describedby="missionPlannerHint"></textarea>
+      <p id="missionPlannerHint">Paste into Mission Planner → Simulation → Extra command line, then start Rover. Keep heading 0 and Wipe unchecked.</p>
+      <span id="missionPlannerCopyStatus" class="setup-copy-status" role="status"></span>
+    </div>
+    <div class="setup-box">
+      <div class="setup-heading"><label for="videoUrl">Stream URL</label><button id="copyVideoUrl" type="button">Copy command</button></div>
+      <input id="videoUrl" type="text" readonly spellcheck="false">
+      <span id="videoUrlCopyStatus" class="setup-copy-status" role="status"></span>
+    </div>
+    <div class="setup-box">
+      <div class="setup-heading"><label for="videoPipeline">Mission Planner GStreamer source</label><button id="copyVideoPipeline" type="button">Copy command</button></div>
+      <textarea id="videoPipeline" rows="4" readonly spellcheck="false" aria-describedby="videoPipelineHint"></textarea>
+      <p id="videoPipelineHint">Right-click Mission Planner’s HUD → Video → Set GStreamer Source, then paste the pipeline above.</p>
+      <span id="videoPipelineCopyStatus" class="setup-copy-status" role="status"></span>
+    </div>
   </section>
   <div id="terrainLoad" class="terrain-load" hidden>
     <p id="startTerrainStatus" class="terrain-attribution" role="status"></p>
@@ -119,9 +132,6 @@
     <p class="muted">Stream this tab’s camera view, or run npm run video in another terminal for a background camera that keeps working when this window is closed.</p>
     <button id="videoToggle" type="button">Start video</button>
     <p id="videoStatus" role="status">Video stopped</p>
-    <label for="videoUrl">Stream URL</label><input id="videoUrl" type="text" readonly>
-    <label for="videoPipeline">Mission Planner GStreamer source</label><textarea id="videoPipeline" rows="6" readonly spellcheck="false"></textarea>
-    <p class="muted">Right-click Mission Planner’s HUD → Video → Set GStreamer Source, then paste the pipeline above.</p>
   </fieldset>
   <p class="drawer-note">Driving keys are released while settings are open. In SITL mode, ArduRover retains actuator control.</p>
 </dialog>

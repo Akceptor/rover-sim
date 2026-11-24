@@ -19,10 +19,14 @@ try{
  const command=await page.locator('#missionPlannerCommand').inputValue();
  assert.match(command,/--sim-port-out 9012/);assert.match(command,/udpclient:127.0.0.1:14570/);assert.ok(command.includes(extra));assert.ok(command.includes('"'),'defaults containing spaces are quoted');
  const printed=logs.split('Extra command line:\n')[1]?.split('\n')[0].replace(/^\[launcher\] /,'');assert.equal(command,printed,"browser text is exactly the launcher's printed command");
- await page.getByRole('button',{name:'Copy command',exact:true}).click();await page.waitForFunction(()=>document.querySelector('#missionPlannerCopyStatus').textContent==='Copied');
+ assert.equal(await page.locator('#videoUrl').inputValue(),url+'/camera.mjpg');
+ assert.match(await page.locator('#videoPipeline').inputValue(),/souphttpsrc.*camera\.mjpg/);
+ await page.locator('#copyMissionPlannerCommand').click();await page.waitForFunction(()=>document.querySelector('#missionPlannerCopyStatus').textContent==='Copied');
  assert.equal(await page.evaluate(()=>navigator.clipboard.readText()),command);
+ await page.locator('#copyVideoUrl').click();await page.waitForFunction(()=>document.querySelector('#videoUrlCopyStatus').textContent==='Copied');
+ assert.equal(await page.evaluate(()=>navigator.clipboard.readText()),url+'/camera.mjpg');
  await page.evaluate(()=>Object.defineProperty(navigator.clipboard,'writeText',{value:async()=>{throw Error('Permission denied');}}));
- await page.getByRole('button',{name:'Copy command',exact:true}).click();await page.waitForFunction(()=>document.querySelector('#missionPlannerCopyStatus').textContent.includes('selected'));
+ await page.locator('#copyMissionPlannerCommand').click();await page.waitForFunction(()=>document.querySelector('#missionPlannerCopyStatus').textContent.includes('selected'));
  assert.equal(await page.locator('#missionPlannerCommand').evaluate(e=>e.value.substring(e.selectionStart,e.selectionEnd)),command);
  await page.reload();await page.waitForFunction(()=>document.querySelector('#missionPlannerCommand')?.value.length>0,{},{timeout:5000});assert.equal(await page.locator('#missionPlannerCommand').inputValue(),command);
  await page.setViewportSize({width:390,height:844});await delay(100);assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true);

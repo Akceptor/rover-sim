@@ -167,13 +167,15 @@ button:disabled{opacity:.5;cursor:default}
 .terrain-load>.terrain-attribution{flex:1 1 300px}
 .terrain-load .location-picker{flex:1 1 460px;margin:0}
 @media(max-width:560px){.location-picker label,.location-picker select{flex-basis:100%}}
-.mission-planner-setup{margin-top:12px;padding:12px;background:var(--panel);border:1px solid var(--line);border-radius:8px;font-size:.8125rem}
+.mission-planner-setup{margin-top:12px;display:flex;flex-direction:column;gap:12px;font-size:.8125rem}
 .mission-planner-setup[hidden],html[data-camera-output] .mission-planner-setup{display:none}
+.setup-box{padding:12px;background:var(--panel);border:1px solid var(--line);border-radius:8px}
 .setup-heading{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:8px}
-.mission-planner-setup textarea{display:block;width:100%;resize:vertical;min-height:70px;padding:8px;background:var(--bg);color:var(--text);border:1px solid var(--line);border-radius:6px;font:.75rem/1.5 ui-monospace,monospace}
-.mission-planner-setup p{margin:8px 0 0;color:var(--muted)}
-#missionPlannerCopyStatus{display:block;margin-top:6px;color:var(--ok)}
-#missionPlannerCopyStatus:empty{display:none}
+.setup-box textarea,.setup-box input[type=text]{display:block;width:100%;padding:8px;background:var(--bg);color:var(--text);border:1px solid var(--line);border-radius:6px;font:.75rem/1.5 ui-monospace,monospace}
+.setup-box textarea{resize:vertical;min-height:70px}
+.setup-box p{margin:8px 0 0;color:var(--muted)}
+.setup-copy-status,#missionPlannerCopyStatus{display:block;margin-top:6px;color:var(--ok)}
+.setup-copy-status:empty,#missionPlannerCopyStatus:empty{display:none}
 
 /* Equal-height 16:9 camera and square map, with map controls beneath. */
 .view-stage{display:grid;grid-template-columns:minmax(0,16fr) minmax(0,9fr);gap:18px;align-items:start}

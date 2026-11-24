@@ -11,6 +11,18 @@ export class CameraVideo {
   this.button.onclick=()=>{this.wanted=!this.wanted;this.button.textContent=this.wanted?'Stop video':'Start video';if(this.wanted)this.connect();else this.disconnect('Video stopped');};
   document.addEventListener('visibilitychange',()=>{if(document.hidden)this.disconnect(this.wanted?'Paused · keep this browser tab visible':'Video stopped');else if(this.wanted)this.connect();});
   addEventListener('pagehide',()=>{this.wanted=false;this.disconnect('Video stopped');});
+  void this.checkStatus();
+ }
+ async checkStatus(){
+  if(this.wanted||this.ws||!this.status)return;
+  try{
+   const res=await fetch('/api/video');
+   if(res.ok){
+    const m=await res.json();
+    if(m.state==='streaming'&&!this.wanted&&!this.ws)this.setStatus('Background camera is streaming · tab stream inactive');
+    else if(m.state==='idle'&&!this.wanted&&!this.ws&&this.status.textContent.includes('Background camera'))this.setStatus('Video stopped');
+   }
+  }catch{}
  }
  setStatus(text){if(this.status.textContent!==text)this.status.textContent=text;}
  connect(){

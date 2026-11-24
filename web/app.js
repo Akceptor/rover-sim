@@ -88,16 +88,21 @@ $('loadLocation').onclick=()=>{const id=$('locationSelect').value;if(id==='map'&
 $('loadVehicle').onclick=()=>{release();send({type:'selectVehicle',id:$('vehicleSelect').value});};
 $('retryOsm').onclick=()=>send({type:'retryOsm'});
 $('retryTerrain').onclick=()=>send({type:'retryTerrain'});
-$('copyMissionPlannerCommand').onclick=async()=>{
-  const field=$('missionPlannerCommand'),status=$('missionPlannerCopyStatus');
-  try{await navigator.clipboard.writeText(field.value);status.textContent='Copied';}
-  catch{field.focus();field.select();status.textContent='Command selected · press Ctrl+C or ⌘C to copy';}
-};
+function bindCopy(buttonId,fieldId,statusId,label='Command'){
+  const btn=$(buttonId),field=$(fieldId),status=$(statusId);if(!btn||!field)return;
+  btn.onclick=async()=>{
+    try{await navigator.clipboard.writeText(field.value);if(status)status.textContent='Copied';}
+    catch{field.focus();if(field.select)field.select();if(status)status.textContent=`${label} selected · press Ctrl+C or ⌘C to copy`;}
+  };
+}
+bindCopy('copyMissionPlannerCommand','missionPlannerCommand','missionPlannerCopyStatus','Command');
+bindCopy('copyVideoUrl','videoUrl','videoUrlCopyStatus','URL');
+bindCopy('copyVideoPipeline','videoPipeline','videoPipelineCopyStatus','Pipeline');
 // Sky dome (r=110) and clouds must stay inside the far plane or they get clipped.
 function fitFar(){const far=Math.max(150,scene.fog.far*1.05);for(const c of [camera,chase])if(c.far!==far){c.far=far;c.updateProjectionMatrix();}scenery.sky.scale.setScalar(Math.min(scene.userData.terrain?10:1,far*.9/110));}
 function selectCamera(value){$('camera').value=value;for(const id of ['fpv','chase'])$(id).setAttribute('aria-pressed',String(id===value));$('cameraLabel').textContent=value==='fpv'?'ONBOARD FPV':'CHASE CAMERA';}
 $('fpv').onclick=()=>selectCamera('fpv');$('chase').onclick=()=>selectCamera('chase');$('camera').onchange=()=>selectCamera($('camera').value);
-$('settings').onclick=()=>{release();settingsDialog.showModal();};$('closeSettings').onclick=()=>settingsDialog.close();
+$('settings').onclick=()=>{release();cameraVideo.checkStatus?.();settingsDialog.showModal();};$('closeSettings').onclick=()=>settingsDialog.close();
 viewport.addEventListener('pointerdown',()=>viewport.focus());
 const keys=new Set(),valid=['w','a','s','d','arrowup','arrowdown','arrowleft','arrowright'];
 addEventListener('keydown',e=>{if(mode!=='standalone'||settingsDialog.open||document.activeElement!==viewport)return;const k=e.key.toLowerCase();if(valid.includes(k)){e.preventDefault();keys.add(k);}});addEventListener('keyup',e=>keys.delete(e.key.toLowerCase()));
