@@ -105,6 +105,17 @@ tab is visible, and the URL opens on the Mission Planner machine. A missing
 misconfigured GStreamer runtime. This stream is HTTP MJPEG, so use the supplied
 pipeline rather than an RTSP or UDP H.264 preset.
 
+The background camera writes browser errors to its terminal (prefixed `[video]`
+when started by the launcher). Failed HTTP responses include the status and URL;
+network failures include the browser's reason; console errors/warnings and
+uncaught JavaScript errors include their source location or stack. On startup
+failure, the log also names the failed stage and reports the page's connection
+and video status. For example, `HTTP 404 Not Found: GET
+http://127.0.0.1:8090/assets/tracked-crawler.js` identifies the missing module
+behind a later simulator-state timeout. These diagnostics continue while the
+camera streams. Run `npm run test:camera-errors` to exercise deliberately broken
+assets, network requests and scripts in a real headless browser.
+
 Receiver references: [Mission Planner live video](https://ardupilot.org/planner/docs/live-video.html),
 [GStreamer HTTP source](https://gstreamer.freedesktop.org/documentation/soup/souphttpsrc.html),
 [multipart decoder](https://gstreamer.freedesktop.org/documentation/multipart/multipartdemux.html).
