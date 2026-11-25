@@ -38,10 +38,14 @@ export function createCrawler(c){
  }
  // Narrow ladder frame, exposed axle housings, and a central driveline.
  for(const z of [-.073,.073])b([.43,.017,.012],[0,-.025,z],materials.black);
- b([.39,.022,.12],[0,-.015,0],materials.black);
+ b([.39,.022,.12],[0,-.015,0],materials.black,model,'floor');
+ b([.06,.022,.23],[0,-.015,0],materials.black,model,'body-crossmember');
  for(const x of [-wb/2,wb/2]){
   cylinder(r*.12,c.track,[x,-c.suspension,0],materials.black);
   mesh(new T.SphereGeometry(r*.3,16,10),materials.black).position.set(x,-c.suspension,0);
+  // Visible suspension links join the axle housings to the ladder frame.
+  const top=-.025*sy,bottom=-c.suspension;
+  for(const z of [-.073,.073])cylinder(r*.1,Math.abs(top-bottom)+.004,[x,(top+bottom)/2,z*sz],materials.silver,model,'y');
  }
  cylinder(r*.11,wb,[0,-c.suspension,0],materials.black,model,'x');
  // Lower side panels have open wheel arches, rather than tyres intersecting a box.
@@ -56,15 +60,15 @@ export function createCrawler(c){
   shape.lineTo(L/2,bottom);shape.lineTo(L/2,.097*sy);shape.lineTo(-L/2,.097*sy);shape.closePath();
   const shell=mesh(new T.ExtrudeGeometry(shape,{depth:.006*sz,bevelEnabled:false}),materials.paint,model,'body-side');shell.position.z=side<0?-W/2:W/2-.006*sz;
   // Door seam, handles, lower sill, and waistline.
-  b([.002,.102,.0015],[-.105,.04,side*.121],materials.edge);
-  b([.002,.102,.0015],[.063,.04,side*.121],materials.edge);
-  b([.15,.002,.0015],[-.021,-.01,side*.121],materials.edge);
-  b([.024,.006,.004],[-.078,.083,side*.123],materials.black);
+  b([.002,.102,.0015],[-.105,.04,side*.1205],materials.edge);
+  b([.002,.102,.0015],[.063,.04,side*.1205],materials.edge);
+  b([.15,.002,.0015],[-.021,-.01,side*.1205],materials.edge);
+  b([.024,.006,.004],[-.078,.083,side*.1215],materials.black);
   b([.46,.003,.004],[0,.099,side*.121],materials.edge);
   b([.14,.013,.02],[-.02,-.032,side*.12],materials.black);
   // Large door glass and rear quarter glass, separated by a thick tan B pillar.
-  panel([[-.097,.112],[.053,.112],[-.012,.218],[-.097,.218]],.001,side*.112,materials.glass,'door-window');
-  panel([[-.218,.112],[-.115,.112],[-.115,.218],[-.198,.218]],.001,side*.112,materials.glass,'quarter-window');
+  panel([[-.097,.112],[.053,.112],[-.012,.218],[-.097,.218]],.001,side*.11,materials.glass,'door-window');
+  panel([[-.218,.112],[-.115,.112],[-.115,.218],[-.198,.218]],.001,side*.11,materials.glass,'quarter-window');
   panel([[-.115,.10],[-.097,.10],[-.097,.23],[-.115,.23]],.007,side*.109,materials.paint,'b-pillar');
   panel([[.052,.10],[.067,.10],[-.002,.23],[-.017,.23]],.008,side*.108,materials.paint,'a-pillar');
   panel([[-.235,.10],[-.218,.10],[-.198,.23],[-.184,.23]],.008,side*.108,materials.paint,'rear-pillar');
@@ -72,21 +76,21 @@ export function createCrawler(c){
   b([.006,.026,.006],[.178,.115,side*.111],materials.black);
   const mirror=mesh(new T.SphereGeometry(.011,12,10),materials.black);mirror.scale.set(.45*sx,1.1*sy,sz);mirror.position.set(.178*sx,.135*sy,side*.111*sz);
  }
- b([.45,.01,.224],[-.005,.092,0],materials.paint,model,'body-deck');
+ b([.45,.01,.23],[-.005,.092,0],materials.paint,model,'body-deck');
  b([.174,.012,.24],[.153,.104,0],materials.paint,model,'hood');
  b([.211,.012,.233],[-.11,.23,0],materials.paint,model,'roof');
- b([.21,.004,.003],[-.11,.224,-.12],materials.edge);b([.21,.004,.003],[-.11,.224,.12],materials.edge);
+ b([.21,.004,.003],[-.11,.224,-.116],materials.edge);b([.21,.004,.003],[-.11,.224,.116],materials.edge);
  glazing([[.06,.112,-.105],[.06,.112,.105],[-.008,.218,.105],[-.008,.218,-.105]],'windshield');
  glazing([[-.228,.112,.103],[-.228,.112,-.103],[-.201,.217,-.103],[-.201,.217,.103]],'rear-window');
  b([.01,.015,.22],[.064,.108,0],materials.black);b([.012,.012,.22],[-.007,.219,0],materials.paint);
  b([.01,.013,.223],[-.231,.106,0],materials.paint);b([.01,.012,.22],[-.201,.221,0],materials.paint);
  // Interior remains visible through the glazing.
  b([.035,.027,.209],[.037,.103,0],materials.black);
- for(const z of [-.055,.055]){b([.06,.015,.062],[-.065,.105,z],materials.seat);const seat=b([.018,.073,.064],[-.096,.146,z],materials.seat);seat.rotation.z=-.1;}
- b([.052,.057,.184],[-.17,.132,0],materials.seat);
+ for(const z of [-.055,.055]){b([.06,.015,.062],[-.065,.104,z],materials.seat);const seat=b([.018,.073,.064],[-.096,.146,z],materials.seat);seat.rotation.z=-.1;}
+ b([.052,.057,.184],[-.17,.125,0],materials.seat);
  const steering=mesh(new T.TorusGeometry(.019,.002,6,20),materials.black);steering.rotation.y=Math.PI/2;steering.position.set(.008*sx,.146*sy,-.054*sz);
  // Flat black nose, vertical grille slats and two round, silver-bezel headlights.
- b([.009,.07,.225],[.243,.057,0],materials.black,model,'grille');
+ b([.009,.086,.225],[.243,.057,0],materials.black,model,'grille');
  for(let i=0;i<15;i++)b([.011,.052,.003],[.249,.057,-.066+i*.0095],materials.grille);
  for(const side of [-1,1]){
   const bezel=cylinder(.023*sy,.008*sx,[.252*sx,.059*sy,side*.091*sz],materials.silver,model,'x');bezel.name='headlamp-bezel';

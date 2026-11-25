@@ -46,7 +46,8 @@ export function createHeavyCrawler(c){
  box([.06,.055,W*1.06],[L/2+.015,-.075,0],materials.plastic,model,'front-bumper');
  box([.06,.055,W*1.06],[-L/2-.015,-.075,0],materials.plastic,model,'rear-bumper');
  box([.42,.02,.2],[.02,-.145,0],materials.skid,model,'skid-plate');
- box([.05,.02,.2],[L/2-.05,-.165,0],materials.skid);
+ for(const x of [-.14,.14])for(const z of [-.085,.085])box([.025,.045,.025],[x,-.1225,z],materials.steel,model,'skid-mount');
+ const frontSkid=box([.16,.02,.2],[L/2-.075,-.12,0],materials.skid,model,'front-skid');frontSkid.rotation.z=.35;
 
  // ---- lower tub with open wheel arches ----
  const tub=new T.Shape(),bottom=-.06*sy,arch=r*1.28,cy=-c.suspension;
@@ -117,7 +118,7 @@ export function createHeavyCrawler(c){
  for(let i=0;i<3;i++)box([.09,.006,.02],[.395*sx,.099,-.07+i*.07],materials.plastic);
  // snorkel on passenger side behind A pillar
  cyl(.02,.16,[.245,.13,.155],materials.plastic,model,'y');
- box([.035,.028,.02],[.245,.225,.155],materials.plastic,model,'snorkel-head');
+ box([.035,.028,.02],[.245,.223,.155],materials.plastic,model,'snorkel-head');
 
  // ---- grille, lights, mirrors ----
  box([.02,.085,W*.78],[.375,.055,0],materials.plastic,model,'grille-face');
@@ -129,14 +130,14 @@ export function createHeavyCrawler(c){
   // amber corner lamp
   box([.02,.028,.018],[.378,.075,side*.163],materials.amber,model,'amber-corner');
   // roof mirrors
-  box([.03,.012,.012],[.20,.155,side*.235],materials.plastic,model,'mirror-stem');
-  box([.02,.05,.045],[.20,.165,side*.26],materials.plastic,model,'mirror-head');
-  box([.006,.038,.035],[.192,.165,side*.26],materials.glass,model,'mirror-glass');
+  box([.03,.012,.125],[cabFront-.015,.13,side*.1975],materials.plastic,model,'mirror-stem');
+  box([.02,.05,.045],[cabFront-.015,.14,side*.26],materials.plastic,model,'mirror-head');
+  box([.006,.038,.035],[cabFront-.023,.14,side*.26],materials.glass,model,'mirror-glass');
  }
  // taillights + rear plate
  for(const side of [-1,1]){
-  box([.012,.05,.03],[-.372,.045,side*.105],materials.red,model,'taillight');
-  box([.012,.022,.03],[-.372,-.005,side*.105],materials.amber,model,'rear-side-marker');
+  box([.012,.05,.03],[-L/2-.004,.045,side*.105],materials.red,model,'taillight');
+  box([.012,.022,.03],[-L/2-.004,-.005,side*.105],materials.amber,model,'rear-side-marker');
  }
  box([.008,.02,.09],[-.375,.075,0],materials.steel,model,'rear-plate');
 
