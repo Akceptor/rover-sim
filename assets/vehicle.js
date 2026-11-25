@@ -1,10 +1,12 @@
 import * as T from 'three';
 import {createCrawler} from './MN-168.js';
+import {createHeavyCrawler} from './heavy-crawler.js';
+import {createTrackedCrawler} from './tracked-crawler.js';
 
 // Metres, +X forward, +Y up, +Z right; all animation consumes physics state.
 export function createVehicle(c){
  const legacy=(c.id==='mn168'||!c.id)&&c.drivetrain!=='tracked';
- const v=legacy?createCrawler(c):createProfileModel(c);
+ const v=legacy?createCrawler(c):c.id==='heavy-crawler'?createHeavyCrawler(c):c.id==='tracked-crawler'?createTrackedCrawler(c):createProfileModel(c);
  v.tracks??=[];
  v.update=s=>{
   for(let i=0;i<v.wheels.length;i++){
