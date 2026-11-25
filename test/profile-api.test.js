@@ -145,3 +145,22 @@ test('editor page and modules are served',async()=>{
   assert.match(await (await fetch(b.url+'/')).text(),/href="\/profiles\.html"[^>]*target="_blank"/);
  }finally{await b.close();}
 });
+
+test('saving changed chassis dimensions derives collision geometry from the saved profile',()=>using(async({call})=>{
+ const file=path.join(dir,'mn168/vehicle.json'),original=fs.readFileSync(file,'utf8');
+ try{
+  const base=JSON.parse(original),p={...base,length:base.length*1.25,width:base.width*1.1};
+  const r=await call('PUT','/api/vehicles/mn168',{profile:p});assert.equal(r.status,200);
+  const saved=readProfileFiles('mn168').profile;
+  assert.deepEqual(saved.collisionBoxes[0].size,[p.length,p.height,p.width]);
+  assert.deepEqual(saved.collisionBoxes[1].position,base.collisionBoxes[1].position.map((v,i)=>v*[1.25,1,1.1][i]));
+ }finally{fs.writeFileSync(file,original);}
+}));
+
+test('invalid derived collision geometry is rejected without writing the profile',()=>using(async({call})=>{
+ const file=path.join(dir,'mn168/vehicle.json'),before=fs.readFileSync(file,'utf8');
+ const p=profile('mn168',{height:16,suspension:10});
+ const r=await call('PUT','/api/vehicles/mn168',{profile:p});
+ try{assert.equal(r.status,400);assert.equal(fs.readFileSync(file,'utf8'),before);}
+ finally{fs.writeFileSync(file,before);}
+}));

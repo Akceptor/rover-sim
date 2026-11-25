@@ -1,6 +1,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import {vehiclesDir,vehicleProfiles,readProfileFiles,resolveVehicle} from './vehicles.js';
+import {resizeCollisionBoxes} from './vehicle-geometry.js';
 import {RELOAD_FIELDS} from './profile-fields.js';
 const ID=/^[a-z0-9][a-z0-9-]{0,40}$/,MAX_BODY=64*1024,PREFIX='/api/vehicles';
 class HttpError extends Error{constructor(status,message){super(message);this.status=status;}}
@@ -51,6 +52,8 @@ export function createProfileApi(ctx){
     ctx.applyLive(resolved);return send(200,{ok:true}),true;
    }
    if(body.sitlParm!==undefined&&body.sitlParm!==null&&typeof body.sitlParm!=='string')throw new HttpError(400,'sitlParm must be a string');
+   const previous=vehicleProfiles.find(p=>p.id===id);
+   if(previous){resolved.collisionBoxes=resizeCollisionBoxes(resolved,readProfileFiles(id).profile);body.profile.collisionBoxes=resolved.collisionBoxes;validate(body.profile,id);}
    const active=id===ctx.activeId(),transitioning=active&&ctx.transitioning();
    const reloadNeeded=active&&(transitioning||RELOAD_FIELDS.some(f=>JSON.stringify(dig(resolved,f))!==JSON.stringify(dig(ctx.activeVehicle(),f))));
    const target=path.join(vehiclesDir(),id);fs.mkdirSync(target,{recursive:true});

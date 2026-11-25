@@ -3,7 +3,7 @@ import {createCrawler} from './MN-168.js';
 
 // Metres, +X forward, +Y up, +Z right; all animation consumes physics state.
 export function createVehicle(c){
- const legacy=c.id==='mn168'||!c.id;
+ const legacy=(c.id==='mn168'||!c.id)&&c.drivetrain!=='tracked';
  const v=legacy?createCrawler(c):createProfileModel(c);
  v.tracks??=[];
  v.update=s=>{

@@ -27,7 +27,8 @@
     "test:sitl": "python3 scripts/integration.py",
     "test:browser": "node scripts/browser-smoke.mjs",
     "test:video": "node scripts/video-smoke.mjs",
-    "test:vehicles": "node scripts/vehicles-smoke.mjs"
+    "test:vehicles": "node scripts/vehicles-smoke.mjs",
+    "test:profiles": "node scripts/profiles-smoke.mjs"
   },
   "engines": {
     "node": ">=22"

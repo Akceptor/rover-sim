@@ -9,16 +9,26 @@
   <link rel="stylesheet" href="/style.css">
 </head>
 <body>
-  <header class="top"><div class="identity"><strong>VEHICLE PROFILES</strong><span class="muted">Edit config/vehicles/*</span></div><button id="themeToggle" type="button" title="Toggle color theme" aria-label="Toggle color theme">◐</button><a class="profiles-link" href="/">Cockpit</a></header>
+  <header class="top"><div class="identity"><strong>VEHICLE PROFILES</strong><span class="muted">Model, camera, chassis &amp; SITL</span></div><button id="themeToggle" type="button" title="Toggle color theme" aria-label="Toggle color theme">◐</button><a class="profiles-link" href="/">Cockpit</a></header>
   <main class="pe">
     <div class="pe-bar">
       <label for="profileSelect" class="muted">Profile</label><select id="profileSelect"></select>
       <button id="duplicate" type="button">Duplicate as…</button><button id="save" type="button">Save</button><button id="revert" type="button">Revert</button>
       <p id="status" class="pe-status" role="status" aria-live="polite"></p>
     </div>
-    <form id="form" autocomplete="off" onsubmit="return false"></form>
+    <div class="pe-layout">
+      <section class="pe-model" aria-labelledby="modelTitle">
+        <div class="pe-model-heading"><h2 id="modelTitle">Vehicle model</h2><span class="pe-unit">3D preview</span></div>
+        <div id="modelPreview" class="pe-preview"></div>
+        <div class="pe-preview-tools"><span class="muted">Drag to orbit · Scroll to zoom</span><button id="rotateModel" type="button">Pause rotation</button><button id="resetModel" type="button">Reset view</button></div>
+        <div class="pe-model-source"><span class="muted">Model source</span><a id="modelPath" target="_blank" rel="noopener"></a></div>
+        <p id="previewStatus" class="pe-note" role="status"></p>
+      </section>
+      <form id="form" autocomplete="off" onsubmit="return false"></form>
+    </div>
   </main>
   <script>document.getElementById('themeToggle')?.addEventListener('click',function(){var light=document.documentElement.dataset.theme!=='light';document.documentElement.dataset.theme=light?'light':'';try{localStorage.setItem('theme',light?'light':'dark')}catch{}document.querySelector('meta[name=theme-color]').content=light?'#eef1f5':'#0c0f13';});</script>
+  <script type="importmap">{"imports":{"three":"/three.js"}}</script>
   <script type="module" src="/profiles.js"></script>
 </body>
 </html>
