@@ -8,7 +8,7 @@ export class CameraVideo {
   const url=new URL('/camera.mjpg',location.href).href;
   document.getElementById('videoUrl').value=url;
   document.getElementById('videoPipeline').value=`souphttpsrc location="${url}" is-live=true do-timestamp=true ! multipartdemux ! jpegdec ! queue max-size-buffers=1 leaky=downstream ! videoconvert ! video/x-raw,format=BGRA ! appsink name=outsink sync=false max-buffers=1 drop=true wait-on-eos=false`;
-  this.button.onclick=()=>{this.wanted=!this.wanted;this.button.textContent=this.wanted?'Stop video':'Start video';if(this.wanted)this.connect();else this.disconnect('Video stopped');};
+  this.button.onclick=()=>{this.wanted=!this.wanted;this.button.querySelector('.btn-label').textContent=this.wanted?'Stop video':'Start video';if(this.wanted)this.connect();else this.disconnect('Video stopped');};
   document.addEventListener('visibilitychange',()=>{if(document.hidden)this.disconnect(this.wanted?'Paused · keep this browser tab visible':'Video stopped');else if(this.wanted)this.connect();});
   addEventListener('pagehide',()=>{this.wanted=false;this.disconnect('Video stopped');});
   void this.checkStatus();
@@ -33,7 +33,7 @@ export class CameraVideo {
   ws.onerror=()=>{};
   ws.onclose=e=>{
    if(this.ws!==ws)return;this.ws=null;this.ready=false;
-   if(e.code===1008){this.wanted=false;this.button.textContent='Start video';this.setStatus('Another camera renderer is streaming');return;}
+   if(e.code===1008){this.wanted=false;this.button.querySelector('.btn-label').textContent='Start video';this.setStatus('Another camera renderer is streaming');return;}
    if(this.wanted&&!document.hidden){this.setStatus('Video disconnected · reconnecting…');this.timer=setTimeout(()=>this.connect(),1000);}
   };
  }

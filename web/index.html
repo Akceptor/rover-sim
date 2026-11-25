@@ -13,8 +13,8 @@
 <header class="top">
   <div class="identity"><strong>CRAWLER LAB</strong><span class="muted">Rover simulator</span></div>
   <div class="connection-state"><span id="mode" class="pill">CONNECTING</span><span id="connection" class="pill" role="status">Backend offline</span><span id="armState" class="pill vehicle-state" role="status" hidden>ARM UNKNOWN</span><span id="flightMode" class="pill vehicle-state" role="status" hidden>MODE UNKNOWN</span></div>
-  <button id="themeToggle" type="button" title="Toggle color theme" aria-label="Toggle color theme">◐</button>
-  <button id="settings" aria-haspopup="dialog">Settings</button>
+  <button id="themeToggle" type="button" title="Toggle color theme" aria-label="Toggle color theme"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 3a9 9 0 0 1 0 18z" fill="currentColor" stroke="none"/></svg></button>
+  <button id="settings" aria-haspopup="dialog"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a1.65 1.65 0 0 1 0 2.83 1.65 1.65 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a1.65 1.65 0 0 1-1.65 1.65h-3.4A1.65 1.65 0 0 1 9 21v-.09A1.65 1.65 0 0 0 8 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a1.65 1.65 0 0 1-2.83 0 1.65 1.65 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a1.65 1.65 0 0 1-1.65-1.65v-3.4A1.65 1.65 0 0 1 3 9h.09A1.65 1.65 0 0 0 4.6 8a1.65 1.65 0 0 0-.33-1.82l-.06-.06a1.65 1.65 0 0 1 0-2.83 1.65 1.65 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a1.65 1.65 0 0 1 1.65-1.65h3.4A1.65 1.65 0 0 1 15 3v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a1.65 1.65 0 0 1 2.83 0 1.65 1.65 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a1.65 1.65 0 0 1 1.65 1.65v3.4A1.65 1.65 0 0 1 21 15h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>Settings</button>
 </header>
 <main class="cockpit">
   <div class="view-stage">
@@ -118,8 +118,8 @@
         <p id="osmStatus" class="load-log-text" role="status"></p>
       </div>
       <div class="load-actions">
-        <button id="retryOsm" type="button" hidden>Retry OSM</button>
-        <button id="configureOsm" type="button" hidden>Configure OSM</button>
+        <button id="retryOsm" type="button" hidden><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>Retry OSM</button>
+        <button id="configureOsm" type="button" hidden><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="4" y1="21" x2="4" y2="14"/><line x1="4" y1="10" x2="4" y2="3"/><line x1="12" y1="21" x2="12" y2="12"/><line x1="12" y1="8" x2="12" y2="3"/><line x1="20" y1="21" x2="20" y2="16"/><line x1="20" y1="12" x2="20" y2="3"/><line x1="1" y1="14" x2="7" y2="14"/><line x1="9" y1="8" x2="15" y2="8"/><line x1="17" y1="16" x2="23" y2="16"/></svg>Configure OSM</button>
       </div>
     </div>
     <div class="load-attributions">
@@ -130,7 +130,7 @@
 </main>
 <footer><span id="status">Waiting for backend</span><span class="muted">CRAWLER LAB / LOCAL SIMULATION</span></footer>
 <dialog id="settingsDialog" aria-labelledby="settingsTitle">
-  <div class="drawer-heading"><div><span class="muted eyebrow">MAP DATA &amp; VIDEO</span><h1 id="settingsTitle">Simulator settings</h1></div><button id="closeSettings" aria-label="Close settings">✕</button></div>
+  <div class="drawer-heading"><div><span class="muted eyebrow">MAP DATA &amp; VIDEO</span><h1 id="settingsTitle">Simulator settings</h1></div><button id="closeSettings" aria-label="Close settings"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg><span class="btn-label">Close</span></button></div>
   <form id="osmSettingsForm">
    <fieldset id="osmSettingsSection"><legend>OpenStreetMap connection</legend>
     <p class="muted">Choose the server used to download roads and buildings. Settings are saved on this simulator and survive restarts.</p>
@@ -140,7 +140,7 @@
     <p class="muted" id="osmRegionHint">Automatic uses the loaded terrain’s region. Uncertain boundaries use the global server.</p>
     <p class="muted">Regional coverage: <a href="https://download.geofabrik.de/technical.html" target="_blank" rel="noopener">Geofabrik / OpenStreetMap contributors</a> · <a href="https://opendatacommons.org/licenses/odbl/1-0/" target="_blank" rel="noopener">ODbL</a></p>
     <label for="osmTimeout">Timeout (seconds)</label><input id="osmTimeout" name="timeout" type="number" min="0.001" max="120" step="0.001" value="30" required>
-    <div class="osm-settings-actions"><button id="osmSave" type="submit">Save</button><button id="osmSaveRetry" type="button">Save &amp; retry OSM</button></div>
+    <div class="osm-settings-actions"><button id="osmSave" type="submit"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>Save</button><button id="osmSaveRetry" type="button"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>Save &amp; retry OSM</button></div>
     <p id="osmSettingsStatus" role="status" aria-live="polite"></p>
     <p class="muted">Cached map data stays available offline. After physics starts, retried map data applies on the next location load.</p>
    </fieldset>
@@ -148,7 +148,7 @@
   <select id="camera" hidden><option value="fpv">Onboard FPV</option><option value="chase">Chase</option></select>
   <fieldset class="video-settings"><legend>Mission Planner video</legend>
     <p class="muted">Stream this tab’s camera view, or run npm run video in another terminal for a background camera that keeps working when this window is closed.</p>
-    <button id="videoToggle" type="button">Start video</button>
+    <button id="videoToggle" type="button"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M23 7l-7 5 7 5V7z"/><rect x="1" y="5" width="15" height="14" rx="2" ry="2"/></svg><span class="btn-label">Start video</span></button>
     <p id="videoStatus" role="status">Video stopped</p>
   </fieldset>
   <p class="drawer-note">Driving keys are released while settings are open. In SITL mode, ArduRover retains actuator control.</p>

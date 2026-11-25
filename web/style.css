@@ -4,7 +4,8 @@
 body{margin:0;background:var(--bg);color:var(--text);min-height:100vh;min-height:100dvh;display:flex;flex-direction:column}
 button,select,input{font:inherit;color:var(--text)}
 button,select,input[type=number]{background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:8px 12px}
-button{cursor:pointer;font-size:.875rem;white-space:nowrap}
+button{cursor:pointer;font-size:.875rem;white-space:nowrap;display:inline-flex;align-items:center;justify-content:center;gap:6px}
+button svg{width:1em;height:1em;flex:none}
 button:hover{background:#232c39;border-color:#52637b}
 :focus-visible{outline:2px solid var(--accent);outline-offset:3px}
 .muted{color:var(--muted)}
