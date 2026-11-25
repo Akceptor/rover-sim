@@ -11,3 +11,24 @@ test('body geometry agrees with collision envelope',()=>{if(!module)return;const
 
 test('every built-in builds finite geometry and cleanly disposes',()=>{for(const c of vehicleProfiles){const v=module.createVehicle(c);v.model.updateMatrixWorld(true);const bounds=new T.Box3().setFromObject(v.model);assert.ok([...bounds.min.toArray(),...bounds.max.toArray()].every(Number.isFinite));assert.equal(v.wheels.length,c.drivetrain==='wheeled'?4:0);assert.equal(v.tracks.length,c.drivetrain==='tracked'?2:0);v.dispose();}});
 test('track outer tread bottom follows averaged support contacts',()=>{const c=vehicleProfiles.find(p=>p.drivetrain==='tracked'),v=module.createVehicle(c);v.update({tracks:[{side:'left',distance:0,contacts:[{contact:true,y:-.1},{contact:true,y:-.12},{contact:false,y:-1}]}]});assert.ok(Math.abs(v.tracks[0].carrier.position.y-(-.11+c.trackGeometry.radius*1.055))<1e-9);v.dispose();});
+
+test('tank fittings have a continuous mounting path to the hull',()=>{
+ const c=vehicleProfiles.find(p=>p.id==='tracked-crawler'),v=module.createVehicle(c);
+ try{
+  v.model.updateMatrixWorld(true);
+  const fittings=[];
+  v.model.traverse(o=>{
+   let parent=o;while(parent&& !parent.name.startsWith('track-'))parent=parent.parent;
+   if(o.isMesh&&!parent)fittings.push({mesh:o,bounds:new T.Box3().setFromObject(o).expandByScalar(.0001)});
+  });
+  const attached=new Set(fittings.filter(f=>f.mesh.parent.name==='body'));
+  let changed=true;
+  while(changed){
+   changed=false;
+   for(const fitting of fittings){
+    if(!attached.has(fitting)&&[...attached].some(mount=>mount.bounds.intersectsBox(fitting.bounds))){attached.add(fitting);changed=true;}
+   }
+  }
+  assert.deepEqual(fittings.filter(f=>!attached.has(f)).map(f=>f.mesh.name),[],'every rigid fitting must touch the hull or another mounted part');
+ }finally{v.dispose();}
+});

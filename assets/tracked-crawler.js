@@ -73,30 +73,32 @@ export function createTrackedCrawler(c){
  box([.13,.055,.13],[0,0,0],materials.paint,turret,'turret-base');
  const turretHead=mesh(new T.CylinderGeometry(.045,.055,.09,16),materials.paint,turret,'turret-head');turretHead.position.set(0,.07,0);
  // sensor eye (front)
- cyl(.02,.02,[.075,.07,0],materials.plastic,turret,'x','sensor-eye');
- cyl(.014,.012,[.085,.07,0],materials.glass,turret,'x','sensor-lens');
+ cyl(.02,.028,[.052,.07,0],materials.plastic,turret,'x','sensor-eye');
+ cyl(.014,.012,[.069,.07,0],materials.glass,turret,'x','sensor-lens');
  // turret hatch ring
- const hatch=mesh(new T.TorusGeometry(.032,.008,8,20),materials.steel,turret,'hatch-ring');hatch.position.set(0,.125,0);hatch.rotation.x=Math.PI/2;
+ const hatch=mesh(new T.TorusGeometry(.032,.008,8,20),materials.steel,turret,'hatch-ring');hatch.position.set(0,.12,0);hatch.rotation.x=Math.PI/2;
  // mast + antenna
- cyl(.008,.22,[-.055,.28,.09],materials.steel,turret,'y','mast');
- cyl(.014,.03,[-.055,.2,.09],materials.dark,turret,'y','mast-joint');
- cyl(.004,.09,[-.055,.42,.09],materials.plastic,turret,'y','antenna');
- box([.014,.02,.014],[-.055,.47,.09],materials.accent,turret,'antenna-tip');
+ // Seat the mast and beacon on the turret base, with overlap at each joint.
+ cyl(.008,.22,[-.045,.13,.045],materials.steel,turret,'y','mast');
+ cyl(.014,.03,[-.045,.04,.045],materials.dark,turret,'y','mast-joint');
+ cyl(.004,.09,[-.045,.28,.045],materials.plastic,turret,'y','antenna');
+ box([.014,.02,.014],[-.045,.33,.045],materials.accent,turret,'antenna-tip');
  // beacon
- cyl(.018,.025,[-.055,.235,-.09],materials.red,turret,'y','beacon');
+ cyl(.018,.025,[-.045,.038,-.045],materials.red,turret,'y','beacon');
 
  // ---- exhaust + front lights ----
- cyl(.016,.1,[.3,.05,-.06],materials.steel,model,'y','exhaust');
- cyl(.02,.04,[.36,.05,-.06],materials.plastic,model,'x','exhaust-tip');
+ const exhaustX=L*.42;
+ cyl(.016,.1,[exhaustX,.05,-.06],materials.steel,model,'y','exhaust');
+ cyl(.02,.04,[exhaustX+.018,.09,-.06],materials.plastic,model,'x','exhaust-tip');
  for(const side of [-1,1]){
-  cyl(.024,.02,[.31,.06,side*.1],materials.steel,model,'x','lamp-bezel');
-  cyl(.02,.024,[.325,.06,side*.1],materials.lamp,model,'x','lamp-lens');
+  cyl(.024,.02,[L/2+.008,.06,side*.1],materials.steel,model,'x','lamp-bezel');
+  cyl(.02,.024,[L/2+.02,.06,side*.1],materials.lamp,model,'x','lamp-lens');
  }
- box([.04,.05,.3],[.36,.0,0],materials.plastic,model,'front-bumper');
- box([.03,.04,.3],[-.36,-.01,0],materials.plastic,model,'rear-bumper');
+ box([.04,.05,.3],[L/2+.012,.0,0],materials.plastic,model,'front-bumper');
+ box([.03,.04,.3],[-L/2-.008,-.01,0],materials.plastic,model,'rear-bumper');
  for(const side of [-1,1]){
-  box([.014,.04,.03],[-.375,.04,side*.1],materials.red,model,'taillight');
-  box([.014,.018,.03],[-.375,-.005,side*.1],materials.amber,model,'rear-marker');
+  box([.014,.04,.03],[-L/2-.02,.015,side*.1],materials.red,model,'taillight');
+  box([.014,.018,.03],[-L/2-.02,-.005,side*.1],materials.amber,model,'rear-marker');
  }
 
  // ---- container / canister along side track edge ----
