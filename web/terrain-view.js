@@ -1,15 +1,13 @@
 import * as T from '/three.js';
 import {terrainMesh} from '/terrain.js';
+import {computeTerrainVertexColors} from '/terrain-shading.js';
 export function addTerrain(world,terrain,renderer,profile=null){
  const {vertices,indices}=terrainMesh(terrain),geometry=new T.BufferGeometry();
  geometry.setAttribute('position',new T.BufferAttribute(vertices,3));geometry.setIndex(new T.BufferAttribute(indices,1));
- const n=terrain.size,uv=new Float32Array(n*n*2),colors=new Float32Array(n*n*3),colour=new T.Color();
+ const n=terrain.size,uv=new Float32Array(n*n*2),colors=computeTerrainVertexColors(terrain);
  const extent=(n-1)*terrain.spacing;
  for(let x=0;x<n;x++)for(let z=0;z<n;z++){
   const k=x*n+z;uv.set([x*terrain.spacing/2,z*terrain.spacing/2],k*2);
-  if(terrain.colors)colour.setRGB(terrain.colors[k*3]/255,terrain.colors[k*3+1]/255,terrain.colors[k*3+2]/255,T.SRGBColorSpace);
-  else colour.set(0x748359);
-  colors.set([colour.r,colour.g,colour.b],k*3);
  }
  geometry.setAttribute('uv',new T.BufferAttribute(uv,2));geometry.setAttribute('color',new T.BufferAttribute(colors,3));geometry.computeVertexNormals();
  const canvas=document.createElement('canvas');canvas.width=canvas.height=256;const ctx=canvas.getContext('2d');
