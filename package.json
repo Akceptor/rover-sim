@@ -23,6 +23,7 @@
     "test:map": "node scripts/map-smoke.mjs",
     "test:map-startup": "node scripts/map-startup-smoke.mjs",
     "test:osm": "node scripts/osm-smoke.mjs",
+    "test:landcover": "node scripts/landcover-smoke.mjs",
     "test:osm-settings": "node scripts/osm-settings-smoke.mjs",
     "test:terrain": "node scripts/terrain-smoke.mjs",
     "test:launcher": "node scripts/launcher-smoke.mjs",

@@ -1,13 +1,16 @@
+import {createLandcoverIndex} from './landcover.js';
 import {roadMaterial,roadMaterials} from './road-materials.js';
 
 // Clip indexing to the terrain and at most 64 cells per axis, even for enormous
 // ways crossing a patch. Runtime queries inspect only their own cell's segments.
 export function createRoadIndex(overlay,terrain){
- if(!overlay?.roads.length||!terrain)return ()=>roadMaterials.ground;
+ const landcoverAt=createLandcoverIndex(overlay?.landcover,terrain);
+ const fallback=(x,z)=>roadMaterials[landcoverAt(x,z)?.material??'ground'];
+ if(!overlay?.roads.length||!terrain)return fallback;
  const half=(terrain.size-1)*terrain.spacing/2,cell=Math.max(16,half*2/64),cells=new Map();
  const key=(i,j)=>`${i},${j}`,coord=v=>Math.floor((v+half)/cell);
  for(const road of overlay.roads){
-  const material=roadMaterial(road),radius=road.width/2;
+  const material={...roadMaterial(road),road:true},radius=road.width/2;
   for(let n=1;n<road.points.length;n++){
    const a=road.points[n-1],b=road.points[n],dx=b[0]-a[0],dz=b[1]-a[1];
    const minX=Math.max(-half,Math.min(a[0],b[0])-radius),maxX=Math.min(half,Math.max(a[0],b[0])+radius);
@@ -25,6 +28,6 @@ export function createRoadIndex(overlay,terrain){
    const u=s.length2?Math.max(0,Math.min(1,((x-s.a[0])*s.dx+(z-s.a[1])*s.dz)/s.length2)):0;
    if((x-s.a[0]-u*s.dx)**2+(z-s.a[1]-u*s.dz)**2<=s.radius2)return s.material;
   }
-  return roadMaterials.ground;
+  return fallback(x,z);
  };
 }

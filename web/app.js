@@ -4,6 +4,8 @@ import {CameraVideo} from '/video.js';
 import {createVehicle} from '/assets/vehicle.js';
 import {createWeatherView} from '/weather-view.js';
 import {createScenery} from '/scenery.js';
+import {createLandcoverIndex} from '/landcover.js';
+import {hasOsmFeatures} from '/osm-features.js';
 import {addTerrain} from '/terrain-view.js';
 import {addWorldObjects} from '/instanced-scenery.js';
 import {createVehicleEffects} from '/vehicle-effects.js';
@@ -67,12 +69,12 @@ function setup(m){
   // Init is resent on reconnect; replace world instead of duplicating objects.
   vehicleEffects?.dispose();
   if(scene.userData.world){const old=scene.userData.world;scene.remove(old);old.traverse(o=>{o.geometry?.dispose();if(o.material){for(const m of Array.isArray(o.material)?o.material:[o.material]){if(o.name==='real-terrain')m.map?.dispose();m.dispose();}}});}const world=new T.Group();scene.userData.world=world;scene.add(world);
-  if(m.terrain){addTerrain(world,m.terrain,renderer,graphicsProfile);scene.fog.near=70;scene.fog.far=650;scene.userData.terrain=true;fitFar();}else{scene.fog.near=35;scene.fog.far=95;scene.userData.terrain=false;fitFar();}
+  if(m.terrain){addTerrain(world,m.terrain,renderer,graphicsProfile,createLandcoverIndex(m.overlay?.landcover,m.terrain));scene.fog.near=70;scene.fog.far=650;scene.userData.terrain=true;fitFar();}else{scene.fog.near=35;scene.fog.far=95;scene.userData.terrain=false;fitFar();}
   vehicleEffects=createVehicleEffects(world,{track:c.track,groundHeight:m.terrain?(x,z)=>terrainHeight(m.terrain,x,z):()=>0});
   $('landscape').textContent=m.terrain?`${m.terrain.name} · ${(m.terrain.size-1)*m.terrain.spacing} m`:'100 × 100 m playground';
-  addOsmOverlay(world,m.overlay,m.terrain,graphicsProfile);$('osmAttribution').hidden=!m.overlay||!(m.overlay.buildings.length||m.overlay.roads.length);
+  addOsmOverlay(world,m.overlay,m.terrain,graphicsProfile);$('osmAttribution').hidden=!hasOsmFeatures(m.overlay);
   const approximation=terrainApproximationWarning(m.terrain);$('terrainWarning').textContent=approximation;$('terrainWarning').hidden=!approximation;
-  $('terrainAttribution').textContent=m.terrain?.attribution??'';cameraVideo.attribution=[m.terrain?.attribution,m.overlay&&(m.overlay.buildings.length||m.overlay.roads.length)?'© OpenStreetMap contributors · https://www.openstreetmap.org/copyright':null,'Weather: open-meteo.com (CC BY 4.0)'].filter(Boolean).join(' · ');
+  $('terrainAttribution').textContent=m.terrain?.attribution??'';cameraVideo.attribution=[m.terrain?.attribution,hasOsmFeatures(m.overlay)?'© OpenStreetMap contributors · https://www.openstreetmap.org/copyright':null,'Weather: open-meteo.com (CC BY 4.0)'].filter(Boolean).join(' · ');
   const groundObj=m.world.find(o=>o.kind==='ground');if(groundObj)box(groundObj.size,groundObj.color,world).position.fromArray(groundObj.position);
   addWorldObjects(world,m.world.filter(o=>o.kind!=='ground'),graphicsProfile);
   if(!m.terrain){scenery.decorate(world);

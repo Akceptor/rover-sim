@@ -24,8 +24,8 @@ offline, even in a fresh checkout without `.run/`. See the [snapshot dates,
 feature counts and license](../assets/osm/README.md). Cusco has mapped roads but
 no mapped buildings in this snapshot.
 
-For other starts, the backend queries Overpass for building ways, building
-multipolygons and highway ways over the terrain patch. Requests have a 30-second default client timeout and a
+For other starts, the backend queries Overpass for buildings, highways, supported
+land-cover areas, mapped trees and tree rows over the terrain patch. Requests have a 30-second default client timeout and a
 25-second Overpass execution timeout. Server errors, rate limits, malformed or
 partial responses produce a visible error and **Retry OSM**; there is no automatic
 retry loop. A valid empty response is displayed and cached as an empty patch.
@@ -144,7 +144,7 @@ intersections without gaps; overlapping road materials have a deterministic draw
 order. Polygons are split at terrain triangle edges and offset 3.5 cm to avoid
 terrain fighting. Wheels still contact the terrain collider; material presets
 modify grip and rolling resistance at wheel/track contact points. No bridge decks, kerbs, lane markings,
-road cutting/grading, traffic or surveyed vegetation are provided.
+road cutting/grading or traffic are provided. Mapped vegetation is approximate.
 
 Generated trees and rocks (including their colliders and crown clearance) are
 excluded from building footprints and road corridors. An absent or empty overlay
@@ -174,7 +174,7 @@ measurements supplied by OSM.
 Concrete plates/lanes use concrete; paving stones, sett, cobblestone, metal and
 wood use generic paving; fine gravel/pebblestone use gravel; unpaved/woodchips
 use dirt; grass pavers use grass. Unknown surfaces fall back to the existing
-paved/unpaved classification. Off-road areas retain the previous ground behavior.
+paved/unpaved classification. Off-road areas without mapped grass/farmland cover retain the previous ground behavior.
 
 When surface is missing or unsupported, `tracktype` grades 1, 2 and 3–5 select
 compacted, gravel and dirt respectively. For loose surfaces, grades 1–5 further
@@ -205,6 +205,57 @@ downloads; use the refresh procedure above if you want newer mapping for an
 existing cached location. Saving/loading a newly downloaded location preserves
 its detailed road tags without requiring another download.
 
+### Vegetation and land cover
+
+New downloads retain supported land-cover polygons (including multipolygon holes),
+individual `natural=tree` nodes and `natural=tree_row` ways. Tree rows are sampled
+at six-metre intervals along complete paths, even across short segments. Missing
+nodes split a row rather than connecting across a gap.
+
+| OSM mapping | Simulator treatment |
+| --- | --- |
+| `landuse=forest`, `natural=wood` | Seeded woodland trees, 3–7 m tall |
+| `natural=scrub` | Seeded low vegetation, 0.7–1.5 m tall |
+| `landuse=grass` or `meadow`, `natural=grassland` | Open ground, grass material |
+| `landuse=farmland` | Open ground, approximate dirt material |
+| `natural=water`, `landuse=reservoir` or `basin` | Open ground reserved for later water rendering |
+| Mapped trees/rows | Valid mapped height up to 40 m, otherwise 8 m |
+
+Cover priority at overlaps is water, farmland, grass, scrub, then forest;
+same-kind ties use stable feature IDs. Mapped roads override land-cover contact
+materials. Forest, scrub and water-designated ground keep baseline physics;
+this phase adds no water surface, depth model or crossing hazard. Farmland's
+dirt material is an inferred simulation default, not a measured soil condition.
+
+Placement is deterministic and capped at 512 trees/shrubs per patch, including
+the unmapped fallback. Explicit tree nodes take priority over row samples and
+generated trees. Points within 0.8 m are deduplicated; distinct mapped trees can
+have overlapping crowns. Generated trees avoid nearby trees. All new vegetation
+preserves road/building crown clearance, an eight-metre spawn exclusion plus
+crown margin, and patch boundaries. Conflicting mapped trees can therefore be
+omitted rather than blocking the initial drive.
+
+Supported cover replaces generic tree/rock scattering inside its polygons.
+Fields, grass and water areas stay open apart from explicit mapped trees.
+Unmapped ground, including holes with no other cover, retains the existing
+fallback scenery. Tree trunks have matching backend colliders and browser
+instances; crowns are decorative. No species-specific tree models are inferred.
+
+Land-cover colours contribute a subtle 12% tint to terrain vertex colours.
+Satellite colour variation, source elevations and collision terrain are
+preserved. Off-road effects sit at terrain height; mapped-road effects retain
+their road-surface offset. Browser, FPV and physics share world placements and
+contact classifications.
+
+Processed data is bounded to 1,024 cover polygons with at most 8,192 total
+vertices each, and 2,048 mapped tree/row points before placement. Excess or
+oversized supported features are omitted. Polygon lookup is spatially indexed
+within the terrain patch. Existing schema-1 caches, bundled presets and saved
+locations remain valid without downloads; their missing land-cover information
+requires a mapping refresh. New saved locations preserve additional fields for
+offline reuse. Land-cover-only and tree-only patches show OSM credit in the
+browser and video, and count as complete nonempty OSM data.
+
 ## Attribution and license
 
 Overlay data is **© OpenStreetMap contributors**, licensed under the
@@ -215,6 +266,10 @@ OSM databases under ODbL; preserve attribution and the applicable ODbL obligatio
 when sharing them. Generated scenery is separate from the OSM data.
 
 ## Checks
+
+`npm run test:landcover` uses a local land-cover-only fixture to verify shared
+tree instances, preserved terrain/imagery, browser and video attribution,
+deterministic reload and mobile layout. Screenshots go to `.run/landcover/`.
 
 `npm test` exercises local fixtures and a local HTTP Overpass stand-in, including
 projection alignment, height precedence, split multipolygons with courtyards,

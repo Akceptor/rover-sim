@@ -1,3 +1,4 @@
+import {mappedVegetation} from './vegetation.js';
 import {overlayOccupies} from './osm-footprints.js';
 // Shared north/up/east terrain geometry. Rows increase north (+X), columns east (+Z).
 export function validateTerrain(t){
@@ -41,7 +42,8 @@ export function terrainObjects(t,overlay=null){
   if(i%3===0){const s=.15+random()*.35;out.push({kind:'rock',size:[s,s*.7,s*.9],position:[x,y+s*.35,z],color:0x777b70});}
   else out.push({kind:'tree',size:[.22,height,.22],position:[x,y+height/2,z],color:0x655039});
  }
- return overlay?out.filter(o=>!['tree','rock'].includes(o.kind)||!overlayOccupies(overlay,o.position[0],o.position[2],o.kind==='tree'?o.size[1]*.32:Math.max(...o.size))):out;
+ const cleared=overlay?out.filter(o=>!['tree','rock'].includes(o.kind)||!overlayOccupies(overlay,o.position[0],o.position[2],o.kind==='tree'?o.size[1]*.32:Math.max(...o.size))):out;
+ return mappedVegetation(t,overlay,cleared,(x,z)=>terrainHeight(t,x,z));
 }
 
 export function terrainApproximationWarning(terrain){

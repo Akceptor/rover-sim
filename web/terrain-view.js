@@ -1,10 +1,10 @@
 import * as T from '/three.js';
 import {terrainMesh} from '/terrain.js';
 import {computeTerrainVertexColors} from '/terrain-shading.js';
-export function addTerrain(world,terrain,renderer,profile=null){
+export function addTerrain(world,terrain,renderer,profile=null,landcoverAt=null){
  const {vertices,indices}=terrainMesh(terrain),geometry=new T.BufferGeometry();
  geometry.setAttribute('position',new T.BufferAttribute(vertices,3));geometry.setIndex(new T.BufferAttribute(indices,1));
- const n=terrain.size,uv=new Float32Array(n*n*2),colors=computeTerrainVertexColors(terrain);
+ const n=terrain.size,uv=new Float32Array(n*n*2),colors=computeTerrainVertexColors(terrain,landcoverAt);
  const extent=(n-1)*terrain.spacing;
  for(let x=0;x<n;x++)for(let z=0;z<n;z++){
   const k=x*n+z;uv.set([x*terrain.spacing/2,z*terrain.spacing/2],k*2);

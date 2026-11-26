@@ -75,7 +75,7 @@ export function createVehicleEffects(parent,{groundHeight=()=>0,track=.4}={}){
      _normal.set(-(dx-y)/.05,1,-(dz-y)/.05).normalize();
      _side.crossVectors(_normal,_forward).normalize();
      _forward.crossVectors(_side,_normal).normalize();
-     _mat.makeBasis(_forward,_side,_normal);_markScale.setScalar(.5+.5*m.marks);_mat.scale(_markScale);_pos.y=y+(source.surface==='ground'?.005:.04);_mat.setPosition(_pos);
+     _mat.makeBasis(_forward,_side,_normal);_markScale.setScalar(.5+.5*m.marks);_mat.scale(_markScale);_pos.y=y+((source.offset??(source.surface==='ground'?0:.035))+.005);_mat.setPosition(_pos);
      tracks.setMatrixAt(trackHead,_mat);trackHead=(trackHead+1)%TRACK_MAX;
     }
     tracks.instanceMatrix.needsUpdate=true;
@@ -91,7 +91,7 @@ export function createVehicleEffects(parent,{groundHeight=()=>0,track=.4}={}){
      const source=dusty[dustHead%dusty.length];
      dustPositions[idx]=source.position.x+(Math.random()-.5)*.1;
      const y=source.position.y??height(dustPositions[idx],source.position.z);
-     dustPositions[idx+1]=(Number.isFinite(y)?y:roverPosition.y)+(source.surface==='ground'?.02:.04)+Math.random()*.08;
+     dustPositions[idx+1]=(Number.isFinite(y)?y:roverPosition.y)+((source.offset??(source.surface==='ground'?0:.035))+.02)+Math.random()*.08;
      dustPositions[idx+2]=source.position.z+(Math.random()-.5)*.1;
      dustVelocities[idx]=(Math.random()-.5)*.3;
      dustVelocities[idx+1]=.3+Math.random()*.4;
