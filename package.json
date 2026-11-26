@@ -11,6 +11,7 @@
     "terrain:import": "node scripts/import-terrain.mjs",
     "test": "node --test test/*.test.js",
     "test:locations": "node scripts/locations-smoke.mjs",
+    "test:location-reload": "node scripts/location-reload-smoke.mjs",
     "test:terrain-selector": "node scripts/terrain-selector-smoke.mjs",
     "test:mission-planner-setup": "node scripts/mission-planner-setup-smoke.mjs",
     "test:terrain-retry": "node scripts/terrain-retry-smoke.mjs",

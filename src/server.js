@@ -126,7 +126,8 @@ wss.on('connection',ws=>{
       else
       if(osmSettingsSaving)error='Wait for OSM settings to finish saving.';
       else if(!locationPicker&&!externalStart)error='Start with --choose-location or --mission-planner to select a location.';
-      else if(startTerrain.status==='loading'||(locationPicker&&startTerrain.status==='ready'))error='Location is loading or already selected.';
+      else if(startTerrain.status==='loading'||(locationPicker&&mode==='sitl'&&startTerrain.status==='ready'))error='Location is loading or already selected.';
+      else if(mode==='standalone'&&running)error='Stop physics before loading another location.';
       else if(externalStart&&sitlActive()&&telemetry.snapshot(performance.now()).armed!==false)error='Disarm SITL and wait for fresh telemetry before changing location.';
       else if(locationPicker&&mode==='sitl'&&sitlActive())error='Stop SITL before choosing a start; the launcher starts it after selection.';
       else if(m.id==='custom'&&externalStart)selectCustom();
