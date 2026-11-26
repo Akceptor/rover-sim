@@ -13,7 +13,7 @@ part of this roadmap.
 
 | Phase | Feature PR | Status | PR link |
 | --- | --- | --- | --- |
-| 1 | Surface-aware driving and effects | PR open | [#9](https://github.com/Akceptor/rover-sim/pull/9) |
+| 1 | Surface-aware driving and effects | Merged | [#9](https://github.com/Akceptor/rover-sim/pull/9) |
 | 2 | Mapped vegetation and land cover | Queued | Not opened |
 | 3 | Mapped barriers and obstacles | Queued | Not opened |
 | 4 | Richer building geometry and materials | Queued | Not opened |
@@ -242,10 +242,11 @@ reapply deformation; saved locations reproduce the same world offline. Run
 
 ## Resume checkpoint
 
-- Last completed deliverable: phase 1 implementation and validation on its feature branch.
-- Active phase: 1; PR open, validated and reviewed. It is not merged.
-- Feature branch/worktree: `feat/osm-surfaces` / `.worktrees/osm-surfaces`.
-- Open feature PR: [#9](https://github.com/Akceptor/rover-sim/pull/9).
+- Last completed deliverable: phase 1 merged into `main` and pushed.
+- Active phase: none; phase 2 (vegetation and land cover) is next.
+- Current branch: `main`. Phase 1 worktree retained at `.worktrees/osm-surfaces`.
+- Completed feature PR: [#9](https://github.com/Akceptor/rover-sim/pull/9),
+  merged 2026-11-26 as `867a653560051354872919b72773c243f6e69c18`.
 - Implementation commit: `5b62094`.
 - Validation (2026-11-26): `npm test` — 237 passed, 1 Windows-only skip;
   `npm run test:osm` and `npm run test:vehicle-effects` — passed. Material overview
@@ -254,10 +255,10 @@ reapply deformation; saved locations reproduce the same world offline. Run
   `docs/superpowers/plans/2026-11-26-osm-surfaces.md`.
 - Compatibility: optional tags retain schema 1 and existing offline snapshots;
   old processed snapshots cannot recover discarded tags without a refresh.
-- Next action: review/integrate phase 1 PR #9, then proceed to phase 2
-  (vegetation and land cover) in its own branch/PR. If phase 2 starts before #9
-  merges, base it on `feat/osm-surfaces` and explicitly identify #9 as its base PR.
-- Blocking decisions: none for designing phase 2. Merge requires authorization.
+- Next action: start phase 2 (vegetation and land cover) from updated `main`
+  in its own branch/PR.
+- Blocking decisions: none for starting phase 2. Phase 1 merge was authorized;
+  subsequent PR merges require authorization.
 
 To resume in a new session: **“Continue the OSM roadmap in `docs/osm-roadmap.md`
 from its checkpoint, one feature PR at a time. Bridges remain excluded.”**
