@@ -1,5 +1,5 @@
 import * as T from '/three.js';
-import {skyPalette,paletteChanged} from '/sky-palette.js';
+import {skyPalette,paletteChanged,sunAppearance} from '/sky-palette.js';
 // Deterministic, local textures: no image downloads or changes to collision geometry.
 function random(seed){return ()=>{seed=(Math.imul(seed,1664525)+1013904223)>>>0;return seed/4294967296;};}
 function texture(size,paint){const canvas=document.createElement('canvas');canvas.width=canvas.height=size;paint(canvas.getContext('2d'),size);const map=new T.CanvasTexture(canvas);map.colorSpace=T.SRGBColorSpace;return map;}
@@ -37,11 +37,21 @@ export function createScenery(renderer,profile=null){
  }
  updateSky({elevationDeg:45,cloud:0});
  const dome=new T.Mesh(new T.SphereGeometry(110,32,16),new T.MeshBasicMaterial({map:skyMap,side:T.BackSide,depthWrite:false,fog:false}));dome.renderOrder=-2;sky.add(dome);
+ const sunMap=texture(64,(c,size)=>{const g=c.createRadialGradient(size/2,size/2,0,size/2,size/2,size/2);g.addColorStop(0,'rgba(255,255,245,1)');g.addColorStop(.2,'rgba(255,244,214,0.85)');g.addColorStop(.55,'rgba(255,220,165,0.22)');g.addColorStop(1,'rgba(255,210,150,0)');c.fillStyle=g;c.fillRect(0,0,size,size);});
+ const sunSprite=new T.Sprite(new T.SpriteMaterial({map:sunMap,blending:T.AdditiveBlending,depthWrite:false,fog:false,transparent:true}));sunSprite.renderOrder=-1;sky.add(sunSprite);
  const cloudMap=texture(256,(c)=>{for(const [x,y,r] of [[62,144,48],[105,111,61],[158,131,57],[199,148,36]]){const g=c.createRadialGradient(x,y,0,x,y,r);g.addColorStop(0,'#ffffffed');g.addColorStop(.65,'#ffffffe0');g.addColorStop(1,'#ffffff00');c.fillStyle=g;c.fillRect(x-r,y-r,r*2,r*2);}});
- for(let i=0;i<15;i++){const a=i*Math.PI*2/15+.1,r=65+rng()*20;const cloud=new T.Sprite(new T.SpriteMaterial({map:cloudMap,depthWrite:false,fog:false,opacity:.78+rng()*.2}));cloud.position.set(Math.cos(a)*r,13+rng()*20,Math.sin(a)*r);cloud.scale.set(18+rng()*16,10+rng()*10,1);cloud.renderOrder=-1;sky.add(cloud);}
- return {sky,setWeather(color,visual){
+ const clouds=[];for(let i=0;i<15;i++){const a=i*Math.PI*2/15+.1,r=65+rng()*20;const cloud=new T.Sprite(new T.SpriteMaterial({map:cloudMap,depthWrite:false,fog:false,opacity:.78+rng()*.2}));cloud.position.set(Math.cos(a)*r,13+rng()*20,Math.sin(a)*r);cloud.scale.set(18+rng()*16,10+rng()*10,1);cloud.renderOrder=-1;sky.add(cloud);clouds.push(cloud);}
+ return {sky,setWeather(color,visual,solar){
   updateSky(visual);
-  for(const cloud of sky.children.slice(1)){cloud.material.opacity=visual.cloud*(.25+visual.daylight*.65);cloud.material.color.setScalar(.18+visual.daylight*.82);}
+  const sunState=sunAppearance(solar,visual);
+  sunSprite.visible=sunState.visible;
+  if(sunState.visible&&solar?.direction){
+   sunSprite.position.fromArray(solar.direction).multiplyScalar(95);
+   sunSprite.scale.setScalar(sunState.scale);
+   sunSprite.material.opacity=sunState.opacity;
+   sunSprite.material.color.setRGB(...sunState.color);
+  }
+  for(const cloud of clouds){cloud.material.opacity=visual.cloud*(.25+visual.daylight*.65);cloud.material.color.setScalar(.18+visual.daylight*.82);}
   return horizon;
  },decorate(world){
   const ground=world.children[0];ground.material.map=grass;ground.material.color.set(0xffffff);ground.material.needsUpdate=true;

@@ -2,6 +2,7 @@ import * as T from '/three.js';
 import {solarPosition,appearance,localClock,weatherLabel,weatherAt} from '/weather-model.js';
 import {createWeatherControls} from '/weather-controls.js';
 import {effectiveEnvironment} from '/weather-controls-model.js';
+import {roadWetness} from '/sky-palette.js';
 export function createWeatherView(scene,renderer,sun,ambient,scenery){
  const controls=createWeatherControls();
  const positions=new Float32Array(600*3),geometry=new T.BufferGeometry();
@@ -28,7 +29,12 @@ export function createWeatherView(scene,renderer,sun,ambient,scenery){
    sun.position.fromArray(solar.direction).multiplyScalar(40).add(scene.userData.roverPosition??new T.Vector3());
    sun.target.position.copy(scene.userData.roverPosition??new T.Vector3());sun.target.updateMatrixWorld();
    sun.color.set(solar.elevationDeg<15?0xffbc80:0xfff2d1);
-   const horizon=scenery.setWeather(sky,visual);if(horizon){scene.fog.color.copy(horizon);renderer.setClearColor(horizon);}
+   const horizon=scenery.setWeather(sky,visual,solar);if(horizon){scene.fog.color.copy(horizon);renderer.setClearColor(horizon);}
+   for(const mat of scene.userData.world?.userData?.roadMaterials??[]){
+    const wet=roadWetness(visual,mat.userData.roadPaved);
+    mat.color.setScalar(wet.tint);
+    if('roughness' in mat)mat.roughness=wet.roughness;
+   }
    scene.userData.weather={...visual,elevationDeg:solar.elevationDeg};
    const clock=document.getElementById('localTime');clock.textContent=`${localClock(weather.now,weather.timeZone)} · ${weather.timeZone} · ${controls.preferences.timeMode==='manual'?'Manual':'Auto'}${weather.timeZoneKnown===false?' (timezone unavailable; UTC fallback)':''}`;
    const conditions=weather.conditions,label=conditions?`${weather.status==='manual'?controls.preferences.preset:weatherLabel(conditions.code)}${Number.isFinite(conditions.temperatureC)?` · ${conditions.temperatureC.toFixed(1)} °C`:''} · clouds ${Math.round(conditions.cloudCover)}%`:'Weather unavailable · clock-based lighting';

@@ -11,3 +11,19 @@ export function skyPalette(elevationDeg=45,cloud=0){
 export function paletteChanged(previous,next){
  return !previous||['horizon','zenith'].some(key=>next[key].some((v,i)=>Math.abs(v-previous[key][i])>1/255));
 }
+export function sunAppearance(solar,visual){
+ const elev=solar?.elevationDeg??visual?.elevationDeg??45;
+ const cloud=clamp(visual?.cloud??0);
+ const horizonFade=clamp((elev+2)/6);
+ const opacity=horizonFade*(1-cloud*.85);
+ const warmth=clamp((15-elev)/15);
+ const color=mix([1,.96,.88],[1,.68,.42],warmth);
+ return {visible:opacity>.02,opacity,color,scale:18+warmth*8};
+}
+export function roadWetness(visual,paved){
+ const strength=visual?.precipitation==='rain'?clamp(visual?.precipitationStrength??1):0;
+ return {
+  tint:1-strength*(paved?.35:.25),
+  roughness:1-strength*(paved?.68:.35),
+ };
+}
