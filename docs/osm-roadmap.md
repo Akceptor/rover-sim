@@ -13,7 +13,7 @@ part of this roadmap.
 
 | Phase | Feature PR | Status | PR link |
 | --- | --- | --- | --- |
-| 1 | Surface-aware driving and effects | In progress; validated, preparing PR | Not opened |
+| 1 | Surface-aware driving and effects | PR open | [#9](https://github.com/Akceptor/rover-sim/pull/9) |
 | 2 | Mapped vegetation and land cover | Queued | Not opened |
 | 3 | Mapped barriers and obstacles | Queued | Not opened |
 | 4 | Richer building geometry and materials | Queued | Not opened |
@@ -243,9 +243,10 @@ reapply deformation; saved locations reproduce the same world offline. Run
 ## Resume checkpoint
 
 - Last completed deliverable: phase 1 implementation and validation on its feature branch.
-- Active phase: 1; validated, preparing its PR. It is not merged.
+- Active phase: 1; PR open, validated and reviewed. It is not merged.
 - Feature branch/worktree: `feat/osm-surfaces` / `.worktrees/osm-surfaces`.
-- Open feature PR: not opened yet.
+- Open feature PR: [#9](https://github.com/Akceptor/rover-sim/pull/9).
+- Implementation commit: `5b62094`.
 - Validation (2026-11-26): `npm test` — 237 passed, 1 Windows-only skip;
   `npm run test:osm` and `npm run test:vehicle-effects` — passed. Material overview
   screenshot inspected. Review findings fixed with regressions and re-reviewed.
@@ -253,9 +254,10 @@ reapply deformation; saved locations reproduce the same world offline. Run
   `docs/superpowers/plans/2026-11-26-osm-surfaces.md`.
 - Compatibility: optional tags retain schema 1 and existing offline snapshots;
   old processed snapshots cannot recover discarded tags without a refresh.
-- Next action: commit/push phase 1, open its feature PR and record the URL here.
-  After phase 1 review/integration, proceed to phase 2 (vegetation and land cover).
-- Blocking decisions: none for opening the phase 1 PR. Merge requires authorization.
+- Next action: review/integrate phase 1 PR #9, then proceed to phase 2
+  (vegetation and land cover) in its own branch/PR. If phase 2 starts before #9
+  merges, base it on `feat/osm-surfaces` and explicitly identify #9 as its base PR.
+- Blocking decisions: none for designing phase 2. Merge requires authorization.
 
 To resume in a new session: **“Continue the OSM roadmap in `docs/osm-roadmap.md`
 from its checkpoint, one feature PR at a time. Bridges remain excluded.”**
