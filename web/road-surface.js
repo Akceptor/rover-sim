@@ -2,8 +2,8 @@
 export function roadUV(vertices){
  const uv=[];for(let i=0;i<vertices.length;i+=3)uv.push(vertices[i]/4,vertices[i+2]/4);return uv;
 }
-export function roadPixels(paved,size=256){
- const pixels=new Uint8ClampedArray(size*size*4),base=paved?[103,104,106]:[153,130,96];
+export function roadPixels(paved,size=256,base=paved?[103,104,106]:[153,130,96]){
+ const pixels=new Uint8ClampedArray(size*size*4);
  const hash=(x,y)=>{let h=Math.imul(x+137,374761393)^Math.imul(y+857,668265263);h=Math.imul(h^(h>>>13),1274126177);return ((h^(h>>>16))>>>0)/4294967295;};
  // Copy periodic boundary samples so filtering and mipmaps never reveal a tile edge.
  for(let y=0;y<size;y++)for(let x=0;x<size;x++){

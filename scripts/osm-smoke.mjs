@@ -14,8 +14,13 @@ import {terrainHeight} from '../src/terrain.js';
 const group=new ProcessGroup({graceMs:2000}),temp=await fs.mkdtemp(path.join(os.tmpdir(),'rover-osm-browser-'));
 let browser,overpass;
 const live=process.env.ROVER_OSM_TERRAIN;
+const surfaceFixture=structuredClone(osm),surfaceTypes=['asphalt','concrete','paved','gravel','compacted','dirt','sand','mud','grass'];
+for(const [i,surface]of surfaceTypes.entries()){
+ const east=-60+i*14,a=1000+i*2,b=a+1;
+ surfaceFixture.elements.push({type:'node',id:a,lat:-70/110574.2758,lon:east/111319.4908},{type:'node',id:b,lat:-27/110574.2758,lon:east/111319.4908},{type:'way',id:2000+i,nodes:[a,b],tags:{highway:'service',width:'6',surface}});
+}
 try{
- overpass=http.createServer((req,res)=>{req.resume();res.setHeader('Content-Type','application/json');res.end(JSON.stringify(osm));});overpass.listen(0,'127.0.0.1');await once(overpass,'listening');
+ overpass=http.createServer((req,res)=>{req.resume();res.setHeader('Content-Type','application/json');res.end(JSON.stringify(surfaceFixture));});overpass.listen(0,'127.0.0.1');await once(overpass,'listening');
  const t=live?JSON.parse(await fs.readFile(live)): {...fixture,heights:fixture.heights.map((_,i)=>(Math.floor(i/33)-16)*(i%33-16)*.02)};
  const file=path.join(temp,'terrain.json');await fs.writeFile(file,JSON.stringify(t));
  const config=JSON.parse(await fs.readFile('config/default.json'));config.savedLocationsDir=path.join(temp,'saved-locations');config.httpPort=8106;config.mavlink=null;config.terrain=file;
@@ -32,6 +37,12 @@ try{
  await page.waitForFunction(async()=>{const {fpvOutput}=await import('/app.js');const buildings=[];fpvOutput.scene.traverse(o=>{if(o.name.startsWith('osm-buildings:'))buildings.push(o);});return buildings.length&&buildings.every(o=>o.geometry.attributes.uv?.count===o.geometry.attributes.position.count&&o.material.map?.userData.photoReady);});
  const geometry=await page.evaluate(async()=>{const {fpvOutput}=await import('/app.js');const roads=[],buildings=[];fpvOutput.scene.traverse(o=>{if(o.name.startsWith('osm-roads:'))roads.push(Array.from(o.geometry.attributes.position.array));if(o.name.startsWith('osm-buildings:'))buildings.push({name:o.name,vertices:o.geometry.attributes.position.count,kind:o.name.split(':')[1]});});return {roads,buildings};});
  assert.ok(geometry.roads.length&&geometry.buildings.length);for(const kind of ['windows','roof','base'])assert.ok(geometry.buildings.some(b=>b.kind===kind),`${kind} batch`);
+ if(!live){
+  const materials=await page.evaluate(async()=>{const {fpvOutput}=await import('/app.js'),{roadMaterials}=await import('/road-materials.js');const result=[];fpvOutput.scene.traverse(o=>{if(o.name.startsWith('osm-roads:')){const id=o.material.userData.roadSurface;result.push({id,order:o.renderOrder,priority:roadMaterials[id]?.priority,pixel:Array.from(o.material.map.image.getContext('2d').getImageData(64,64,1,1).data)});}});return result;});
+  for(const surface of surfaceTypes)assert.ok(materials.some(m=>m.id===surface),`${surface} texture is installed`);
+  assert.equal(new Set(materials.map(m=>m.pixel.join(','))).size,surfaceTypes.length,'each mapped material has a distinct palette');
+  assert.ok(materials.every(m=>Math.abs(m.order-(1+m.priority/100))<1e-10),'road draw priority agrees with contact lookup');
+ }
  for(const vertices of geometry.roads)for(let i=0;i<vertices.length;i+=3){const [x,y,z]=vertices.slice(i,i+3);assert.ok(Math.abs(y-terrainHeight(t,x,z)-.035)<.001,'road follows exact terrain surface');}
  await page.screenshot({path:live?'.run/osm-town/fpv.png':'.run/osm-fixture-fpv.png'});
  if(!live){

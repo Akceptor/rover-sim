@@ -2,6 +2,7 @@ import proj4 from 'proj4';
 import {ShapeUtils,Vector2} from 'three';
 import {terrainHeight} from './terrain.js';
 import {insideRing} from './osm-footprints.js';
+import {normalizeRoadTags,roadMaterial} from './road-materials.js';
 export {overlayOccupies} from './osm-footprints.js';
 
 export const OSM_SCHEMA=1;
@@ -44,7 +45,8 @@ export function processOsm(data,t,{defaultHeight=6}={}){
   if(tags.building&&tags.building!=='no'&&!consumed.has(w.id)&&w.nodes?.length>=4&&w.nodes[0]===w.nodes.at(-1))addBuilding(`way/${w.id}`,ring(w.nodes.slice(0,-1)),[],tags);
   if(!Object.hasOwn(roadWidths,tags.highway)||tags.area==='yes'||(tags.bridge&&tags.bridge!=='no')||(tags.tunnel&&tags.tunnel!=='no'))continue;
   // Split on missing nodes rather than drawing across incomplete data.
-  let points=[];const flush=()=>{if(points.length>=2)roads.push({id:`way/${w.id}/${roads.length}`,highway:tags.highway,points,width:metres(tags.width)??roadWidths[tags.highway],paved:tags.surface?!unpaved.has(tags.surface):!['track','path','footway'].includes(tags.highway)});points=[];};
+  const materialTags=normalizeRoadTags(tags);
+  let points=[];const flush=()=>{if(points.length>=2){const road={id:`way/${w.id}/${roads.length}`,highway:tags.highway,points,width:metres(tags.width)??roadWidths[tags.highway],paved:materialTags.surface?!unpaved.has(materialTags.surface):!['track','path','footway'].includes(tags.highway),...materialTags};if(materialTags.surface||materialTags.tracktype)road.paved=roadMaterial(road).paved;roads.push(road);}points=[];};
   for(const id of w.nodes??[]){const p=nodes.get(id);if(!p){flush();continue;}if(!points.length||Math.hypot(p[0]-points.at(-1)[0],p[1]-points.at(-1)[1])>.001)points.push(p);}flush();
  }
  return {version:OSM_SCHEMA,key:overlayKey(t,OSM_SCHEMA,defaultHeight),buildings,roads};
@@ -83,6 +85,6 @@ function roadGeometry(r,t){
  for(let i=1;i<r.points.length;i++){const a=r.points[i-1],b=r.points[i],length=Math.hypot(b[0]-a[0],b[1]-a[1]);if(!length)continue;const dx=-(b[1]-a[1])*radius/length,dz=(b[0]-a[0])*radius/length;drape([[a[0]+dx,a[1]+dz],[b[0]+dx,b[1]+dz],[b[0]-dx,b[1]-dz],[a[0]-dx,a[1]-dz]],t,vertices);}
  // Round caps and joins overlap strips; depthWrite=false avoids coplanar road/road fighting.
  for(const p of r.points)drape(Array.from({length:16},(_,i)=>[p[0]+radius*Math.cos(i*Math.PI/8),p[1]+radius*Math.sin(i*Math.PI/8)]),t,vertices);
- return {id:r.id,paved:r.paved,vertices};
+ return {id:r.id,paved:r.paved,material:roadMaterial(r).id,vertices};
 }
 export function overlayGeometry(o,t){return {buildings:o.buildings.map(b=>buildingGeometry(b,t)),roads:o.roads.map(r=>roadGeometry(r,t))};}
