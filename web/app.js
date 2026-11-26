@@ -4,7 +4,8 @@ import {CameraVideo} from '/video.js';
 import {createVehicle} from '/assets/vehicle.js';
 import {createWeatherView} from '/weather-view.js';
 import {createScenery} from '/scenery.js';
-import {addTerrain,addTreeCrown} from '/terrain-view.js';
+import {addTerrain} from '/terrain-view.js';
+import {addWorldObjects} from '/instanced-scenery.js';
 import {addOsmOverlay} from '/osm-view.js';
 import {createLocationMap} from '/location-map.js';
 import {createSavedLocations} from '/saved-locations.js';
@@ -68,7 +69,8 @@ function setup(m){
   addOsmOverlay(world,m.overlay,m.terrain,graphicsProfile);$('osmAttribution').hidden=!m.overlay||!(m.overlay.buildings.length||m.overlay.roads.length);
   const approximation=terrainApproximationWarning(m.terrain);$('terrainWarning').textContent=approximation;$('terrainWarning').hidden=!approximation;
   $('terrainAttribution').textContent=m.terrain?.attribution??'';cameraVideo.attribution=[m.terrain?.attribution,m.overlay&&(m.overlay.buildings.length||m.overlay.roads.length)?'© OpenStreetMap contributors · https://www.openstreetmap.org/copyright':null,'Weather: open-meteo.com (CC BY 4.0)'].filter(Boolean).join(' · ');
-  for(const o of m.world){const Material=graphicsProfile.materialMode==='lambert'?T.MeshLambertMaterial:T.MeshStandardMaterial;const mesh=o.kind==='cone'?new T.Mesh(new T.ConeGeometry(o.size[0]/2,o.size[1],16),new Material({color:o.color})):box(o.size,o.color,world);if(o.kind==='cone'){world.add(mesh);mesh.castShadow=true;}mesh.position.fromArray(o.position);mesh.rotation.z=o.angle??0;if(o.kind==='tree')addTreeCrown(world,o,graphicsProfile);}
+  const groundObj=m.world.find(o=>o.kind==='ground');if(groundObj)box(groundObj.size,groundObj.color,world).position.fromArray(groundObj.position);
+  addWorldObjects(world,m.world.filter(o=>o.kind!=='ground'),graphicsProfile);
   if(!m.terrain){scenery.decorate(world);
   const grid=new T.GridHelper(100,100,0x7c8a69,0x718361);grid.position.y=.002;world.add(grid);}
 }
