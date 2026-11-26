@@ -24,6 +24,7 @@ export function createWeatherView(scene,renderer,sun,ambient,scenery){
    renderer.setClearColor(sky);scene.fog.color.copy(sky);
    const terrain=scene.userData.terrain;scene.fog.near=terrain?Math.min(70,visual.visibility*.15):Math.min(35,visual.visibility*.15);scene.fog.far=terrain?visual.visibility:Math.min(95,visual.visibility);
    ambient.intensity=visual.ambientIntensity;sun.intensity=visual.sunIntensity;
+   renderer.toneMappingExposure=.92+visual.daylight*.12;
    sun.position.fromArray(solar.direction).multiplyScalar(40).add(scene.userData.roverPosition??new T.Vector3());
    sun.target.position.copy(scene.userData.roverPosition??new T.Vector3());sun.target.updateMatrixWorld();
    sun.color.set(solar.elevationDeg<15?0xffbc80:0xfff2d1);

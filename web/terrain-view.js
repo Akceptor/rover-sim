@@ -1,6 +1,6 @@
 import * as T from '/three.js';
 import {terrainMesh} from '/terrain.js';
-export function addTerrain(world,terrain,renderer){
+export function addTerrain(world,terrain,renderer,profile=null){
  const {vertices,indices}=terrainMesh(terrain),geometry=new T.BufferGeometry();
  geometry.setAttribute('position',new T.BufferAttribute(vertices,3));geometry.setIndex(new T.BufferAttribute(indices,1));
  const n=terrain.size,uv=new Float32Array(n*n*2),colors=new Float32Array(n*n*3),colour=new T.Color();
@@ -16,12 +16,16 @@ export function addTerrain(world,terrain,renderer){
  ctx.fillStyle='#e8e5da';ctx.fillRect(0,0,256,256);let seed=87;
  const random=()=>{seed=(Math.imul(seed,1664525)+1013904223)>>>0;return seed/4294967296;};
  for(let i=0;i<14000;i++){ctx.fillStyle=i%3===0?'#bbb5a4':'#f1efdf';ctx.globalAlpha=.25+random()*.4;ctx.fillRect(random()*256,random()*256,1+random()*2,1+random()*5);}
- const map=new T.CanvasTexture(canvas);map.colorSpace=T.SRGBColorSpace;map.wrapS=map.wrapT=T.RepeatWrapping;map.anisotropy=renderer.capabilities.getMaxAnisotropy();
- const mesh=new T.Mesh(geometry,new T.MeshStandardMaterial({map,vertexColors:true,roughness:1,side:T.DoubleSide}));mesh.receiveShadow=true;mesh.name='real-terrain';world.add(mesh);
+ const map=new T.CanvasTexture(canvas);map.colorSpace=T.SRGBColorSpace;map.wrapS=map.wrapT=T.RepeatWrapping;map.anisotropy=Math.min(renderer.capabilities.getMaxAnisotropy(),profile?.anisotropyCap??16);
+ const Material=profile?.materialMode==='lambert'?T.MeshLambertMaterial:T.MeshStandardMaterial;
+ const opts={map,vertexColors:true,side:T.DoubleSide};if(profile?.materialMode!=='lambert')opts.roughness=1;
+ const mesh=new T.Mesh(geometry,new Material(opts));mesh.receiveShadow=true;mesh.name='real-terrain';world.add(mesh);
  return extent;
 }
-export function addTreeCrown(world,object){
+export function addTreeCrown(world,object,profile=null){
  const height=object.size[1];
- const crown=new T.Mesh(new T.ConeGeometry(height*.32,height*.9,7),new T.MeshStandardMaterial({color:0x40583c,roughness:1}));
+ const Material=profile?.materialMode==='lambert'?T.MeshLambertMaterial:T.MeshStandardMaterial;
+ const opts={color:0x40583c};if(profile?.materialMode!=='lambert')opts.roughness=1;
+ const crown=new T.Mesh(new T.ConeGeometry(height*.32,height*.9,7),new Material(opts));
  crown.position.set(object.position[0],object.position[1]+height*.35,object.position[2]);crown.castShadow=true;crown.receiveShadow=true;world.add(crown);
 }

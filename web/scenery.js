@@ -3,14 +3,14 @@ import {skyPalette,paletteChanged} from '/sky-palette.js';
 // Deterministic, local textures: no image downloads or changes to collision geometry.
 function random(seed){return ()=>{seed=(Math.imul(seed,1664525)+1013904223)>>>0;return seed/4294967296;};}
 function texture(size,paint){const canvas=document.createElement('canvas');canvas.width=canvas.height=size;paint(canvas.getContext('2d'),size);const map=new T.CanvasTexture(canvas);map.colorSpace=T.SRGBColorSpace;return map;}
-export function createScenery(renderer){
+export function createScenery(renderer,profile=null){
  const rng=random(1827);
  const grass=texture(512,(c,size)=>{
   c.fillStyle='#647447';c.fillRect(0,0,size,size);
   for(let i=0;i<23000;i++){const x=rng()*size,y=rng()*size;c.fillStyle=['#798558','#506039','#9b966b','#6d7948','#84905b'][i%5];c.globalAlpha=.3+rng()*.4;c.fillRect(x,y,1+rng()*3,1+rng()*7);}
   c.globalAlpha=1;for(let i=0;i<160;i++){c.fillStyle=['#b1aa8d','#8b876f','#47583a'][i%3];c.beginPath();c.ellipse(rng()*size,rng()*size,1+rng()*2,1+rng()*2,0,0,Math.PI*2);c.fill();}
  });
- grass.wrapS=grass.wrapT=T.RepeatWrapping;grass.repeat.set(25,25);grass.anisotropy=renderer.capabilities.getMaxAnisotropy();
+ grass.wrapS=grass.wrapT=T.RepeatWrapping;grass.repeat.set(25,25);grass.anisotropy=Math.min(renderer.capabilities.getMaxAnisotropy(),profile?.anisotropyCap??16);
  const markings=texture(1024,(c,size)=>{
   const point=(x,z)=>[size/2+x*size/100,size/2+z*size/100];
   // Two worn tyre tracks and ground paint offer scale without adding obstacles.
