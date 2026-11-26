@@ -3,6 +3,7 @@ import path from 'node:path';
 import {fileURLToPath} from 'node:url';
 import {createHash,randomUUID} from 'node:crypto';
 import {processOsm,overlayKey,geographicBounds,OSM_SCHEMA} from './osm.js';
+import {validRoadTags} from './road-materials.js';
 const root=fileURLToPath(new URL('..',import.meta.url));
 function overpassError(status){
  if(status===406)return 'Overpass access rejected (406); check endpoint access and application identification';
@@ -17,6 +18,7 @@ export function validateOsmOverlay(o,t,{defaultHeight=6}={}){
  const point=p=>Array.isArray(p)&&p.length===2&&p.every(v=>Number.isFinite(v)&&Math.abs(v)<1e7);
  const ring=r=>Array.isArray(r)&&r.length>=3&&r.every(point);
  if(!o.buildings.every(b=>typeof b.id==='string'&&ring(b.outer)&&Array.isArray(b.holes)&&b.holes.every(ring)&&Number.isFinite(b.height)&&b.height>0&&b.height<=500)||!o.roads.every(r=>typeof r.id==='string'&&Array.isArray(r.points)&&r.points.length>=2&&r.points.every(point)&&Number.isFinite(r.width)&&r.width>0&&r.width<=500&&typeof r.paved==='boolean'))throw Error('Invalid OSM cache geometry');
+ if(!o.roads.every(validRoadTags))throw Error('Invalid OSM cache road tags');
  return o;
 }
 

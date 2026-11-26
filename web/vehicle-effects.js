@@ -1,4 +1,5 @@
 import * as T from '/three.js';
+import {roadMaterials} from '/road-materials.js';
 
 /**
  * Lightweight tire-track + dust-particle system.
@@ -25,6 +26,7 @@ export function createVehicleEffects(parent,{groundHeight=()=>0,track=.4}={}){
  let trackHead=0,trackDist=0,initialized=false;
  const lastTrackPos=new T.Vector3();
  const _mat=new T.Matrix4(),_pos=new T.Vector3(),_forward=new T.Vector3(),_side=new T.Vector3(),_normal=new T.Vector3();
+ const _markScale=new T.Vector3();
  const height=(x,z)=>{try{return groundHeight(x,z);}catch{return null;}};
 
  // --- Dust particles (Points pool) ---
@@ -44,46 +46,53 @@ export function createVehicleEffects(parent,{groundHeight=()=>0,track=.4}={}){
 
  return {
   tracks,dust,
-  update(roverPosition,roverQuaternion,speed,dt,hasTerrain){
+  update(roverPosition,roverQuaternion,speed,dt,hasTerrain,groundContacts){
    dt=Math.max(0,Math.min(dt,.1));
    speed=Math.abs(speed);
    const moved=initialized?lastTrackPos.distanceTo(roverPosition):0;
    initialized=true;lastTrackPos.copy(roverPosition);
    const moving=moved>1e-5&&moved<3;
+   _forward.set(1,0,0).applyQuaternion(roverQuaternion);_forward.y=0;_forward.normalize();
+   // OSM worlds supply authoritative terrain contacts. Undefined preserves the
+   // original playground API; an empty array explicitly means no ground effects.
+   const sources=groundContacts??[-1,1].map(side=>({position:{x:roverPosition.x-_forward.z*side*track/2,z:roverPosition.z+_forward.x*side*track/2},surface:'ground'}));
+   const material=c=>Object.hasOwn(roadMaterials,c.surface)?roadMaterials[c.surface]:roadMaterials.ground;
    if(moved>=3){
     for(let i=0;i<TRACK_MAX;i++)tracks.setMatrixAt(i,hidden);
     tracks.instanceMatrix.needsUpdate=true;trackDist=0;
     dustAlphas.fill(0);dustPositions.fill(-999);dustGeom.attributes.position.needsUpdate=true;
    }
-   if(!hasTerrain)trackDist=0;else if(moving)trackDist+=moved;
+   if(!hasTerrain||!sources.length)trackDist=0;else if(moving)trackDist+=moved;
    if(speed>.15&&trackDist>.25&&hasTerrain){
     trackDist=0;
-    _forward.set(1,0,0).applyQuaternion(roverQuaternion);_forward.y=0;_forward.normalize();
-    for(const side of [-1,1]){
-     _pos.copy(roverPosition);_pos.x-=_forward.z*side*track/2;_pos.z+=_forward.x*side*track/2;
-     const y=height(_pos.x,_pos.z);
+    for(const source of sources){
+     const m=material(source);if(!m.marks)continue;
+     _pos.set(source.position.x,0,source.position.z);
+     const y=source.position.y??height(_pos.x,_pos.z);
      if(!Number.isFinite(y))continue;
      const dx=height(_pos.x+.05,_pos.z),dz=height(_pos.x,_pos.z+.05);
      if(!Number.isFinite(dx)||!Number.isFinite(dz))continue;
      _normal.set(-(dx-y)/.05,1,-(dz-y)/.05).normalize();
      _side.crossVectors(_normal,_forward).normalize();
      _forward.crossVectors(_side,_normal).normalize();
-     _mat.makeBasis(_forward,_side,_normal);_pos.y=y+.005;_mat.setPosition(_pos);
+     _mat.makeBasis(_forward,_side,_normal);_markScale.setScalar(.5+.5*m.marks);_mat.scale(_markScale);_pos.y=y+(source.surface==='ground'?.005:.04);_mat.setPosition(_pos);
      tracks.setMatrixAt(trackHead,_mat);trackHead=(trackHead+1)%TRACK_MAX;
     }
     tracks.instanceMatrix.needsUpdate=true;
    }
 
-   const dustActive=speed>.4&&moving&&hasTerrain;
+   const dusty=sources.filter(c=>material(c).dust>0),strength=sources.length?dusty.reduce((sum,c)=>sum+material(c).dust,0)/sources.length:0;
+   const dustActive=speed>.4&&moving&&hasTerrain&&strength>0;
    if(dustActive){
-    dustEmission+=dt*Math.min(90,speed*30);
+    dustEmission+=dt*Math.min(90,speed*30)*strength;
     const count=Math.floor(dustEmission);dustEmission-=count;
     for(let i=0;i<count;i++){
      const idx=dustHead*3;
-     dustPositions[idx]=roverPosition.x+(Math.random()-.5)*.4;
-     const y=height(dustPositions[idx],roverPosition.z);
-     dustPositions[idx+1]=(Number.isFinite(y)?y:roverPosition.y)+.02+Math.random()*.08;
-     dustPositions[idx+2]=roverPosition.z+(Math.random()-.5)*.4;
+     const source=dusty[dustHead%dusty.length];
+     dustPositions[idx]=source.position.x+(Math.random()-.5)*.1;
+     const y=source.position.y??height(dustPositions[idx],source.position.z);
+     dustPositions[idx+1]=(Number.isFinite(y)?y:roverPosition.y)+(source.surface==='ground'?.02:.04)+Math.random()*.08;
+     dustPositions[idx+2]=source.position.z+(Math.random()-.5)*.1;
      dustVelocities[idx]=(Math.random()-.5)*.3;
      dustVelocities[idx+1]=.3+Math.random()*.4;
      dustVelocities[idx+2]=(Math.random()-.5)*.3;

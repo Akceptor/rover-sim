@@ -139,11 +139,11 @@ Roads include primary, secondary, tertiary, unclassified, residential, living
 streets, service roads, tracks, paths, footways, cycleways and pedestrian streets.
 Motorways, construction, steps, area highways, bridges and tunnels are skipped.
 Road width uses a valid `width` in metres/feet or a class default (1.5–9 m).
-`surface` chooses paved grey or unpaved earth tones. Round joins/caps overlap at
+`surface` chooses a material-specific road palette. Round joins/caps overlap at
 intersections without gaps; overlapping road materials have a deterministic draw
 order. Polygons are split at terrain triangle edges and offset 3.5 cm to avoid
-terrain fighting. Roads are visual only: wheels still contact the unchanged
-terrain collider, with unchanged traction. No bridge decks, kerbs, lane markings,
+terrain fighting. Wheels still contact the terrain collider; material presets
+modify grip and rolling resistance at wheel/track contact points. No bridge decks, kerbs, lane markings,
 road cutting/grading, traffic or surveyed vegetation are provided.
 
 Generated trees and rocks (including their colliders and crown clearance) are
@@ -152,6 +152,58 @@ preserves the existing generated scenery. OSM coverage, aerial imagery dates and
 coarse GEM-15 terrain may disagree; roads can still be too steep or rough to drive.
 Dense patches can be expensive because building colliders and draped road meshes
 are generated at load time; there is no streaming or level of detail yet.
+
+### Road materials, driving and effects
+
+New downloads retain normalized `surface`, `smoothness` and `tracktype` tags.
+Recognized surfaces select the following simulation presets; grip and rolling
+loss multiply the vehicle's existing tuning. Dust and mark strengths are bounded
+relative values (marks vary in size). They are approximate defaults rather than
+measurements supplied by OSM.
+
+| Surface | Grip factor | Rolling loss factor | Dust | Marks |
+| --- | ---: | ---: | ---: | ---: |
+| Asphalt, concrete, other supported paving | 1 | 1 | 0 | 0 |
+| Gravel | 0.85 | 1.4 | 0.65 | 0.4 |
+| Compacted | 0.95 | 1.15 | 0.3 | 0.2 |
+| Dirt/earth/ground | 0.8 | 1.7 | 1 | 0.85 |
+| Sand | 0.55 | 2.5 | 1 | 0.9 |
+| Mud | 0.28 | 2.8 | 0 | 1 |
+| Grass | 0.7 | 1.6 | 0.08 | 0.7 |
+
+Concrete plates/lanes use concrete; paving stones, sett, cobblestone, metal and
+wood use generic paving; fine gravel/pebblestone use gravel; unpaved/woodchips
+use dirt; grass pavers use grass. Unknown surfaces fall back to the existing
+paved/unpaved classification. Off-road areas retain the previous ground behavior.
+
+When surface is missing or unsupported, `tracktype` grades 1, 2 and 3–5 select
+compacted, gravel and dirt respectively. For loose surfaces, grades 1–5 further
+multiply grip by 1, 0.98, 0.94, 0.88 and 0.8, and rolling loss by 1, 1.05, 1.15,
+1.3 and 1.5. A conflicting tracktype never changes a recognized paved surface.
+`smoothness` changes rolling loss only: excellent/good 1, intermediate 1.08,
+bad 1.2, very_bad 1.35, horrible 1.5, very_horrible 1.7 and impassable 2.
+These tags do not generate bumps, grade roads or guarantee that a route is passable.
+
+At overlaps, material priority matches the draw order, from highest to lowest:
+asphalt, concrete, generic paving, compacted, gravel, dirt, legacy unpaved, sand,
+mud, grass. Same-material ties use stable road IDs. Road queries use a spatial
+index rather than scanning the whole patch on every physics substep.
+
+Both wheeled and tracked vehicles apply these factors at actual terrain contacts.
+Optional multi-ray wheels resolve each of their three samples independently.
+Contacts on roofs/obstacles use the original tuning, and unsupported/airborne
+contacts generate no terrain marks or dust. Browser and FPV effects use backend
+terrain contact positions and material IDs; paved roads produce no earth dust,
+and mud produces no dry dust. No rut deformation or wet-weather traction model
+is added here.
+
+Existing processed caches, bundled presets and saved locations remain schema 1
+and load offline unchanged. Their missing surface tags cannot be recovered from
+the old processed data: legacy roads keep baseline grip/rolling loss, with dust
+and marks selected by their existing paved flag. Detailed materials apply to new
+downloads; use the refresh procedure above if you want newer mapping for an
+existing cached location. Saving/loading a newly downloaded location preserves
+its detailed road tags without requiring another download.
 
 ## Attribution and license
 

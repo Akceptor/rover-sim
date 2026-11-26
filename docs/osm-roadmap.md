@@ -13,7 +13,7 @@ part of this roadmap.
 
 | Phase | Feature PR | Status | PR link |
 | --- | --- | --- | --- |
-| 1 | Surface-aware driving and effects | Queued; next phase | Not opened |
+| 1 | Surface-aware driving and effects | In progress; validated, preparing PR | Not opened |
 | 2 | Mapped vegetation and land cover | Queued | Not opened |
 | 3 | Mapped barriers and obstacles | Queued | Not opened |
 | 4 | Richer building geometry and materials | Queued | Not opened |
@@ -242,16 +242,20 @@ reapply deformation; saved locations reproduce the same world offline. Run
 
 ## Resume checkpoint
 
-- Last completed deliverable: roadmap and links from OSM documentation.
-- Active phase: none; phase 1 is next.
-- Feature branch/worktree: none created.
-- Open feature PR: none.
-- Implementation/checks: no feature code changed; feature checks have not run.
-- Next action: design phase 1 against current wheel/track contact handling,
-  processed-overlay compatibility and the tire-track/dust renderer; then implement
-  it as the first separate feature PR.
-- Blocking decisions: none for starting phase 1. PR merge authorization is separate
-  from implementation/opening PRs.
+- Last completed deliverable: phase 1 implementation and validation on its feature branch.
+- Active phase: 1; validated, preparing its PR. It is not merged.
+- Feature branch/worktree: `feat/osm-surfaces` / `.worktrees/osm-surfaces`.
+- Open feature PR: not opened yet.
+- Validation (2026-11-26): `npm test` — 237 passed, 1 Windows-only skip;
+  `npm run test:osm` and `npm run test:vehicle-effects` — passed. Material overview
+  screenshot inspected. Review findings fixed with regressions and re-reviewed.
+- Design/plan: `docs/superpowers/specs/2026-11-26-osm-surfaces-design.md` and
+  `docs/superpowers/plans/2026-11-26-osm-surfaces.md`.
+- Compatibility: optional tags retain schema 1 and existing offline snapshots;
+  old processed snapshots cannot recover discarded tags without a refresh.
+- Next action: commit/push phase 1, open its feature PR and record the URL here.
+  After phase 1 review/integration, proceed to phase 2 (vegetation and land cover).
+- Blocking decisions: none for opening the phase 1 PR. Merge requires authorization.
 
 To resume in a new session: **“Continue the OSM roadmap in `docs/osm-roadmap.md`
 from its checkpoint, one feature PR at a time. Bridges remain excluded.”**

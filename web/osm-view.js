@@ -4,6 +4,7 @@ import {buildingTexture} from '/building-textures.js';
 import {roadTexture} from '/road-textures.js';
 import {roadUV} from '/road-surface.js';
 import {terrainHeight} from '/terrain.js';
+import {roadMaterials} from '/road-materials.js';
 const CELL=500;
 export function addOsmOverlay(world,overlay,terrain,profile=null){
  if(!overlay)return;
@@ -29,14 +30,15 @@ export function addOsmOverlay(world,overlay,terrain,profile=null){
   }
  }
  for(const r of overlay.roads){
-  const target=batch(`r:${r.paved?1:0}`,r.vertices[0],r.vertices[2],()=>material(`r:${r.paved?1:0}`,()=>{const m=new Material({map:roadTexture(r.paved),...(lambert?{}:{roughness:1}),side:T.DoubleSide,depthWrite:false,polygonOffset:true,polygonOffsetFactor:-1,polygonOffsetUnits:-1});m.userData.roadPaved=!!r.paved;return m;}));
+  const surface=Object.hasOwn(roadMaterials,r.material)?r.material:(r.paved?'paved':'unpaved');
+  const target=batch(`r:${surface}`,r.vertices[0],r.vertices[2],()=>material(`r:${surface}`,()=>{const m=new Material({map:roadTexture(r.paved,surface),...(lambert?{}:{roughness:1}),side:T.DoubleSide,depthWrite:false,polygonOffset:true,polygonOffsetFactor:-1,polygonOffsetUnits:-1});m.userData.roadPaved=!!r.paved;m.userData.roadSurface=surface;return m;}));
   push(target.positions,r.vertices);push(target.uv,roadUV(r.vertices));
  }
  world.userData.roadMaterials=[...materials.values()].filter(m=>m.userData.roadPaved!==undefined);
  for(const [id,b]of batches){
   const geometry=new T.BufferGeometry();geometry.setAttribute('position',new T.Float32BufferAttribute(b.positions,3));geometry.setAttribute('uv',new T.Float32BufferAttribute(b.uv,2));geometry.computeVertexNormals();
   const object=new T.Mesh(geometry,b.make());object.name=`osm-${{b:'buildings',d:'doors',r:'roads'}[b.key[0]]}:${id.slice(2)}`;object.receiveShadow=true;
-  if(b.key[0]==='b')object.castShadow=true;if(b.key[0]==='r')object.renderOrder=1;
+  if(b.key[0]==='b')object.castShadow=true;if(b.key[0]==='r')object.renderOrder=1+roadMaterials[b.key.slice(2)].priority/100;
   world.add(object);
  }
 }

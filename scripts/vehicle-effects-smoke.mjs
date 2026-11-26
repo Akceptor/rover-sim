@@ -31,10 +31,26 @@ try{
   const slow=createVehicleEffects(parent);p.set(0,.3,0);slow.update(p,q,1,1/60,true);
   for(let i=0;i<6;i++){p.x+=.05;slow.update(p,q,1,1/60,true);slow.update(p,q,1,1/60,true);}
   slow.tracks.getMatrixAt(0,matrix);const packetGaps=matrix.elements[0]!==0;slow.dispose();
-  return {trackY,coasting,expired,disposed,reversing,packetGaps,instanceDisposed};
+  const materials={};
+  for(const surface of ['asphalt','gravel','mud','sand','grass']){
+   const effect=createVehicleEffects(parent,{groundHeight:()=>0});p.set(0,.3,0);
+   const contacts=[{position:{x:2,y:0,z:3},surface}];
+   effect.update(p,q,1,.1,true,contacts);p.x=.4;effect.update(p,q,1,.1,true,contacts);
+   effect.tracks.getMatrixAt(0,matrix);
+   materials[surface]={marks:Math.abs(matrix.elements[0])>0,x:matrix.elements[12],y:matrix.elements[13],z:matrix.elements[14],dust:effect.dust.visible};
+   effect.dispose();
+  }
+  const roof=createVehicleEffects(parent);p.set(0,3,0);roof.update(p,q,1,.1,true,[]);p.x=.4;roof.update(p,q,1,.1,true,[]);
+  roof.tracks.getMatrixAt(0,matrix);const roofClear=matrix.elements[0]===0&&!roof.dust.visible;roof.dispose();
+  return {trackY,coasting,expired,disposed,reversing,packetGaps,instanceDisposed,materials,roofClear};
  });
  assert.ok(Math.abs(result.trackY-2.035)<.01,JSON.stringify(result));
  assert.ok(result.packetGaps,'distance accumulates between telemetry packets');
+ assert.equal(result.materials.asphalt.marks,false,'asphalt has no soil tracks');assert.equal(result.materials.asphalt.dust,false,'asphalt has no earth dust');
+ assert.equal(result.materials.mud.marks,true);assert.equal(result.materials.mud.dust,false,'mud has no dry dust');
+ for(const surface of ['gravel','sand'])assert.equal(result.materials[surface].dust,true,`${surface} emits dust`);
+ assert.equal(result.materials.mud.x,2);assert.equal(result.materials.mud.z,3);assert.ok(Math.abs(result.materials.mud.y-.04)<.001,'marks sit above the draped road');
+ assert.ok(result.roofClear,'authoritative empty terrain contacts suppress roof effects');
  assert.ok(result.coasting,'dust remains visible while existing particles expire');assert.ok(result.expired);assert.ok(result.disposed);assert.ok(result.instanceDisposed);assert.ok(result.reversing,'reverse produces tracks');
  const effectsState=()=>page.evaluate(async()=>{const {fpvOutput}=await import('/app.js'),tracks=fpvOutput.scene.getObjectByName('tire-tracks');return {count:fpvOutput.scene.getObjectsByProperty('name','tire-tracks').length,version:tracks?.instanceMatrix.version};});
  const initial=await effectsState();assert.equal(initial.count,1,'effects installed in actual scene');

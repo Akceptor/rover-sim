@@ -6,12 +6,15 @@ import {validateTerrain,terrainMesh,terrainObjects} from './terrain.js';
 import {ned,rotate,sensors} from './frames.js';
 import {overlayGeometry} from './osm.js';
 import {applyLiveFields} from './profile-fields.js';
+import {createRoadIndex} from './road-index.js';
+import {roadMaterials} from './road-materials.js';
 let init;
 export class Physics {
   static async create(config,obstacles=true,terrain=null,overlay=null,geometry=null){if(terrain)validateTerrain(terrain);init??=R.init();await init;return new Physics(config,obstacles,terrain,overlay,geometry);}
   constructor(c,obstacles,terrain,overlay,geometry) {
     c=resolveVehicle(c);this.c=c;this.world=new R.World({x:0,y:-9.80665,z:0});
-    if(terrain){const {vertices,indices}=terrainMesh(terrain);this.world.createCollider(R.ColliderDesc.trimesh(vertices,indices).setFriction(.9));}
+    this.roadAt=createRoadIndex(overlay,terrain);
+    if(terrain){const {vertices,indices}=terrainMesh(terrain);this.terrainCollider=this.world.createCollider(R.ColliderDesc.trimesh(vertices,indices).setFriction(.9));}
     for(const o of (terrain?(obstacles?terrainObjects(terrain,overlay):[]):(obstacles?playground:playground.slice(0,1)))){const [x,y,z]=o.position;const a=o.angle??0;const body=this.world.createRigidBody(R.RigidBodyDesc.fixed().setTranslation(x,y,z).setRotation({x:0,y:0,z:Math.sin(a/2),w:Math.cos(a/2)}));const [sx,sy,sz]=o.size;this.world.createCollider((o.kind==='cone'?R.ColliderDesc.cone(sy/2,sx/2):R.ColliderDesc.cuboid(sx/2,sy/2,sz/2)).setFriction(.9),body);}
     if(overlay)for(const building of (geometry??overlayGeometry(overlay,terrain)).buildings)for(const prism of building.prisms){
       const shape=R.ColliderDesc.convexHull(new Float32Array(prism));
@@ -51,6 +54,7 @@ export class Physics {
     this.body.recomputeMassPropertiesFromColliders();
   }
   tuneWheel(i,n){const t=this.c.suspensionTuning;this.car.setWheelSuspensionStiffness(i,t.stiffness/n);this.car.setWheelSuspensionCompression(i,t.compression/n);this.car.setWheelSuspensionRelaxation(i,t.relaxation/n);this.car.setWheelMaxSuspensionTravel(i,t.travel);this.car.setWheelMaxSuspensionForce(i,t.maxForce/n);this.car.setWheelFrictionSlip(i,t.grip);}
+  contactMaterial(at,collider){return at&&this.terrainCollider&&collider?.handle===this.terrainCollider.handle?this.roadAt(at.x,at.z):roadMaterials.ground;}
   applyTuning(v){
     applyLiveFields(this.c,v);
     for(const group of this.wheelGroups)for(const i of group)this.tuneWheel(i,group.length);
@@ -81,7 +85,8 @@ export class Physics {
     const com=this.body.worldCom(),m=this.body.mass(),nc=this.wheelGroups.flat().filter(i=>this.car.wheelIsInContact(i)).length;
     const L=c.wheelbase,T=c.track,target=-steering*c.maxSteer,d=this.steerAngle=this.steerAngle+clamp(target-this.steerAngle,-c.steerRate*h,c.steerRate*h);
     const loads=this.wheelGroups.map(group=>group.map(i=>this.car.wheelIsInContact(i)?Math.max(0,this.car.wheelSuspensionForce(i)??0):0));
-    const budget=loads.map(l=>l.reduce((a,b)=>a+b,0)*t.grip),total=drive.value*c.engineForce*taper;
+    const materials=Array.from({length:this.car.numWheels()},(_,i)=>this.contactMaterial(this.car.wheelContactPoint(i),this.car.wheelGroundObject(i)));
+    const budget=loads.map((l,g)=>l.reduce((sum,load,j)=>sum+load*t.grip*materials[this.wheelGroups[g][j]].grip,0)),total=drive.value*c.engineForce*taper;
     const wheelForce=[...axleForces(total*c.torqueSplit,[budget[0],budget[1]],c.diff.front),...axleForces(total*(1-c.torqueSplit),[budget[2],budget[3]],c.diff.rear)];
     for(let g=0;g<4;g++){
       const inner=(d<0)===(g===1),ack=d===0?0:Math.sign(d)*Math.atan2(L,L/Math.tan(Math.abs(d))+(inner?-T/2:T/2)),angle=g<2?d+c.ackermannFactor*(ack-d):0;
@@ -91,6 +96,7 @@ export class Physics {
       // Rapier applies impulses only to contacting wheels and limits the tire
       // friction budget using suspension load; also cap requested motor force.
       const contact=this.car.wheelIsInContact(i),load=Math.max(0,this.car.wheelSuspensionForce(i)??0);
+      const grip=t.grip*materials[i].grip;this.car.setWheelFrictionSlip(i,grip);
       const n=this.wheelGroups[g].length,requested=wheelForce[g]/(rays||1);
       // Side force acts at CoM height with plain mass (not contact-point mEff, which only rolls the chassis against stiff suspension and leaves the CoM creeping); lat includes this substep's gravity so slopes hold.
       let engine=0;
@@ -99,7 +105,7 @@ export class Physics {
         const ax=rotate(q,{x:Math.sin(st),y:0,z:Math.cos(st)}),axle=normalize(add(ax,scale(nrm,-dot(ax,nrm)))),lift=add(at,scale(nrm,dot({x:com.x-at.x,y:com.y-at.y,z:com.z-at.z},nrm)));
         const lat=dot(this.body.velocityAtPoint(at),axle)-9.80665*h*axle.y;
         let F=-lat*t.sideGrip*m/(nc*h);engine=requested;
-        const avail=load*t.grip,mag=Math.hypot(engine,F);
+        const avail=load*grip,mag=Math.hypot(engine,F);
         if(mag>avail){const k=avail/mag;engine*=k;F*=k;}
         this.body.addForceAtPoint(scale(axle,F),lift,true);
       }
@@ -109,7 +115,7 @@ export class Physics {
     }
     // Rolling loss acts through contacts, never as an airborne body drag force.
     const contacts=Array.from({length:this.car.numWheels()},(_,i)=>i).filter(i=>this.car.wheelIsInContact(i));
-    if(contacts.length){const resistance=Math.min(c.rollingResistance,Math.abs(speed)*c.mass/h);for(const i of contacts){const at=this.car.wheelContactPoint(i);if(at)this.body.addForceAtPoint(scale(f,-Math.sign(speed)*resistance/contacts.length),at,true);}}
+    if(contacts.length)for(const i of contacts){const resistance=Math.min(c.rollingResistance*materials[i].rolling,Math.abs(speed)*c.mass/h)/contacts.length,at=this.car.wheelContactPoint(i);if(at)this.body.addForceAtPoint(scale(f,-Math.sign(speed)*resistance),at,true);}
     this.car.updateVehicle(h,R.QueryFilterFlags.EXCLUDE_DYNAMIC);
   }
   stepTracks(h,inputs){
@@ -125,6 +131,7 @@ export class Physics {
         const hit=this.world.castRayAndGetNormal(ray,rest+t.travel,true,R.QueryFilterFlags.EXCLUDE_DYNAMIC,undefined,undefined,this.body);
         if(!hit){track.contacts.push({x,y:-rest,z:track.z,contact:false,normalForce:0});continue;}
         const at=ray.pointAt(hit.timeOfImpact),normal=hit.normal,velocity=this.body.velocityAtPoint(at);
+        const material=this.contactMaterial(at,hit.collider);
         const compression=rest-hit.timeOfImpact;
         // No attractive springs, including while the footprint hangs over an edge.
         const damping=dot(velocity,normal)<0?t.compression:t.relaxation;
@@ -134,13 +141,13 @@ export class Physics {
         const engine=drive.value*c.engineForce/(2*g.samples)*Math.max(0,1-Math.max(0,longitudinalSpeed*Math.sign(drive.value))/c.maxSpeed);
         // Legacy brakeImpulse is an impulse at the original 5 ms substep.
         // Convert to force so actuator packet rate cannot change deceleration.
-        const passive=Math.min(c.rollingResistance/N+c.brakeImpulse*drive.brake/(N*.005),Math.abs(longitudinalSpeed)*c.mass/(N*h));
+        const passive=Math.min(c.rollingResistance*material.rolling/N+c.brakeImpulse*drive.brake/(N*.005),Math.abs(longitudinalSpeed)*c.mass/(N*h));
         let longitudinal=engine-Math.sign(longitudinalSpeed)*passive;
         let sideways=-lateralSpeed*Math.min(c.mass*g.lateralResistance/N,c.mass/(N*h));
-        const available=load*t.grip,magnitude=Math.hypot(longitudinal,sideways),ratio=magnitude>available?available/(magnitude||1):1;
+        const available=load*t.grip*material.grip,magnitude=Math.hypot(longitudinal,sideways),ratio=magnitude>available?available/(magnitude||1):1;
         longitudinal*=ratio;sideways*=ratio;
         this.body.addForceAtPoint(add(scale(normal,load),add(scale(tangent,longitudinal),scale(lateral,sideways))),at,true);
-        track.contacts.push({x,y:-hit.timeOfImpact,z:track.z,contact:true,normalForce:load,longitudinalForce:longitudinal,lateralForce:sideways});
+        track.contacts.push({x,y:-hit.timeOfImpact,z:track.z,contact:true,normalForce:load,longitudinalForce:longitudinal,lateralForce:sideways,ground:this.terrainCollider?.handle===hit.collider.handle,position:at,surface:material.id});
         measuredSpeed+=longitudinalSpeed;hits++;
       }
       track.speed=hits?measuredSpeed/hits:localSpeed;track.distance+=track.speed*h;track.rotation=track.distance/g.radius;
@@ -151,7 +158,13 @@ export class Physics {
     const position=this.body.translation(),rotation=this.body.rotation(),velocity=this.body.linvel();
     const s=sensors(rotation,this.body.angvel(),this.acc);const f=rotate(rotation,{x:1,y:0,z:0});
     const wheels=this.wheelPositions.map((p,g)=>{const group=this.wheelGroups[g],i=group[Math.floor(group.length/2)];return {...p,y:-(this.car.wheelSuspensionLength(i)??this.c.suspension),rotation:this.car.wheelRotation(i)??0,steering:this.car.wheelSteering(i)??0,contact:group.some(j=>this.car.wheelIsInContact(j)),normalForce:group.reduce((sum,j)=>sum+(this.car.wheelSuspensionForce(j)??0),0)};});
-    return {position,rotation,velocity,speed:velocity.x*f.x+velocity.y*f.y+velocity.z*f.z,heading:(Math.atan2(f.z,f.x)*180/Math.PI+360)%360,inputs:this.inputs,driveDemand:[...this.driveDemand],wheels,tracks:this.trackStates.map(t=>({...t,contacts:t.contacts.map(c=>({...c}))})),sensor:{timestamp:this.time,imu:{gyro:s.gyro,accel_body:s.accel_body},position:ned({x:position.x,y:position.y-this.spawnHeight(),z:position.z}),velocity:ned(this.sensorVelocity),quaternion:s.quaternion}};
+    const groundContacts=[];
+    if(this.car&&this.terrainCollider)for(const group of this.wheelGroups){
+      const i=[group[Math.floor(group.length/2)],...group].find(j=>this.car.wheelIsInContact(j)&&(this.car.wheelSuspensionForce(j)??0)>0&&this.car.wheelGroundObject(j)?.handle===this.terrainCollider.handle);
+      if(i!==undefined){const at=this.car.wheelContactPoint(i);if(at)groundContacts.push({position:at,surface:this.roadAt(at.x,at.z).id});}
+    }
+    for(const track of this.trackStates)for(const contact of track.contacts)if(contact.ground&&contact.normalForce>0)groundContacts.push({position:contact.position,surface:contact.surface});
+    return {position,rotation,velocity,speed:velocity.x*f.x+velocity.y*f.y+velocity.z*f.z,heading:(Math.atan2(f.z,f.x)*180/Math.PI+360)%360,inputs:this.inputs,driveDemand:[...this.driveDemand],wheels,groundContacts,tracks:this.trackStates.map(t=>({...t,contacts:t.contacts.map(c=>({...c}))})),sensor:{timestamp:this.time,imu:{gyro:s.gyro,accel_body:s.accel_body},position:ned({x:position.x,y:position.y-this.spawnHeight(),z:position.z}),velocity:ned(this.sensorVelocity),quaternion:s.quaternion}};
   }
   free(){this.world.free();}
 }
