@@ -4,6 +4,8 @@ import {terrainHeight} from './terrain.js';
 import {insideRing} from './osm-footprints.js';
 import {normalizeRoadTags,roadMaterial} from './road-materials.js';
 import {metres,area,stitch} from './osm-rings.js';
+import {processBarriers} from './osm-barriers.js';
+import {barrierGeometry} from './barrier-geometry.js';
 import {processLandcover} from './osm-landcover.js';
 export {overlayOccupies} from './osm-footprints.js';
 
@@ -44,7 +46,7 @@ export function processOsm(data,t,{defaultHeight=6}={}){
   let points=[];const flush=()=>{if(points.length>=2){const road={id:`way/${w.id}/${roads.length}`,highway:tags.highway,points,width:metres(tags.width)??roadWidths[tags.highway],paved:materialTags.surface?!unpaved.has(materialTags.surface):!['track','path','footway'].includes(tags.highway),...materialTags};if(materialTags.surface||materialTags.tracktype)road.paved=roadMaterial(road).paved;roads.push(road);}points=[];};
   for(const id of w.nodes??[]){const p=nodes.get(id);if(!p){flush();continue;}if(!points.length||Math.hypot(p[0]-points.at(-1)[0],p[1]-points.at(-1)[1])>.001)points.push(p);}flush();
  }
- return {version:OSM_SCHEMA,key:overlayKey(t,OSM_SCHEMA,defaultHeight),buildings,roads,...processLandcover(data,t,nodes,ways,ring)};
+ return {version:OSM_SCHEMA,key:overlayKey(t,OSM_SCHEMA,defaultHeight),buildings,roads,...processLandcover(data,t,nodes,ways,ring),barriers:processBarriers(data,t,nodes,ways)};
 }
 function sample(t,x,z){const h=(t.size-1)*t.spacing/2;return terrainHeight(t,Math.max(-h,Math.min(h,x)),Math.max(-h,Math.min(h,z)));}
 function buildingGeometry(b,t){
@@ -82,4 +84,4 @@ function roadGeometry(r,t){
  for(const p of r.points)drape(Array.from({length:16},(_,i)=>[p[0]+radius*Math.cos(i*Math.PI/8),p[1]+radius*Math.sin(i*Math.PI/8)]),t,vertices);
  return {id:r.id,paved:r.paved,material:roadMaterial(r).id,vertices};
 }
-export function overlayGeometry(o,t){return {buildings:o.buildings.map(b=>buildingGeometry(b,t)),roads:o.roads.map(r=>roadGeometry(r,t)),landcover:o.landcover??[],trees:o.trees??[]};}
+export function overlayGeometry(o,t){return {buildings:o.buildings.map(b=>buildingGeometry(b,t)),roads:o.roads.map(r=>roadGeometry(r,t)),landcover:o.landcover??[],trees:o.trees??[],barriers:barrierGeometry(o.barriers,t)};}

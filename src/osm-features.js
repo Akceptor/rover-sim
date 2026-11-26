@@ -1,3 +1,3 @@
 export function hasOsmFeatures(overlay){
- return !!overlay&&['buildings','roads','landcover','trees'].some(key=>overlay[key]?.length>0);
+ return !!overlay&&['buildings','roads','landcover','trees','barriers','barrierFeatures'].some(key=>overlay[key]?.length>0);
 }
