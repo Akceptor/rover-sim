@@ -128,10 +128,9 @@ steep sites. Fixed triangular prism colliders cover the solid footprint, includi
 roofs, without covering courtyard holes or concave gaps. Mapped openings in the
 footprint stay accessible; unmapped doors, archways and building interiors are not
 modeled. Buildings crossing the patch edge retain complete footprints with edge
-terrain heights clamped. Start outside solid footprints. The existing Lima
-preset origin falls inside a mapped building in the bundled snapshot; use a
-nearby Custom start outside buildings there. Other bundled origins are clear of
-building footprints. Terrain origins are preserved.
+terrain heights clamped. Start outside solid footprints. Lima's terrain, satellite
+colours and OSM overlay were refreshed at -12.0259746, -77.0282052 to start outside buildings. The bundled Lima spawn
+is checked for 0.6 m of clearance from building footprints.
 
 Roads include primary, secondary, tertiary, unclassified, residential, living
 streets, service roads, tracks, paths, footways, cycleways and pedestrian streets.

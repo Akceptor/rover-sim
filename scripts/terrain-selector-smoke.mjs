@@ -7,7 +7,9 @@ import os from 'node:os';
 import path from 'node:path';
 import {setTimeout as delay} from 'node:timers/promises';
 import {ProcessGroup} from '../src/process-group.js';
+import {findLocation} from '../src/locations.js';
 import {sitlArguments} from '../src/launcher.js';
+const limaPreset=findLocation('lima');
 const temp=await fs.mkdtemp(path.join(os.tmpdir(),'rover-selector-'));
 let logs='',browser,sitl;const group=new ProcessGroup({log:line=>{logs+=line+'\n';}});
 const config=JSON.parse(await fs.readFile('config/default.json'));config.osm=false;config.savedLocationsDir=path.join(temp,'saved-locations');config.httpPort=8104;config.udpPort=9011;config.mavlink.port=14569;
@@ -25,12 +27,12 @@ try{
  assert.equal(await page.locator('#locationSelect option').count(),7);assert.equal(await page.locator('#locationSelect').inputValue(),'custom');
  await page.selectOption('#locationSelect','lima');await page.locator('#loadLocation').click();
  await until(s=>s.startTerrain.status==='ready');await start();
- const lima=await until(s=>s.autopilot?.position&&Math.abs(s.autopilot.position.lat+12.026)<.00002&&Math.abs(s.autopilot.position.lon+77.028)<.00002);
- assert.equal(lima.home.lat,-12.026);assert.equal(lima.weather.timeZone,'America/Lima');assert.ok(Math.abs(lima.autopilot.position.alt-lima.home.alt)<2);assert.equal(lima.running,false);
+ const lima=await until(s=>s.autopilot?.position&&Math.abs(s.autopilot.position.lat-limaPreset.lat)<.00002&&Math.abs(s.autopilot.position.lon-limaPreset.lon)<.00002);
+ assert.equal(lima.home.lat,limaPreset.lat);assert.equal(lima.weather.timeZone,'America/Lima');assert.ok(Math.abs(lima.autopilot.position.alt-lima.home.alt)<2);assert.equal(lima.running,false);
  // A live selection must hold the old GPS until a new SITL session starts.
  const control=new WebSocket(url.replace('http:','ws:'),{origin:url});await once(control,'open');control.send(JSON.stringify({type:'selectLocation',id:'map',lat:49.88,lon:24.055}));control.close();await until(s=>s.startTerrain.status==='restart');assert.equal((await state()).selectedLocation,'map');
  await page.waitForFunction(()=>document.querySelector('#run').disabled,{},{timeout:10000});await delay(1200);
- assert.ok(Math.abs((await state()).autopilot.position.lat+12.026)<.00002);
+ assert.ok(Math.abs((await state()).autopilot.position.lat-limaPreset.lat)<.00002);
  await sitl.stop();await delay(config.timeoutMs+100);await start();
  const lviv=await until(s=>s.startTerrain.status==='ready'&&s.autopilot?.position&&Math.abs(s.autopilot.position.lat-49.88)<.00002);
  assert.ok(Math.abs(lviv.autopilot.position.lon-24.055)<.00002);assert.equal(lviv.weather.timeZone,'Europe/Kyiv');

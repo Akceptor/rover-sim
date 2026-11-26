@@ -42,7 +42,7 @@ is bundled with every preset.
 | --- | --- | --- | --- |
 | Kyiv · Feofaniya | 50.3375, 30.475 | about 56 m | `feofaniya.json` |
 | Lviv · northern hills | 49.88, 24.055 | about 72 m | `lviv.json` |
-| Lima · Rímac hills | -12.026, -77.028 | about 131 m | `lima.json` |
+| Lima · Rímac hills | -12.0259746, -77.0282052 | about 120 m | `lima.json` |
 | Cusco · Andes | -13.485, -71.98 | about 185 m | `cusco.json` |
 | Andes · mountain ravine | -13.49, -72.01 | about 206 m | `andes.json` |
 
