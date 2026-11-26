@@ -1,5 +1,8 @@
 # OpenStreetMap roads and buildings
 
+Planned enhancements and resumable PR checkpoints are tracked in the
+[OSM enhancement roadmap](osm-roadmap.md).
+
 OSM overlays load automatically on real terrain in standalone, normal SITL,
 location-picker and Mission Planner modes. No key or additional installation is
 required. The original playground and flat mode do not request OSM.
