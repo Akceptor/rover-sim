@@ -100,14 +100,15 @@ Run `npm.cmd ci` after updating to install the bundled map library. Basemap tile
 
 New OSM downloads also use mapped forests, scrub, grass, fields and trees to guide
 scenery, with shared collision/render placement and subtle land-cover tinting.
-Fields and water-designated areas stay open; existing offline snapshots retain
-their fallback scenery. See the [land-cover behavior and limits](docs/osm.md#vegetation-and-land-cover).
+Fields and water-designated areas stay open. All five bundled presets were
+refreshed on 2026-11-26; older saved/runtime snapshots retain fallback scenery.
+See the [land-cover behavior and limits](docs/osm.md#vegetation-and-land-cover).
 
-Real terrain now loads mapped roads and flat-roof buildings automatically. Buildings have footprint colliders, including concave outlines and courtyard holes. Roads follow the terrain; wheel contact and traction stay unchanged. Generated trees and rocks keep clear of mapped buildings and roads.
+Real terrain now loads mapped roads and flat-roof buildings automatically. Buildings have footprint colliders, including concave outlines and courtyard holes. Roads follow the terrain; wheels contact the terrain and mapped materials affect traction. Generated trees and rocks keep clear of mapped buildings and roads.
 
 The Mission Planner copy/paste workflow above is unchanged. OSM loads while physics is held. A timeout or server error leaves terrain usable and offers **Retry OSM**; after driving begins, retries are cached for the next world load. All five existing presets include OSM snapshots under **`assets/osm/`** and work offline in a fresh checkout. Custom overlays use **`.run/osm-cache/`**, independently of elevation and imagery. Set `"osm": false` in the backend config to disable overlays.
 
-Data is **[© OpenStreetMap contributors](https://www.openstreetmap.org/copyright)** under **ODbL**; processed caches are derived OSM databases. Buildings have varied plaster, brick and concrete facades, windows, decorative doors and textured flat roofs; heights remain approximate. Newly downloaded road surface tags control material colours, grip, rolling resistance, dust and ground marks for wheeled and tracked vehicles. Existing offline snapshots retain their baseline physics and paved/unpaved classification. Bridges, tunnels and motorways are skipped; roads do not grade the terrain. Cusco has roads but no mapped buildings in its snapshot. See [setup, configuration, offline behavior, license and limits](docs/osm.md) and the [resumable enhancement roadmap](docs/osm-roadmap.md).
+Data is **[© OpenStreetMap contributors](https://www.openstreetmap.org/copyright)** under **ODbL**; processed caches are derived OSM databases. Buildings have varied plaster, brick and concrete facades, windows, decorative doors and textured flat roofs; heights remain approximate. Newly downloaded road surface tags control material colours, grip, rolling resistance, dust and ground marks for wheeled and tracked vehicles. Older saved/runtime snapshots retain their baseline physics and paved/unpaved classification. Bridges, tunnels and motorways are skipped; roads do not grade the terrain. Cusco has roads but no mapped buildings in its snapshot. See [setup, configuration, offline behavior, license and limits](docs/osm.md) and the [resumable enhancement roadmap](docs/osm-roadmap.md).
 
 ## Checks
 

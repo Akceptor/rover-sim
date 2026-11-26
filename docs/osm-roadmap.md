@@ -244,6 +244,9 @@ reapply deformation; saved locations reproduce the same world offline. Run
 
 - Last completed merged phase: phase 2, PR [#11](https://github.com/Akceptor/rover-sim/pull/11),
   merge commit `5c43b2581ebef3aa4ef19a107e059c7d335a8bb8` (2026-11-26).
+- Bundled preset maintenance: all five OSM snapshots refreshed on 2026-11-26,
+  including road tags, land cover and mapped tree/row points. Source database
+  timestamp: `2026-11-24T21:21:23Z`; saved favourites remain unchanged.
 - Active phase: none; phase 3 (mapped barriers and obstacles) is next.
 - Current branch: `main`. Phase 2 worktree retained at `.worktrees/osm-vegetation`.
 - Base: `2afafcc` on `main`, including the standalone location-reload fix in PR #10.

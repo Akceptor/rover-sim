@@ -19,6 +19,9 @@ test('every existing preset has an attributed offline OSM snapshot matching its 
   assert.equal(result.status,'ready',preset.id);assert.equal(result.bundled,true,preset.id);assert.equal(result.cached,true);
   assert.equal(result.overlay.source.license,'ODbL-1.0');assert.equal(result.overlay.source.copyright,'https://www.openstreetmap.org/copyright');assert.ok(result.overlay.source.osmTimestamp);
   assert.ok(result.overlay.roads.length>0,preset.id);if(preset.id!=='cusco')assert.ok(result.overlay.buildings.length>0,preset.id);
+  assert.ok(Array.isArray(result.overlay.landcover)&&result.overlay.landcover.length>0,`${preset.id} includes refreshed land cover`);
+  assert.ok(Array.isArray(result.overlay.trees),`${preset.id} includes the mapped-tree field even when no trees are mapped`);
+  assert.ok(result.overlay.roads.some(r=>r.surface||r.tracktype||r.smoothness),`${preset.id} retains detailed road tags`);
   if(preset.id==='lima')assert.equal(overlayOccupies({...result.overlay,roads:[]},0,0,.6),false,'Lima spawn clears building footprints for the vehicle');
   const geometry=overlayGeometry(result.overlay,t);
   for(const road of geometry.roads)for(let i=0;i<road.vertices.length;i+=3){const [x,y,z]=road.vertices.slice(i,i+3);assert.ok(Math.abs(y-terrainHeight(t,x,z)-.035)<1e-6,`${preset.id} road alignment`);}

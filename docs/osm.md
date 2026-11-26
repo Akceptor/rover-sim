@@ -20,7 +20,9 @@ open ground: the importer does not move a start that lies inside a building.
 
 All five existing terrain presets include matching OSM snapshots under
 `assets/osm/`: Kyiv, Lviv, Lima, Cusco and the Andes ravine. They load directly
-offline, even in a fresh checkout without `.run/`. See the [snapshot dates,
+offline, even in a fresh checkout without `.run/`. All five were refreshed on
+2026-11-26 with detailed road tags, land cover and mapped tree/row points.
+See the [snapshot dates,
 feature counts and license](../assets/osm/README.md). Cusco has mapped roads but
 no mapped buildings in this snapshot.
 
@@ -197,8 +199,8 @@ terrain contact positions and material IDs; paved roads produce no earth dust,
 and mud produces no dry dust. No rut deformation or wet-weather traction model
 is added here.
 
-Existing processed caches, bundled presets and saved locations remain schema 1
-and load offline unchanged. Their missing surface tags cannot be recovered from
+Older processed caches and saved locations remain schema 1 and load offline
+unchanged. Their missing surface tags cannot be recovered from
 the old processed data: legacy roads keep baseline grip/rolling loss, with dust
 and marks selected by their existing paved flag. Detailed materials apply to new
 downloads; use the refresh procedure above if you want newer mapping for an
@@ -250,10 +252,10 @@ contact classifications.
 Processed data is bounded to 1,024 cover polygons with at most 8,192 total
 vertices each, and 2,048 mapped tree/row points before placement. Excess or
 oversized supported features are omitted. Polygon lookup is spatially indexed
-within the terrain patch. Existing schema-1 caches, bundled presets and saved
-locations remain valid without downloads; their missing land-cover information
-requires a mapping refresh. New saved locations preserve additional fields for
-offline reuse. Land-cover-only and tree-only patches show OSM credit in the
+within the terrain patch. Existing schema-1 caches and saved locations remain
+valid without downloads; their missing land-cover information requires a mapping
+refresh. The five bundled presets include this data as of 2026-11-26. New saved
+locations preserve additional fields for offline reuse. Land-cover-only and tree-only patches show OSM credit in the
 browser and video, and count as complete nonempty OSM data.
 
 ## Attribution and license
