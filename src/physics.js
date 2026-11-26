@@ -21,6 +21,10 @@ export class Physics {
       if(!shape)throw Error(`Invalid building collider: ${building.id}`);
       this.world.createCollider(shape.setFriction(.9));
     }
+    for(const b of (geometry??(overlay?overlayGeometry(overlay,terrain):null))?.barriers??[]){
+      const [x,y,z]=b.position,[sx,sy,sz]=b.size,shape=b.shape==='cylinder'?R.ColliderDesc.cylinder(sy/2,sx/2):R.ColliderDesc.cuboid(sx/2,sy/2,sz/2);
+      this.world.createCollider(shape.setTranslation(x,y,z).setRotation({x:0,y:Math.sin(-b.angle/2),z:0,w:Math.cos(b.angle/2)}).setFriction(.9));
+    }
     this.body=this.world.createRigidBody(R.RigidBodyDesc.dynamic().setTranslation(0,this.spawnHeight(),0).setCanSleep(false).setCcdEnabled(true).setLinearDamping(.08).setAngularDamping(.6));
     for(const box of c.collisionBoxes)this.world.createCollider(R.ColliderDesc.cuboid(...box.size.map(x=>x/2)).setTranslation(...box.position).setMass(0).setFriction(.5),this.body);
     this.applyMass();

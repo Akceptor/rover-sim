@@ -1,4 +1,5 @@
 import * as T from '/three.js';
+import {addBarrierOverlay} from '/barrier-view.js';
 import {buildingSurfaces,buildingStyle} from '/building-surfaces.js';
 import {buildingTexture} from '/building-textures.js';
 import {roadTexture} from '/road-textures.js';
@@ -8,6 +9,7 @@ import {roadMaterials} from '/road-materials.js';
 const CELL=500;
 export function addOsmOverlay(world,overlay,terrain,profile=null){
  if(!overlay)return;
+ addBarrierOverlay(world,overlay.barriers,profile);
  const lambert=profile?.materialMode==='lambert',Material=lambert?T.MeshLambertMaterial:T.MeshStandardMaterial,useBump=profile?.useBumpMap??true;
  const batches=new Map();
  function batch(key,x,z,make){const k=`${key}|${Math.floor(x/CELL)},${Math.floor(z/CELL)}`;let b=batches.get(k);if(!b){b={key,make,positions:[],uv:[]};batches.set(k,b);}return b;}

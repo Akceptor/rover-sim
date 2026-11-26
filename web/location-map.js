@@ -44,6 +44,10 @@ function buildLocationMap({onPick}){
   setWorld(data){
    if(!data)return;home=data.home;features.clearLayers();
    for(const rings of data.buildings)L.polygon(rings,{renderer,stroke:true,color:'#5b6974',weight:1,fillColor:'#778794',fillOpacity:.6,interactive:false}).addTo(features);
+   for(const barrier of data.barriers??[]){
+    const style={renderer,color:barrier.open?'#42815d':'#9d5946',weight:2,interactive:false,...(barrier.open?{dashArray:'3 4'}:{})};
+    if(barrier.points.length===1)L.circleMarker(barrier.points[0],{...style,radius:3,fillOpacity:.8}).addTo(features);else L.polyline(barrier.points,style).addTo(features);
+   }
    for(const road of data.roads)L.polyline(road.points,{renderer,color:road.paved?'#606e79':'#a98348',weight:road.paved?3:2,opacity:.85,interactive:false}).addTo(features);
    if(data.bounds.length){L.polygon(data.bounds,{renderer,color:'#2c74c9',weight:2,dashArray:'6 5',fill:false,interactive:false}).addTo(features);map.fitBounds(data.bounds,{padding:[18,18],animate:false});}
    else if(home)map.setView([home.lat,home.lon],15);
