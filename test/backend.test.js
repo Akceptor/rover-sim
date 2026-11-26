@@ -5,6 +5,7 @@ import fs from 'node:fs/promises';import os from 'node:os';import path from 'nod
 import {setTimeout as delay} from 'node:timers/promises';
 import {once} from 'node:events';import dgram from 'node:dgram';
 import {WebSocket} from 'ws';
+import {findLocation} from '../src/locations.js';
 async function launch(mode){
  const dir=await fs.mkdtemp(path.join(os.tmpdir(),'rover-test-'));const config=JSON.parse(await fs.readFile(new URL('../config/default.json',import.meta.url)));config.osm=false;config.terrainCacheDir=path.join(dir,'terrain-cache');config.savedLocationsDir=path.join(dir,'saved-locations');config.httpPort=22000+Math.floor(Math.random()*10000);config.udpPort=32000+Math.floor(Math.random()*10000);config.timeoutMs=150;if(mode==='mission-planner')config.mavlink.port=42000+Math.floor(Math.random()*10000);else config.mavlink=null;await fs.writeFile(path.join(dir,'config.json'),JSON.stringify(config));
  const proc=spawn(process.execPath,['src/server.js',...(mode==='mission-planner'?['--mission-planner']:mode==='location-picker'?['--location-picker']:mode==='standalone-picker'?['--standalone','--location-picker']:['--flat']),'--config',path.join(dir,'config.json'),...(mode==='standalone'?['--standalone']:[])],{cwd:new URL('..',import.meta.url),stdio:['ignore','pipe','pipe']});let logs='';proc.stdout.on('data',v=>logs+=v);proc.stderr.on('data',v=>logs+=v);
@@ -119,6 +120,7 @@ test('UDP cached duplicates, malformed packets, timeout and counter restart with
  try{const first=await exchange(packet(1));assert.deepEqual(await exchange(packet(1)),first);for(let i=2;i<30;i++)await exchange(packet(i));const moving=await s.state();assert.ok(moving.position.x>0);udp.send(Buffer.from('bad'),s.config.udpPort,'127.0.0.1');await delay(220);const frozen=await s.state();assert.equal(frozen.connected,false);assert.equal(frozen.position.x,moving.position.x);assert.equal(frozen.stats.malformed,1);assert.ok(frozen.stats.duplicates>=1);const restarted=JSON.parse((await exchange(packet(0))).toString());assert.ok(restarted.timestamp<.02);assert.equal((await s.state()).connected,true);const ws=await s.socket();ws.send(JSON.stringify({type:'keys',steering:1,throttle:-1}));await exchange(packet(1));assert.equal((await s.state()).inputs.throttle,.5);ws.terminate();}finally{udp.close();await s.close();}
 });
 test('browser map selection loads the exact selected origin and keeps Mission Planner restart/arming safeguards',async()=>{
+ const lima=findLocation('lima');
  const s=await launch('mission-planner'),udp=dgram.createSocket('udp4');let ws;
  const send=hex=>new Promise((resolve,reject)=>udp.send(Buffer.from(hex,'hex'),s.config.mavlink.port,'127.0.0.1',e=>e?reject(e):resolve()));
  const waitFor=async status=>{let state;for(let i=0;i<100;i++){state=await s.state();if(state.startTerrain.status===status)return state;await delay(20);}assert.fail(JSON.stringify(state.startTerrain));};
@@ -129,9 +131,9 @@ test('browser map selection loads the exact selected origin and keeps Mission Pl
   const packet=Buffer.alloc(40);packet.writeUInt16LE(18458);packet.writeUInt16LE(100,2);packet.writeUInt32LE(1,4);
   const reply=once(udp,'message',{signal:AbortSignal.timeout(2000)});udp.send(packet,s.config.udpPort,'127.0.0.1');await reply;
   await send('fe0900010100000000000a038104035d04');await delay(20);
-  ws.send(JSON.stringify({type:'selectLocation',id:'map',lat:-12.026,lon:-77.028}));await delay(40);assert.equal((await s.state()).home.lat,50.3375,'armed map changes refused');
+  ws.send(JSON.stringify({type:'selectLocation',id:'map',lat:lima.lat,lon:lima.lon}));await delay(40);assert.equal((await s.state()).home.lat,50.3375,'armed map changes refused');
   await send('fd0900000001010000000f0000000a030104037547');await delay(20);
-  ws.send(JSON.stringify({type:'selectLocation',id:'map',lat:-12.026,lon:-77.028}));const held=await waitFor('restart');assert.equal(held.home.lat,-12.026);assert.equal(held.running,false);
+  ws.send(JSON.stringify({type:'selectLocation',id:'map',lat:lima.lat,lon:lima.lon}));const held=await waitFor('restart');assert.equal(held.home.lat,lima.lat);assert.equal(held.home.lon,lima.lon);assert.equal(held.running,false);
   ws.send(JSON.stringify({type:'running',value:true}));await delay(30);assert.equal((await s.state()).running,false);
  }finally{ws?.terminate();udp.close();await s.close();}
 });
