@@ -66,7 +66,12 @@ test('save broadcasts list only, preserves pose, and reloads exact RGB/OSM offli
   await s.close();await fs.rm(f.config.terrainCacheDir,{recursive:true});await fs.rm(f.config.osm.cacheDir,{recursive:true});
   const restarted=await f.launch({mission:false});assert.equal((await message(restarted,'init')).favorites[0].id,saved.savedId);restarted.send({type:'selectLocation',id:saved.savedId});const loaded=await ready(restarted);
   assert.deepEqual(loaded.home,terrain.home);assert.equal(loaded.running,false);const init=restarted.messages.filter(m=>m.type==='init').at(-1);assert.deepEqual(init.terrain,terrain);assert.equal(init.overlay.buildings[0].id,'way/offline');assert.equal(init.overlay.roads[0].id,'way/road');assert.equal(f.requests(),0);
-  restarted.send({type:'selectLocation',id:'kyiv'});await delay(60);assert.equal((await restarted.state()).selectedLocation,saved.savedId);
+  restarted.send({type:'selectLocation',id:'kyiv'});
+  const changed=await until(async()=>{const v=await restarted.state();return v.selectedLocation==='kyiv'&&v.startTerrain.status==='ready'&&v;});
+  assert.equal(changed.running,false);assert.ok(changed.worldRevision>loaded.worldRevision);
+  const requests=f.requests();restarted.send({type:'selectLocation',id:saved.savedId});
+  const restored=await until(async()=>{const v=await restarted.state();return v.selectedLocation===saved.savedId&&v.startTerrain.status==='ready'&&v.worldRevision>changed.worldRevision&&v;});
+  assert.deepEqual(restored.home,terrain.home);assert.equal(restored.running,false);assert.equal(f.requests(),requests,'reloading the saved copy needs no OSM download');
  }finally{await f.close();}
 });
 test('incomplete, stale, invalid name and invalid removal requests return requester errors',async()=>{

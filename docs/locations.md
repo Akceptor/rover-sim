@@ -53,11 +53,17 @@ pad. The mountain presets have much steeper terrain than Kyiv/Lviv.
 
 ![Location picker and Lima terrain](locations.png)
 
-Choose the location before SITL starts. The dropdown locks after loading so an
+For launcher-owned SITL, choose the location before SITL starts. The dropdown locks after loading so an
 active autopilot cannot be moved to a different region. To change presets, stop
 the launcher and launch the picker again. If loading an asset fails, **Retry
-terrain** retries without restarting the backend. `--standalone --choose-location`
-also works for keyboard testing without SITL.
+terrain** retries without restarting the backend.
+
+`--standalone --choose-location` also works for keyboard testing without SITL.
+In standalone mode (including
+`npm run standalone`), **Stop physics** unlocks **Location**, the map picker and
+**Load location**. You can change presets, load a saved/custom location or reload
+the current location without restarting the backend. Location loading remains
+disabled while standalone physics is running.
 
 The default `npm run sim` still loads Feofaniya automatically.
 In `--mission-planner` mode, **Custom** takes its start from Mission Planner's
@@ -89,6 +95,10 @@ measured elevation range, and proves loading presets never calls the downloader.
 `npm run test:locations` uses Chrome and native SITL to select Lima through the
 dropdown and verifies its actual SITL home, timezone, collisions and narrow
 layout. It reserves HTTP 8103, UDP 9010/14568 and TCP 5794/5796.
+
+`npm run test:location-reload` uses Chrome and an offline standalone backend to
+check loading, driving/stopping, changing presets and reloading the same preset.
+It reserves HTTP 8111 and writes its screenshot under `.run/location-reload/`.
 
 `npm run test:terrain-selector` uses Chrome and native SITL to verify preset GPS
 overrides against an Australian start, restart handling for a live region

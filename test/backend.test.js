@@ -49,6 +49,26 @@ test('npm run standalone offers the location picker and a selected preset loads 
   const driving=await s.state();assert.equal(driving.running,true);assert.equal(driving.inputs.throttle,1);
  }finally{ws?.terminate();await s.close();}
 });
+test('standalone location picker can reload and change locations after physics stops',async()=>{
+ const s=await launch('standalone-picker');let ws;
+ const waitFor=async predicate=>{let state;for(let i=0;i<100;i++){state=await s.state();if(predicate(state))return state;await delay(20);}assert.fail(JSON.stringify(state));};
+ try{
+  ws=await s.socket();ws.send(JSON.stringify({type:'selectLocation',id:'kyiv'}));
+  const first=await waitFor(s=>s.startTerrain.status==='ready');
+  ws.send(JSON.stringify({type:'running',value:true}));
+  await waitFor(s=>s.running);
+  // A load request while driving must not replace the active world.
+  ws.send(JSON.stringify({type:'selectLocation',id:'lima'}));await delay(50);
+  assert.equal((await s.state()).selectedLocation,'kyiv');
+  ws.send(JSON.stringify({type:'running',value:false}));await waitFor(s=>!s.running);
+  ws.send(JSON.stringify({type:'selectLocation',id:'lima'}));
+  const next=await waitFor(s=>s.startTerrain.status==='ready'&&s.selectedLocation==='lima');
+  assert.equal(next.running,false);assert.ok(next.worldRevision>first.worldRevision);assert.equal(next.home.lat,findLocation('lima').lat);
+  ws.send(JSON.stringify({type:'selectLocation',id:'lima'}));
+  const reloaded=await waitFor(s=>s.startTerrain.status==='ready'&&s.worldRevision>next.worldRevision);
+  assert.equal(reloaded.running,false);assert.equal(reloaded.selectedLocation,'lima');
+ }finally{ws?.terminate();await s.close();}
+});
 test('Mission Planner selected start waits for disarm, loads matching terrain and keeps physics held',async()=>{
  const s=await launch('mission-planner'),udp=dgram.createSocket('udp4');let ws;
  const send=hex=>new Promise((resolve,reject)=>udp.send(Buffer.from(hex,'hex'),s.config.mavlink.port,'127.0.0.1',e=>e?reject(e):resolve()));
