@@ -9,17 +9,37 @@ import {addOsmOverlay} from '/osm-view.js';
 import {createLocationMap} from '/location-map.js';
 import {createSavedLocations} from '/saved-locations.js';
 import {createOsmSettings} from '/osm-settings.js';
+import {detectWebGLRendererName,formatQualityStatus,loadQualityPreference,resolveGraphicsProfile,saveQualityPreference} from '/graphics-quality.js';
 if(new URLSearchParams(location.search).has('camera-output'))document.documentElement.dataset.cameraOutput='true';
 const cameraVideo=new CameraVideo();
 const $=id=>document.getElementById(id),canvas=$('view'),viewport=$('viewport'),settingsDialog=$('settingsDialog');
-const renderer=new T.WebGLRenderer({canvas,antialias:true});renderer.setPixelRatio(Math.min(devicePixelRatio,2));renderer.shadowMap.enabled=true;renderer.setClearColor(0xa4c8db);
-const scene=new T.Scene();scene.fog=new T.Fog(0xa4c8db,35,95);const ambient=new T.HemisphereLight(0xcfeeff,0x3b4529,2.5);scene.add(ambient);const sun=new T.DirectionalLight(0xfff2d1,3);sun.position.set(10,25,10);sun.castShadow=true;sun.shadow.mapSize.set(2048,2048);sun.shadow.camera.left=-20;sun.shadow.camera.right=20;sun.shadow.camera.top=20;sun.shadow.camera.bottom=-20;sun.shadow.normalBias=.02;scene.add(sun);
-const scenery=createScenery(renderer);scene.add(scenery.sky);
+const renderer=new T.WebGLRenderer({canvas,antialias:true});renderer.toneMapping=T.ACESFilmicToneMapping;renderer.toneMappingExposure=1;renderer.setClearColor(0xa4c8db);
+const rendererName=detectWebGLRendererName(renderer);
+let graphicsProfile=resolveGraphicsProfile({preference:loadQualityPreference(globalThis.localStorage),rendererName,devicePixelRatio:globalThis.devicePixelRatio});
+const scene=new T.Scene();scene.fog=new T.Fog(0xa4c8db,35,95);const ambient=new T.HemisphereLight(0xcfeeff,0x3b4529,2.5);scene.add(ambient);const sun=new T.DirectionalLight(0xfff2d1,3);sun.position.set(10,25,10);sun.shadow.camera.left=-20;sun.shadow.camera.right=20;sun.shadow.camera.top=20;sun.shadow.camera.bottom=-20;sun.shadow.normalBias=.02;scene.add(sun);
+const scenery=createScenery(renderer,graphicsProfile);scene.add(scenery.sky);
 const rover=new T.Group();scene.add(rover);scene.userData.roverPosition=rover.position;
+const contactShadow=(()=>{const c=document.createElement('canvas');c.width=c.height=64;const ctx=c.getContext('2d'),g=ctx.createRadialGradient(32,32,4,32,32,30);g.addColorStop(0,'rgba(0,0,0,0.45)');g.addColorStop(1,'rgba(0,0,0,0)');ctx.fillStyle=g;ctx.fillRect(0,0,64,64);const map=new T.CanvasTexture(c);const m=new T.Mesh(new T.PlaneGeometry(1.3,1.0),new T.MeshBasicMaterial({map,transparent:true,depthWrite:false,polygonOffset:true,polygonOffsetFactor:-1}));m.rotation.x=-Math.PI/2;m.position.y=.01;rover.add(m);return m;})();
+function applyGraphicsProfile(profile){
+ graphicsProfile=profile;
+ renderer.setPixelRatio(profile.pixelRatio);
+ renderer.shadowMap.enabled=profile.shadowsEnabled;
+ sun.castShadow=profile.shadowsEnabled;
+ if(sun.shadow.mapSize.width!==profile.shadowMapSize){sun.shadow.mapSize.set(profile.shadowMapSize,profile.shadowMapSize);sun.shadow.map?.dispose();sun.shadow.map=null;}
+ contactShadow.visible=!profile.shadowsEnabled;
+ if($('graphicsQuality'))$('graphicsQuality').value=profile.preference;
+ if($('graphicsQualityStatus'))$('graphicsQualityStatus').textContent=formatQualityStatus(profile);
+}
+applyGraphicsProfile(graphicsProfile);
+$('graphicsQuality')?.addEventListener('change',e=>{
+ const preference=e.target.value;
+ saveQualityPreference(globalThis.localStorage,preference);
+ applyGraphicsProfile(resolveGraphicsProfile({preference,rendererName,devicePixelRatio:globalThis.devicePixelRatio}));
+});
 const weatherView=createWeatherView(scene,renderer,sun,ambient,scenery);const camera=new T.PerspectiveCamera(85,1,.015,150),chase=new T.PerspectiveCamera(65,1,.03,150);
 // Rendering and video capture do not own physics or MAVLink control.
 export const fpvOutput={camera,canvas,renderer,scene};
-function box(size,color,parent=scene){const m=new T.Mesh(new T.BoxGeometry(...size),new T.MeshStandardMaterial({color,roughness:.85}));m.castShadow=true;m.receiveShadow=true;parent.add(m);return m;}
+function box(size,color,parent=scene){const lambert=graphicsProfile.materialMode==='lambert',Material=lambert?T.MeshLambertMaterial:T.MeshStandardMaterial;const m=new T.Mesh(new T.BoxGeometry(...size),new Material({color,...(lambert?{}:{roughness:.85})}));m.castShadow=true;m.receiveShadow=true;parent.add(m);return m;}
 let state=null,config=null,wheels=[],ws,mode='sitl',lastReceive=0,crawler=null,locations=[],baseLocations=[],locationMode=null,mapChoice=null,vehicleRevision=null,activeVehicleId=null;
 const locationMap=document.documentElement.dataset.cameraOutput?null:createLocationMap({onPick:point=>{mapChoice=point;$('locationSelect').value='map';describeLocation();savedLocations?.selection();}});
 function notice(message){$('notice').textContent=message;$('notice').style.display='block';setTimeout(()=>$('notice').style.display='none',7000);}
@@ -43,12 +63,12 @@ function setup(m){
   crawler=createVehicle(c);rover.add(crawler.model);wheels=crawler.wheels;rover.userData.vehicleRevision=vehicleRevision;
   // Init is resent on reconnect; replace world instead of duplicating objects.
   if(scene.userData.world){const old=scene.userData.world;scene.remove(old);old.traverse(o=>{o.geometry?.dispose();if(o.material){for(const m of Array.isArray(o.material)?o.material:[o.material]){if(o.name==='real-terrain')m.map?.dispose();m.dispose();}}});}const world=new T.Group();scene.userData.world=world;scene.add(world);
-  if(m.terrain){addTerrain(world,m.terrain,renderer);scene.fog.near=70;scene.fog.far=650;scene.userData.terrain=true;fitFar();}else{scene.fog.near=35;scene.fog.far=95;scene.userData.terrain=false;fitFar();}
+  if(m.terrain){addTerrain(world,m.terrain,renderer,graphicsProfile);scene.fog.near=70;scene.fog.far=650;scene.userData.terrain=true;fitFar();}else{scene.fog.near=35;scene.fog.far=95;scene.userData.terrain=false;fitFar();}
   $('landscape').textContent=m.terrain?`${m.terrain.name} · ${(m.terrain.size-1)*m.terrain.spacing} m`:'100 × 100 m playground';
-  addOsmOverlay(world,m.overlay,m.terrain);$('osmAttribution').hidden=!m.overlay||!(m.overlay.buildings.length||m.overlay.roads.length);
+  addOsmOverlay(world,m.overlay,m.terrain,graphicsProfile);$('osmAttribution').hidden=!m.overlay||!(m.overlay.buildings.length||m.overlay.roads.length);
   const approximation=terrainApproximationWarning(m.terrain);$('terrainWarning').textContent=approximation;$('terrainWarning').hidden=!approximation;
   $('terrainAttribution').textContent=m.terrain?.attribution??'';cameraVideo.attribution=[m.terrain?.attribution,m.overlay&&(m.overlay.buildings.length||m.overlay.roads.length)?'© OpenStreetMap contributors · https://www.openstreetmap.org/copyright':null,'Weather: open-meteo.com (CC BY 4.0)'].filter(Boolean).join(' · ');
-  for(const o of m.world){const mesh=o.kind==='cone'?new T.Mesh(new T.ConeGeometry(o.size[0]/2,o.size[1],16),new T.MeshStandardMaterial({color:o.color})):box(o.size,o.color,world);if(o.kind==='cone'){world.add(mesh);mesh.castShadow=true;}mesh.position.fromArray(o.position);mesh.rotation.z=o.angle??0;if(o.kind==='tree')addTreeCrown(world,o);}
+  for(const o of m.world){const Material=graphicsProfile.materialMode==='lambert'?T.MeshLambertMaterial:T.MeshStandardMaterial;const mesh=o.kind==='cone'?new T.Mesh(new T.ConeGeometry(o.size[0]/2,o.size[1],16),new Material({color:o.color})):box(o.size,o.color,world);if(o.kind==='cone'){world.add(mesh);mesh.castShadow=true;}mesh.position.fromArray(o.position);mesh.rotation.z=o.angle??0;if(o.kind==='tree')addTreeCrown(world,o,graphicsProfile);}
   if(!m.terrain){scenery.decorate(world);
   const grid=new T.GridHelper(100,100,0x7c8a69,0x718361);grid.position.y=.002;world.add(grid);}
 }
