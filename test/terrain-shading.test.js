@@ -44,3 +44,12 @@ test('steep slopes blend toward neutral rock tint while preserving finite 0..1 l
   assert.ok(Number.isFinite(out[i])&&out[i]>=0&&out[i]<=1);
  }
 });
+
+test('landcover tint is subtle, preserves satellite variation and does not change source colours',()=>{
+ const t={...flatTerrain(),colors:Array.from({length:75},(_,i)=>100+i%70)},before=structuredClone(t);
+ const plain=computeTerrainVertexColors(t),tinted=computeTerrainVertexColors(t,()=>({color:[80,120,60]}));
+ assert.notDeepEqual(tinted,plain);assert.deepEqual(t,before);
+ for(let i=0;i<plain.length;i++)assert.ok(Math.abs(tinted[i]-plain[i])<.12);
+ assert.notEqual(tinted[0],tinted[3],'imagery variation remains');
+ assert.deepEqual(computeTerrainVertexColors(t,()=>null),plain);
+});

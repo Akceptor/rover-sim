@@ -18,7 +18,7 @@ const ROCK_TINT=[srgbToLinear(0x7a/255),srgbToLinear(0x78/255),srgbToLinear(0x70
  * Compute linear RGB vertex colors with baked concavity ambient occlusion
  * and subtle slope-based rock tinting for a heightmap terrain.
  */
-export function computeTerrainVertexColors(terrain){
+export function computeTerrainVertexColors(terrain,landcoverAt=null){
  const n=terrain.size,spacing=terrain.spacing,heights=terrain.heights,src=terrain.colors;
  const colors=new Float32Array(n*n*3);
  const at=(x,z)=>heights[clamp(x,0,n-1)*n+clamp(z,0,n-1)];
@@ -49,6 +49,11 @@ export function computeTerrainVertexColors(terrain){
     [r,g,b]=DEFAULT_BASE;
    }
 
+   const half=(n-1)*spacing/2,cover=landcoverAt?.(x*spacing-half,z*spacing-half);
+   if(cover?.color){
+    const tint=cover.color.map(v=>srgbToLinear(v/255));
+    r=r*.88+tint[0]*.12;g=g*.88+tint[1]*.12;b=b*.88+tint[2]*.12;
+   }
    r=(r+(ROCK_TINT[0]-r)*rockMix)*ao;
    g=(g+(ROCK_TINT[1]-g)*rockMix)*ao;
    b=(b+(ROCK_TINT[2]-b)*rockMix)*ao;

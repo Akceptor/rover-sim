@@ -63,9 +63,9 @@ export function addWorldObjects(world,objects,profile=null){
   // All items in a bucket share kind+color; check if they also share geometry.
   const sameSize=items.every(o=>o.size[0]===items[0].size[0]&&o.size[1]===items[0].size[1]&&o.size[2]===items[0].size[2]);
 
-  if(sameSize&&items.length>=2){
+  if((sameSize||kind==='tree')&&items.length>=2){
    // Instance them all.
-   const geom=getGeometry(kind,items[0]);
+   const geom=getGeometry(kind,kind==='tree'?{size:[1,1,1]}:items[0]);
    const mat=new Material(matOpts(color));
    const mesh=new T.InstancedMesh(geom,mat,items.length);
    mesh.name=`instanced-${kind}`;
@@ -76,7 +76,7 @@ export function addWorldObjects(world,objects,profile=null){
     _pos.fromArray(o.position);
     euler.set(0,0,o.angle??0);
     _quat.setFromEuler(euler);
-    _scale.set(1,1,1);
+    if(kind==='tree')_scale.fromArray(o.size);else _scale.set(1,1,1);
     _mat.compose(_pos,_quat,_scale);
     mesh.setMatrixAt(i,_mat);
    }

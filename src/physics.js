@@ -147,7 +147,7 @@ export class Physics {
         const available=load*t.grip*material.grip,magnitude=Math.hypot(longitudinal,sideways),ratio=magnitude>available?available/(magnitude||1):1;
         longitudinal*=ratio;sideways*=ratio;
         this.body.addForceAtPoint(add(scale(normal,load),add(scale(tangent,longitudinal),scale(lateral,sideways))),at,true);
-        track.contacts.push({x,y:-hit.timeOfImpact,z:track.z,contact:true,normalForce:load,longitudinalForce:longitudinal,lateralForce:sideways,ground:this.terrainCollider?.handle===hit.collider.handle,position:at,surface:material.id});
+        track.contacts.push({x,y:-hit.timeOfImpact,z:track.z,contact:true,normalForce:load,longitudinalForce:longitudinal,lateralForce:sideways,ground:this.terrainCollider?.handle===hit.collider.handle,position:at,surface:material.id,roadOffset:material.road?.035:0});
         measuredSpeed+=longitudinalSpeed;hits++;
       }
       track.speed=hits?measuredSpeed/hits:localSpeed;track.distance+=track.speed*h;track.rotation=track.distance/g.radius;
@@ -161,9 +161,9 @@ export class Physics {
     const groundContacts=[];
     if(this.car&&this.terrainCollider)for(const group of this.wheelGroups){
       const i=[group[Math.floor(group.length/2)],...group].find(j=>this.car.wheelIsInContact(j)&&(this.car.wheelSuspensionForce(j)??0)>0&&this.car.wheelGroundObject(j)?.handle===this.terrainCollider.handle);
-      if(i!==undefined){const at=this.car.wheelContactPoint(i);if(at)groundContacts.push({position:at,surface:this.roadAt(at.x,at.z).id});}
+      if(i!==undefined){const at=this.car.wheelContactPoint(i);if(at){const material=this.roadAt(at.x,at.z);groundContacts.push({position:at,surface:material.id,offset:material.road?.035:0});}}
     }
-    for(const track of this.trackStates)for(const contact of track.contacts)if(contact.ground&&contact.normalForce>0)groundContacts.push({position:contact.position,surface:contact.surface});
+    for(const track of this.trackStates)for(const contact of track.contacts)if(contact.ground&&contact.normalForce>0)groundContacts.push({position:contact.position,surface:contact.surface,offset:contact.roadOffset});
     return {position,rotation,velocity,speed:velocity.x*f.x+velocity.y*f.y+velocity.z*f.z,heading:(Math.atan2(f.z,f.x)*180/Math.PI+360)%360,inputs:this.inputs,driveDemand:[...this.driveDemand],wheels,groundContacts,tracks:this.trackStates.map(t=>({...t,contacts:t.contacts.map(c=>({...c}))})),sensor:{timestamp:this.time,imu:{gyro:s.gyro,accel_body:s.accel_body},position:ned({x:position.x,y:position.y-this.spawnHeight(),z:position.z}),velocity:ned(this.sensorVelocity),quaternion:s.quaternion}};
   }
   free(){this.world.free();}
