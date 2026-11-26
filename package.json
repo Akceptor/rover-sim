@@ -15,6 +15,7 @@
     "test:mission-planner-setup": "node scripts/mission-planner-setup-smoke.mjs",
     "test:terrain-retry": "node scripts/terrain-retry-smoke.mjs",
     "test:position": "node scripts/position-smoke.mjs",
+    "test:vehicle-effects": "node scripts/vehicle-effects-smoke.mjs",
     "test:crawler": "node scripts/crawler-smoke.mjs",
     "test:weather": "node scripts/weather-smoke.mjs",
     "test:saved-locations": "node scripts/saved-locations-smoke.mjs",

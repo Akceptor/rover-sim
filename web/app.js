@@ -1,11 +1,12 @@
 import * as T from '/three.js';
-import {terrainApproximationWarning} from '/terrain.js';
+import {terrainHeight,terrainApproximationWarning} from '/terrain.js';
 import {CameraVideo} from '/video.js';
 import {createVehicle} from '/assets/vehicle.js';
 import {createWeatherView} from '/weather-view.js';
 import {createScenery} from '/scenery.js';
 import {addTerrain} from '/terrain-view.js';
 import {addWorldObjects} from '/instanced-scenery.js';
+import {createVehicleEffects} from '/vehicle-effects.js';
 import {addOsmOverlay} from '/osm-view.js';
 import {createLocationMap} from '/location-map.js';
 import {createSavedLocations} from '/saved-locations.js';
@@ -41,6 +42,7 @@ const weatherView=createWeatherView(scene,renderer,sun,ambient,scenery);const ca
 // Rendering and video capture do not own physics or MAVLink control.
 export const fpvOutput={camera,canvas,renderer,scene};
 function box(size,color,parent=scene){const lambert=graphicsProfile.materialMode==='lambert',Material=lambert?T.MeshLambertMaterial:T.MeshStandardMaterial;const m=new T.Mesh(new T.BoxGeometry(...size),new Material({color,...(lambert?{}:{roughness:.85})}));m.castShadow=true;m.receiveShadow=true;parent.add(m);return m;}
+let vehicleEffects=null;
 let state=null,config=null,wheels=[],ws,mode='sitl',lastReceive=0,crawler=null,locations=[],baseLocations=[],locationMode=null,mapChoice=null,vehicleRevision=null,activeVehicleId=null;
 const locationMap=document.documentElement.dataset.cameraOutput?null:createLocationMap({onPick:point=>{mapChoice=point;$('locationSelect').value='map';describeLocation();savedLocations?.selection();}});
 function notice(message){$('notice').textContent=message;$('notice').style.display='block';setTimeout(()=>$('notice').style.display='none',7000);}
@@ -63,8 +65,10 @@ function setup(m){
   if(crawler){rover.remove(crawler.model);crawler.dispose();}
   crawler=createVehicle(c);rover.add(crawler.model);wheels=crawler.wheels;rover.userData.vehicleRevision=vehicleRevision;
   // Init is resent on reconnect; replace world instead of duplicating objects.
+  vehicleEffects?.dispose();
   if(scene.userData.world){const old=scene.userData.world;scene.remove(old);old.traverse(o=>{o.geometry?.dispose();if(o.material){for(const m of Array.isArray(o.material)?o.material:[o.material]){if(o.name==='real-terrain')m.map?.dispose();m.dispose();}}});}const world=new T.Group();scene.userData.world=world;scene.add(world);
   if(m.terrain){addTerrain(world,m.terrain,renderer,graphicsProfile);scene.fog.near=70;scene.fog.far=650;scene.userData.terrain=true;fitFar();}else{scene.fog.near=35;scene.fog.far=95;scene.userData.terrain=false;fitFar();}
+  vehicleEffects=createVehicleEffects(world,{track:c.track,groundHeight:m.terrain?(x,z)=>terrainHeight(m.terrain,x,z):()=>0});
   $('landscape').textContent=m.terrain?`${m.terrain.name} · ${(m.terrain.size-1)*m.terrain.spacing} m`:'100 × 100 m playground';
   addOsmOverlay(world,m.overlay,m.terrain,graphicsProfile);$('osmAttribution').hidden=!m.overlay||!(m.overlay.buildings.length||m.overlay.roads.length);
   const approximation=terrainApproximationWarning(m.terrain);$('terrainWarning').textContent=approximation;$('terrainWarning').hidden=!approximation;
@@ -131,8 +135,11 @@ addEventListener('keydown',e=>{if(mode!=='standalone'||settingsDialog.open||docu
 function release(){keys.clear();send({type:'keys',steering:0,throttle:0});}addEventListener('blur',release);viewport.addEventListener('blur',release);document.addEventListener('visibilitychange',()=>{if(document.hidden)release();});
 setInterval(()=>{if(mode==='standalone')send({type:'keys',throttle:Number(keys.has('w')||keys.has('arrowup'))-Number(keys.has('s')||keys.has('arrowdown')),steering:Number(keys.has('d')||keys.has('arrowright'))-Number(keys.has('a')||keys.has('arrowleft'))});},80);
 const mount=new T.Vector3(),target=new T.Vector3(),chasePosition=new T.Vector3();let previousTime=0,previousWall=0,ratio=0;
-function render(){requestAnimationFrame(render);const width=viewport.clientWidth,height=viewport.clientHeight;if(canvas.width!==Math.floor(width*renderer.getPixelRatio())||canvas.height!==Math.floor(height*renderer.getPixelRatio())){renderer.setSize(width,height,false);for(const c of [camera,chase]){c.aspect=width/height;c.updateProjectionMatrix();}}
+let effectsTime=performance.now();
+function render(){requestAnimationFrame(render);const now=performance.now(),effectsDt=(now-effectsTime)/1000;effectsTime=now;const width=viewport.clientWidth,height=viewport.clientHeight;if(canvas.width!==Math.floor(width*renderer.getPixelRatio())||canvas.height!==Math.floor(height*renderer.getPixelRatio())){renderer.setSize(width,height,false);for(const c of [camera,chase]){c.aspect=width/height;c.updateProjectionMatrix();}}
   if(state&&config){const s=state,v=config.vehicle;rover.position.copy(s.position);rover.quaternion.copy(s.rotation);crawler.update(s);
+    const grounded=s.wheels?.some(w=>w.contact)||s.tracks?.some(t=>t.contacts.some(c=>c.contact));
+    vehicleEffects?.update(rover.position,rover.quaternion,s.speed,effectsDt,grounded&&now-lastReceive<500);
     mount.set(v.cameraMount?.x||0,v.cameraMount?.y||0,v.cameraMount?.z||0).applyQuaternion(rover.quaternion).add(rover.position);camera.position.copy(mount);const pan=(s.camera?.panDeg??0)*Math.PI/180,tilt=(s.camera?.tiltDeg??0)*Math.PI/180;target.set(Math.cos(tilt)*Math.cos(pan),Math.sin(tilt),Math.cos(tilt)*Math.sin(pan)).applyQuaternion(rover.quaternion).add(mount);camera.up.set(0,1,0).applyQuaternion(rover.quaternion);camera.lookAt(target);
     chasePosition.set(-Math.max(1.8,config.vehicle.length*3),Math.max(1.05,config.vehicle.length*1.5),Math.max(.5,config.vehicle.width*1.5)).applyQuaternion(rover.quaternion).add(rover.position);chase.position.lerp(chasePosition,.12);chase.lookAt(rover.position.clone().add(new T.Vector3(0,.1,0)));
     $('speed').textContent=s.speed.toFixed(2);$('heading').textContent=`${Math.round(s.heading).toString().padStart(3,'0')}°`;$('time').textContent=s.simTime.toFixed(1);$('rate').textContent=s.rate;
