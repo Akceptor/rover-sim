@@ -82,7 +82,19 @@ restores an empty flat world. See [real terrain](terrain.md) for data sources,
 other locations, attribution and mission-coordinate changes.
 
 `--standalone` starts the backend and camera for keyboard driving without SITL
-and does not require a local launcher config. `--no-video` skips the browser.
+and does not require a local launcher config. `npm run standalone` uses the launcher
+with `--standalone --choose-location --no-video`: it opens the visible HUD as soon
+as the backend is ready, before waiting for location selection, and skips the
+background camera stream. `--no-video` skips only that background camera, so the
+visible HUD can still open.
+
+Standalone launch opens the HUD automatically even when output is redirected.
+Use `--no-open` to suppress it, or set `"openBrowser": false` in the launcher
+config. `--open` overrides that config setting; `--no-open` takes precedence if
+both flags are supplied. For other launch modes, the HUD opens by default only
+in an interactive terminal outside CI. `"openBrowser": true` or `--open` enables
+it for those modes too. A browser opener failure reports the URL for manual use
+and leaves the simulator available.
 `--sitl` and `--config` temporarily override executable and backend paths.
 `--extra-params` adds a defaults file; existing EEPROM values still take precedence.
 `--mavlink-port` changes the base TCP port (companion uses base + 2).
@@ -95,7 +107,7 @@ resolve against the current directory. Camera options are `--camera fpv|chase`,
 ```sh
 npm test
 npm run test:launcher
-# Backend/SITL only, without a browser:
+# Backend/SITL only, without the background camera:
 npm run test:launcher -- --no-video
 # Select a different native executable:
 npm run test:launcher -- --sitl /path/to/ardurover

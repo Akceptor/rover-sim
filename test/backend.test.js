@@ -36,7 +36,7 @@ test('startup dropdown loads a preset before SITL connects and keeps it locked a
  }finally{ws?.terminate();unexpectedSITL.close();await s.close();}
 });
 test('npm run standalone offers the location picker and a selected preset loads and drives',async()=>{
- assert.match(JSON.parse(await fs.readFile(new URL('../package.json',import.meta.url))).scripts.standalone,/--standalone.*--location-picker/);
+ assert.match(JSON.parse(await fs.readFile(new URL('../package.json',import.meta.url))).scripts.standalone,/--standalone.*--choose-location/);
  const s=await launch('standalone-picker');let ws;
  try{
   const initial=await s.state();assert.equal(initial.mode,'standalone');assert.equal(initial.startTerrain.status,'selecting');assert.equal(initial.running,false);
