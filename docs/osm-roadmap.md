@@ -21,7 +21,7 @@ stays unchanged, and road grading remains last.
 | 2 | Mapped vegetation and land cover | Merged | [#11](https://github.com/Akceptor/rover-sim/pull/11) |
 | 3 | Mapped barriers and obstacles | Merged | [#12](https://github.com/Akceptor/rover-sim/pull/12) |
 | 4 | Richer building geometry and materials | Queued | Not opened |
-| 5 | Water features and crossing hazards | PR open | [#14](https://github.com/Akceptor/rover-sim/pull/14) |
+| 5 | Water features and crossing hazards | Merged | [#14](https://github.com/Akceptor/rover-sim/pull/14) |
 | 6 | Road corridor grading | Queued | Not opened |
 
 Use `Queued`, `In progress`, `PR open`, `Merged`, or `Paused` for status. Record
@@ -246,15 +246,15 @@ reapply deformation; saved locations reproduce the same world offline. Run
 
 ## Resume checkpoint
 
-- Last completed merged phase: phase 3, PR [#12](https://github.com/Akceptor/rover-sim/pull/12),
-  merge commit `63a1f44e4b4c54e7cf5f3fff3e1dc5d309098263` (2026-11-26).
+- Last completed merged phase: phase 5, PR [#14](https://github.com/Akceptor/rover-sim/pull/14),
+  merge commit `04f4afd76e008d7728b2ed9417a6863a0099b95d` (2026-11-27).
 - Bundled preset maintenance: all five OSM snapshots refreshed on 2026-11-27,
   using the current importer for road tags, land cover, mapped trees and barriers.
   Source database timestamp: `2026-11-26T21:21:01Z`. Terrain/imagery remain tracked
   and complete; saved favourites remain unchanged.
-- Active feature phase: phase 5 (water), implemented and verified on `feat/osm-water`
-  at `.worktrees/osm-water`. User requested water before phase 4 buildings.
-  PR: [#14](https://github.com/Akceptor/rover-sim/pull/14), implementation `9397baf`.
+- Active feature phase: none; water phase 5 is merged. Phase 4 buildings is next.
+  Current branch: `main`; water worktree retained at `.worktrees/osm-water`.
+  User requested water before buildings; implementation commit `9397baf`.
 - User-selected behavior: deep/unknown water sinks the rover, replaces actual
   camera/video capture with snow and disables propulsion until Reset vehicle
   or a new world/vehicle. SITL reset safeguards remain in place.
@@ -262,6 +262,8 @@ reapply deformation; saved locations reproduce the same world offline. Run
 - Design/plan: `docs/superpowers/specs/2026-11-27-osm-water-design.md` and
   `docs/superpowers/plans/2026-11-27-osm-water.md`.
 - Validation (2026-11-27): `npm test` — 293 passed, one Windows-only skip;
+  after merging both #14 and #15, the combined `main` suite passed with 304
+  tests passed, one Windows-only skip and zero failures.
   `npm run test:water`, `npm run test:osm`, `npm run test:terrain` and
   `npm run test:saved-locations` passed. Water tests cover real wheeled/tracked
   sinking, multi-ray and unsupported/roof exclusions, shallow resistance,
@@ -283,11 +285,12 @@ reapply deformation; saved locations reproduce the same world offline. Run
   `fix/standalone-browser` at `.worktrees/standalone-browser`, commit `beec2b6`,
   fixes npm standalone and opens the HUD before picker wait. Its independent
   full suite passed (273 passed, one platform skip); review found no important issues.
-  PR: [#15](https://github.com/Akceptor/rover-sim/pull/15).
-- Next action: review the water feature #14 and standalone startup #15 PRs.
-  Do not mark phase 5 merged before its actual PR merge. Phase 4 buildings remains
-  queued and phase 6 grading last.
-- Blocking decisions: none; new merges require authorization.
+  PR: [#15](https://github.com/Akceptor/rover-sim/pull/15), merged at
+  `ed409cf1eeded0572c3de889be4ea7542879ed9d` (2026-11-27).
+- Next action: start phase 4 buildings from updated `main` in its own branch/PR.
+  Phase 6 grading remains last.
+- Blocking decisions: none. Merges of #14 and #15 were authorized; new merges
+  require authorization.
 
 To resume in a new session: **“Continue the OSM roadmap in `docs/osm-roadmap.md`
 from its checkpoint, one feature PR at a time. Bridges remain excluded.”**
