@@ -22,6 +22,7 @@
     "test:saved-locations": "node scripts/saved-locations-smoke.mjs",
     "test:map": "node scripts/map-smoke.mjs",
     "test:map-startup": "node scripts/map-startup-smoke.mjs",
+    "test:water": "node scripts/water-smoke.mjs",
     "test:osm": "node scripts/osm-smoke.mjs",
     "test:landcover": "node scripts/landcover-smoke.mjs",
     "test:barriers": "node scripts/barriers-smoke.mjs",

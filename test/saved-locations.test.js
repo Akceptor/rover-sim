@@ -20,7 +20,7 @@ test('round trip snapshots all data, survives restart and permits multiple names
  const summary=await pending;assert.match(summary.id,/^saved:[0-9a-f-]{36}$/);assert.equal(summary.name,'My place');assert.equal(summary.favorite,true);assert.equal(summary.description,'Available offline');assert.equal(summary.lat,0);assert.equal(summary.lon,0);assert.equal(summary.reliefM,0);assert.equal(summary.timeZone,'Europe/Kyiv');
  const restarted=new SavedLocations({directory}),saved=await restarted.read(summary.id);
  assert.deepEqual(saved.terrain,expected.terrain);assert.deepEqual(saved.overlay,expected.overlay);
- assert.deepEqual(saved.manifest,{version:1,id:summary.id,name:'My place',createdAt:saved.manifest.createdAt,home:expected.terrain.home,size:33,spacing:5,timeZone:'Europe/Kyiv',defaultHeight:9,attribution:saved.manifest.attribution});assert.ok(Number.isFinite(Date.parse(saved.manifest.createdAt)));
+ assert.deepEqual(saved.manifest,{version:1,id:summary.id,name:'My place',createdAt:saved.manifest.createdAt,home:expected.terrain.home,size:33,spacing:5,timeZone:'Europe/Kyiv',defaultHeight:9,waterSettings:{maxCrossingDepth:.2},attribution:saved.manifest.attribution});assert.ok(Number.isFinite(Date.parse(saved.manifest.createdAt)));
  assert.deepEqual(saved.manifest.attribution.osm,{text:'© OpenStreetMap contributors',license:'ODbL-1.0',url:'https://www.openstreetmap.org/copyright'});
  const second=await store.save(input({name:'Second name'}));assert.notEqual(second.id,summary.id);assert.equal((await restarted.list()).length,2);
 });

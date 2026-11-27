@@ -8,14 +8,17 @@ import {overlayGeometry} from './osm.js';
 import {applyLiveFields} from './profile-fields.js';
 import {createRoadIndex} from './road-index.js';
 import {roadMaterials} from './road-materials.js';
+import {createWaterIndex,normalizeWaterSettings} from './water.js';
 let init;
 export class Physics {
-  static async create(config,obstacles=true,terrain=null,overlay=null,geometry=null){if(terrain)validateTerrain(terrain);init??=R.init();await init;return new Physics(config,obstacles,terrain,overlay,geometry);}
-  constructor(c,obstacles,terrain,overlay,geometry) {
+  static async create(config,obstacles=true,terrain=null,overlay=null,geometry=null,waterSettings){if(terrain)validateTerrain(terrain);init??=R.init();await init;return new Physics(config,obstacles,terrain,overlay,geometry,waterSettings);}
+  constructor(c,obstacles,terrain,overlay,geometry,waterSettings) {
     c=resolveVehicle(c);this.c=c;this.world=new R.World({x:0,y:-9.80665,z:0});
     this.roadAt=createRoadIndex(overlay,terrain);
+    geometry??=overlay?overlayGeometry(overlay,terrain):null;
+    this.waterAt=createWaterIndex(geometry?.water,terrain);this.waterSettings=normalizeWaterSettings(waterSettings);this.waterFailure=null;this.waterEncounter=null;
     if(terrain){const {vertices,indices}=terrainMesh(terrain);this.terrainCollider=this.world.createCollider(R.ColliderDesc.trimesh(vertices,indices).setFriction(.9));}
-    for(const o of (terrain?(obstacles?terrainObjects(terrain,overlay):[]):(obstacles?playground:playground.slice(0,1)))){const [x,y,z]=o.position;const a=o.angle??0;const body=this.world.createRigidBody(R.RigidBodyDesc.fixed().setTranslation(x,y,z).setRotation({x:0,y:0,z:Math.sin(a/2),w:Math.cos(a/2)}));const [sx,sy,sz]=o.size;this.world.createCollider((o.kind==='cone'?R.ColliderDesc.cone(sy/2,sx/2):R.ColliderDesc.cuboid(sx/2,sy/2,sz/2)).setFriction(.9),body);}
+    for(const o of (terrain?(obstacles?terrainObjects(terrain,overlay,geometry?.water):[]):(obstacles?playground:playground.slice(0,1)))){const [x,y,z]=o.position;const a=o.angle??0;const body=this.world.createRigidBody(R.RigidBodyDesc.fixed().setTranslation(x,y,z).setRotation({x:0,y:0,z:Math.sin(a/2),w:Math.cos(a/2)}));const [sx,sy,sz]=o.size;this.world.createCollider((o.kind==='cone'?R.ColliderDesc.cone(sy/2,sx/2):R.ColliderDesc.cuboid(sx/2,sy/2,sz/2)).setFriction(.9),body);}
     if(overlay)for(const building of (geometry??overlayGeometry(overlay,terrain)).buildings)for(const prism of building.prisms){
       const shape=R.ColliderDesc.convexHull(new Float32Array(prism));
       if(!shape)throw Error(`Invalid building collider: ${building.id}`);
@@ -58,14 +61,35 @@ export class Physics {
     this.body.recomputeMassPropertiesFromColliders();
   }
   tuneWheel(i,n){const t=this.c.suspensionTuning;this.car.setWheelSuspensionStiffness(i,t.stiffness/n);this.car.setWheelSuspensionCompression(i,t.compression/n);this.car.setWheelSuspensionRelaxation(i,t.relaxation/n);this.car.setWheelMaxSuspensionTravel(i,t.travel);this.car.setWheelMaxSuspensionForce(i,t.maxForce/n);this.car.setWheelFrictionSlip(i,t.grip);}
-  contactMaterial(at,collider){return at&&this.terrainCollider&&collider?.handle===this.terrainCollider.handle?this.roadAt(at.x,at.z):roadMaterials.ground;}
+  contactMaterial(at,collider){
+    if(!at||!this.terrainCollider||collider?.handle!==this.terrainCollider.handle)return roadMaterials.ground;
+    const water=this.waterAt(at.x,at.z);
+    if(water&&water.depth!==0&&at.y<=water.surfaceY+.02){
+      this.waterEncounter=water;
+      if(water.depth===null||water.depth>this.waterSettings.maxCrossingDepth){
+        this.waterFailure??={...water,state:'sinking',controlsDisabled:true,reason:water.depth===null?'Unknown water depth':'Deep water'};
+      }
+      return {...roadMaterials.water,offset:Math.max(0,water.surfaceY-at.y)};
+    }
+    return this.roadAt(at.x,at.z);
+  }
+  stepSinking(h){
+    this.inputs={throttle:0,steering:0,left:0,right:0};this.driveDemand.fill(0);
+    this.body.resetForces(true);this.body.resetTorques(true);this.body.setGravityScale(0,true);
+    for(let i=0;i<this.body.numColliders();i++)this.body.collider(i).setSensor(true);
+    const y=this.body.translation().y,target=Math.min(this.waterFailure.surfaceY-2,y);
+    this.body.setAngvel({x:0,y:0,z:0},true);this.body.setLinvel({x:0,y:y>target?-Math.min(.4,(y-target)/h):0,z:0},true);
+    this.world.step();
+    if(this.body.translation().y<=target+1e-5){const p=this.body.translation();this.body.setTranslation({x:p.x,y:target,z:p.z},true);this.body.setLinvel({x:0,y:0,z:0},true);this.waterFailure.state='submerged';}
+    for(const track of this.trackStates){track.contacts=[];track.speed=0;}
+  }
   applyTuning(v){
     applyLiveFields(this.c,v);
     for(const group of this.wheelGroups)for(const i of group)this.tuneWheel(i,group.length);
     this.applyMass();
   }
   spawnHeight(){return (this.c.drivetrain==='tracked'?this.c.trackGeometry.radius:this.c.wheelRadius)+this.c.suspension;}
-  reset(){this.body.setTranslation({x:0,y:this.spawnHeight(),z:0},true);this.body.setRotation({x:0,y:0,z:0,w:1},true);this.body.setLinvel({x:0,y:0,z:0},true);this.body.setAngvel({x:0,y:0,z:0},true);this.body.resetForces(true);this.body.resetTorques(true);this.acc={x:0,y:0,z:0};this.sensorVelocity={x:0,y:0,z:0};this.time=0;this.steerAngle=0;this.driveDemand.fill(0);this.inputs={throttle:0,steering:0,left:0,right:0};for(const t of this.trackStates){t.distance=0;t.rotation=0;t.speed=0;t.contacts=[];}}
+  reset(){this.waterFailure=null;this.waterEncounter=null;this.body.setGravityScale(1,true);for(let i=0;i<this.body.numColliders();i++)this.body.collider(i).setSensor(false);this.body.setTranslation({x:0,y:this.spawnHeight(),z:0},true);this.body.setRotation({x:0,y:0,z:0,w:1},true);this.body.setLinvel({x:0,y:0,z:0},true);this.body.setAngvel({x:0,y:0,z:0},true);this.body.resetForces(true);this.body.resetTorques(true);this.acc={x:0,y:0,z:0};this.sensorVelocity={x:0,y:0,z:0};this.time=0;this.steerAngle=0;this.driveDemand.fill(0);this.inputs={throttle:0,steering:0,left:0,right:0};for(const t of this.trackStates){t.distance=0;t.rotation=0;t.speed=0;t.contacts=[];}}
   step(dt,throttle,steering,tracks){
     if(!Number.isFinite(dt)||dt<=0||dt>.1)throw Error('invalid physics timestep');
     const start=this.body.translation(),oldVelocity=this.sensorVelocity;
@@ -74,8 +98,9 @@ export class Physics {
     this.inputs={throttle,steering,...mixed};const sub=Math.ceil(dt/.005),h=dt/sub;
     for(let k=0;k<sub;k++){
       this.world.timestep=h;
-      if(this.car)this.stepWheels(h,throttle,steering);else this.stepTracks(h,mixed);
-      this.world.step();this.body.resetForces(true);this.body.resetTorques(true);this.time+=h;
+      this.waterEncounter=null;
+      if(!this.waterFailure){if(this.car)this.stepWheels(h,throttle,steering);else this.stepTracks(h,mixed);}
+      if(this.waterFailure)this.stepSinking(h);else this.world.step();this.body.resetForces(true);this.body.resetTorques(true);this.time+=h;
     }
     const end=this.body.translation();
     // Pose differences keep GPS and IMU consistent despite split-impulse support.
@@ -89,7 +114,12 @@ export class Physics {
     const com=this.body.worldCom(),m=this.body.mass(),nc=this.wheelGroups.flat().filter(i=>this.car.wheelIsInContact(i)).length;
     const L=c.wheelbase,T=c.track,target=-steering*c.maxSteer,d=this.steerAngle=this.steerAngle+clamp(target-this.steerAngle,-c.steerRate*h,c.steerRate*h);
     const loads=this.wheelGroups.map(group=>group.map(i=>this.car.wheelIsInContact(i)?Math.max(0,this.car.wheelSuspensionForce(i)??0):0));
-    const materials=Array.from({length:this.car.numWheels()},(_,i)=>this.contactMaterial(this.car.wheelContactPoint(i),this.car.wheelGroundObject(i)));
+    const origin=this.body.translation(),reach=Math.hypot(c.length,c.width,c.height)+c.suspension+c.wheelRadius+t.travel;
+    const materials=Array.from({length:this.car.numWheels()},(_,i)=>{
+      const at=this.car.wheelContactPoint(i);
+      return this.car.wheelIsInContact(i)&&(this.car.wheelSuspensionForce(i)??0)>0&&at&&Math.hypot(at.x-origin.x,at.y-origin.y,at.z-origin.z)<reach?this.contactMaterial(at,this.car.wheelGroundObject(i)):roadMaterials.ground;
+    });
+    if(this.waterFailure)return;
     const budget=loads.map((l,g)=>l.reduce((sum,load,j)=>sum+load*t.grip*materials[this.wheelGroups[g][j]].grip,0)),total=drive.value*c.engineForce*taper;
     const wheelForce=[...axleForces(total*c.torqueSplit,[budget[0],budget[1]],c.diff.front),...axleForces(total*(1-c.torqueSplit),[budget[2],budget[3]],c.diff.rear)];
     for(let g=0;g<4;g++){
@@ -135,11 +165,12 @@ export class Physics {
         const hit=this.world.castRayAndGetNormal(ray,rest+t.travel,true,R.QueryFilterFlags.EXCLUDE_DYNAMIC,undefined,undefined,this.body);
         if(!hit){track.contacts.push({x,y:-rest,z:track.z,contact:false,normalForce:0});continue;}
         const at=ray.pointAt(hit.timeOfImpact),normal=hit.normal,velocity=this.body.velocityAtPoint(at);
-        const material=this.contactMaterial(at,hit.collider);
         const compression=rest-hit.timeOfImpact;
         // No attractive springs, including while the footprint hangs over an edge.
         const damping=dot(velocity,normal)<0?t.compression:t.relaxation;
         const load=clamp((t.stiffness*compression-damping*dot(velocity,normal))*c.mass/N,0,t.maxForce);
+        const material=load>0?this.contactMaterial(at,hit.collider):roadMaterials.ground;
+        if(this.waterFailure)return;
         const tangent=normalize(add(forward,scale(normal,-dot(forward,normal)))),lateral=cross(tangent,normal);
         const longitudinalSpeed=dot(velocity,tangent),lateralSpeed=dot(velocity,lateral);
         const engine=drive.value*c.engineForce/(2*g.samples)*Math.max(0,1-Math.max(0,longitudinalSpeed*Math.sign(drive.value))/c.maxSpeed);
@@ -151,7 +182,7 @@ export class Physics {
         const available=load*t.grip*material.grip,magnitude=Math.hypot(longitudinal,sideways),ratio=magnitude>available?available/(magnitude||1):1;
         longitudinal*=ratio;sideways*=ratio;
         this.body.addForceAtPoint(add(scale(normal,load),add(scale(tangent,longitudinal),scale(lateral,sideways))),at,true);
-        track.contacts.push({x,y:-hit.timeOfImpact,z:track.z,contact:true,normalForce:load,longitudinalForce:longitudinal,lateralForce:sideways,ground:this.terrainCollider?.handle===hit.collider.handle,position:at,surface:material.id,roadOffset:material.road?.035:0});
+        track.contacts.push({x,y:-hit.timeOfImpact,z:track.z,contact:true,normalForce:load,longitudinalForce:longitudinal,lateralForce:sideways,ground:this.terrainCollider?.handle===hit.collider.handle,position:at,surface:material.id,roadOffset:material.offset??(material.road?.035:0)});
         measuredSpeed+=longitudinalSpeed;hits++;
       }
       track.speed=hits?measuredSpeed/hits:localSpeed;track.distance+=track.speed*h;track.rotation=track.distance/g.radius;
@@ -163,12 +194,12 @@ export class Physics {
     const s=sensors(rotation,this.body.angvel(),this.acc);const f=rotate(rotation,{x:1,y:0,z:0});
     const wheels=this.wheelPositions.map((p,g)=>{const group=this.wheelGroups[g],i=group[Math.floor(group.length/2)];return {...p,y:-(this.car.wheelSuspensionLength(i)??this.c.suspension),rotation:this.car.wheelRotation(i)??0,steering:this.car.wheelSteering(i)??0,contact:group.some(j=>this.car.wheelIsInContact(j)),normalForce:group.reduce((sum,j)=>sum+(this.car.wheelSuspensionForce(j)??0),0)};});
     const groundContacts=[];
-    if(this.car&&this.terrainCollider)for(const group of this.wheelGroups){
+    if(!this.waterFailure&&this.car&&this.terrainCollider)for(const group of this.wheelGroups){
       const i=[group[Math.floor(group.length/2)],...group].find(j=>this.car.wheelIsInContact(j)&&(this.car.wheelSuspensionForce(j)??0)>0&&this.car.wheelGroundObject(j)?.handle===this.terrainCollider.handle);
-      if(i!==undefined){const at=this.car.wheelContactPoint(i);if(at){const material=this.roadAt(at.x,at.z);groundContacts.push({position:at,surface:material.id,offset:material.road?.035:0});}}
+      if(i!==undefined){const at=this.car.wheelContactPoint(i);if(at){const water=this.waterAt(at.x,at.z),wet=water&&water.depth!==0&&at.y<=water.surfaceY+.02,material=wet?roadMaterials.water:this.roadAt(at.x,at.z);groundContacts.push({position:at,surface:material.id,offset:wet?Math.max(0,water.surfaceY-at.y):(material.road?.035:0)});}}
     }
     for(const track of this.trackStates)for(const contact of track.contacts)if(contact.ground&&contact.normalForce>0)groundContacts.push({position:contact.position,surface:contact.surface,offset:contact.roadOffset});
-    return {position,rotation,velocity,speed:velocity.x*f.x+velocity.y*f.y+velocity.z*f.z,heading:(Math.atan2(f.z,f.x)*180/Math.PI+360)%360,inputs:this.inputs,driveDemand:[...this.driveDemand],wheels,groundContacts,tracks:this.trackStates.map(t=>({...t,contacts:t.contacts.map(c=>({...c}))})),sensor:{timestamp:this.time,imu:{gyro:s.gyro,accel_body:s.accel_body},position:ned({x:position.x,y:position.y-this.spawnHeight(),z:position.z}),velocity:ned(this.sensorVelocity),quaternion:s.quaternion}};
+    return {water:this.waterFailure??{state:this.waterEncounter?'shallow':'dry',controlsDisabled:false,...(this.waterEncounter?{depth:this.waterEncounter.depth,surfaceY:this.waterEncounter.surfaceY,seasonal:this.waterEncounter.seasonal}:{})},position,rotation,velocity,speed:velocity.x*f.x+velocity.y*f.y+velocity.z*f.z,heading:(Math.atan2(f.z,f.x)*180/Math.PI+360)%360,inputs:this.inputs,driveDemand:[...this.driveDemand],wheels,groundContacts,tracks:this.trackStates.map(t=>({...t,contacts:t.contacts.map(c=>({...c}))})),sensor:{timestamp:this.time,imu:{gyro:s.gyro,accel_body:s.accel_body},position:ned({x:position.x,y:position.y-this.spawnHeight(),z:position.z}),velocity:ned(this.sensorVelocity),quaternion:s.quaternion}};
   }
   free(){this.world.free();}
 }

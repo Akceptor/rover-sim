@@ -2,6 +2,7 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 import {randomUUID} from 'node:crypto';
 import {validateTerrain} from './terrain.js';
+import {normalizeWaterSettings} from './water.js';
 import {validateOsmOverlay} from './osm-cache.js';
 
 const osmAttribution={text:'© OpenStreetMap contributors',license:'ODbL-1.0',url:'https://www.openstreetmap.org/copyright'};
@@ -56,12 +57,12 @@ export class SavedLocations {
   }
   return locations;
  }
- async save({name,terrain,overlay,timeZone=null,defaultHeight=6}){
-  name=validateName(name);validateSettings(timeZone,defaultHeight);
+ async save({name,terrain,overlay,timeZone=null,defaultHeight=6,waterSettings}){
+  name=validateName(name);validateSettings(timeZone,defaultHeight);waterSettings=normalizeWaterSettings(waterSettings);
   // Clone before the first await: callers may replace or mutate their world while disk I/O runs.
   const data=structuredClone({terrain,overlay});validateData(data.terrain,data.overlay,defaultHeight);
   const uuid=randomUUID(),id='saved:'+uuid;
-  const manifest={version:1,id,name,createdAt:new Date().toISOString(),home:structuredClone(data.terrain.home),size:data.terrain.size,spacing:data.terrain.spacing,timeZone,defaultHeight,attribution:{osm:{...osmAttribution}}};
+  const manifest={version:1,id,name,createdAt:new Date().toISOString(),home:structuredClone(data.terrain.home),size:data.terrain.size,spacing:data.terrain.spacing,timeZone,defaultHeight,waterSettings,attribution:{osm:{...osmAttribution}}};
   const files={manifest,...data};
   await fs.mkdir(this.directory,{recursive:true});await requireDirectory(this.directory);
   const temp=await fs.mkdtemp(path.join(this.directory,'.tmp-'));
@@ -78,6 +79,7 @@ export class SavedLocations {
   const manifest=await readJson(path.join(directory,'manifest.json'));
   if(!manifest||manifest.version!==1||manifest.id!==id||validateName(manifest.name)!==manifest.name||typeof manifest.createdAt!=='string'||!Number.isFinite(Date.parse(manifest.createdAt)))throw Error('Invalid saved location manifest');
   validateSettings(manifest.timeZone,manifest.defaultHeight);
+  manifest.waterSettings=normalizeWaterSettings(manifest.waterSettings);
   const terrain=await readJson(path.join(directory,'terrain.json')),overlay=await readJson(path.join(directory,'overlay.json'));
   validateData(terrain,overlay,manifest.defaultHeight);
   if(manifest.size!==terrain.size||manifest.spacing!==terrain.spacing||!manifest.home||['lat','lon','alt'].some(key=>manifest.home[key]!==terrain.home[key]))throw Error('Saved location manifest does not match terrain');

@@ -2,6 +2,7 @@
 // modify vehicle tuning; smoothness never synthesizes road elevation geometry.
 const preset=(id,grip,rolling,dust,marks,color,priority,paved=false)=>Object.freeze({id,grip,rolling,dust,marks,color:Object.freeze(color),priority,paved});
 export const roadMaterials=Object.freeze({
+ water:preset('water',.6,4,0,0,[66,115,134],10),
  ground:preset('ground',1,1,1,1,[153,130,96],0),
  unpaved:preset('unpaved',1,1,1,1,[153,130,96],3.5),
  grass:preset('grass',.7,1.6,.08,.7,[103,125,70],1),

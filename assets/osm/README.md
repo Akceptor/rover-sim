@@ -12,13 +12,15 @@ Source database timestamp: **2026-11-26T21:21:01Z**. Each JSON records the exact
 endpoint, download time, database timestamp, license and attribution.
 
 The refresh includes detailed road surface/smoothness/tracktype tags, supported
-land-cover polygons, mapped tree/row points and barriers using the current importer.
+land-cover polygons, mapped tree/row points, barriers and water using the current importer.
 Terrain elevations, imagery, geographic origins, schema and cache filenames are
 unchanged. The five presets therefore include the new vegetation/land-cover and
 surface behavior offline in a fresh checkout.
 
-The refresh uses the current barrier importer, including gate-state precedence.
+The refresh uses the current barrier importer, including gate-state precedence and the water crossing model.
 Processed barrier counts are Kyiv 122, Lviv 3, Lima 32, Cusco 0 and Andes ravine 5.
+Water counts are Kyiv 4, Lviv 6, Lima 0, Cusco 4 and Andes ravine 16.
+All five include explicit water fields, even when no water is mapped.
 Counts include clipped wall/fence segments and point obstacles; an empty barrier
 list does not imply that a real-world route is clear.
 

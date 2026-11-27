@@ -37,6 +37,7 @@
     </div>
     <div id="notice" role="status"></div>
   </section>
+  <p id="waterStatus" class="map-hint" role="status" aria-live="polite" hidden></p>
   <!-- Controls positioned right below camera view -->
   <div class="timing"><span><b id="rate">—</b> Hz physics</span><span><b id="time">0.0</b> s simulated</span><span id="diagnostics">Waiting for timing data</span></div>
   <section class="controls" aria-label="Simulator controls">
@@ -86,6 +87,7 @@
     </div>
     <div id="locationMap" tabindex="0" aria-label="Location map. Click to choose a starting position."></div>
     <p id="mapCoordinates" class="map-coordinates">Click the map to choose a start</p>
+    <p id="waterLegend" class="map-hint" hidden></p>
     <p id="mapSelectionHint" class="map-hint"></p>
     <section id="locationPicker" class="location-picker" aria-label="Starting location" hidden>
       <label for="locationSelect">Location</label><select id="locationSelect" aria-describedby="locationHint"></select><button id="loadLocation" type="button">Load location</button>

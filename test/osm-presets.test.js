@@ -21,6 +21,7 @@ test('every existing preset has an attributed offline OSM snapshot matching its 
   assert.ok(result.overlay.roads.length>0,preset.id);if(preset.id!=='cusco')assert.ok(result.overlay.buildings.length>0,preset.id);
   assert.ok(Array.isArray(result.overlay.landcover)&&result.overlay.landcover.length>0,`${preset.id} includes refreshed land cover`);
   assert.ok(Array.isArray(result.overlay.trees),`${preset.id} includes the mapped-tree field even when no trees are mapped`);
+  assert.ok(Array.isArray(result.overlay.water),`${preset.id} includes current water fields even when none are mapped`);
   assert.ok(Array.isArray(result.overlay.barriers),`${preset.id} includes refreshed barrier data, even when none are mapped`);
   if(preset.id!=='cusco')assert.ok(result.overlay.barriers.length>0,`${preset.id} retains mapped obstacles`);
   assert.ok(result.overlay.roads.some(r=>r.surface||r.tracktype||r.smoothness),`${preset.id} retains detailed road tags`);

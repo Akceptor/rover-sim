@@ -21,7 +21,7 @@ open ground: the importer does not move a start that lies inside a building.
 All five existing terrain presets include matching OSM snapshots under
 `assets/osm/`: Kyiv, Lviv, Lima, Cusco and the Andes ravine. They load directly
 offline, even in a fresh checkout without `.run/`. All five were refreshed on
-2026-11-27 with detailed road tags, land cover, mapped tree/row points and barriers.
+2026-11-27 with detailed road tags, land cover, mapped tree/row points, barriers and water.
 See the [snapshot dates,
 feature counts and license](../assets/osm/README.md). Cusco has mapped roads but
 no mapped buildings in this snapshot.
@@ -146,7 +146,7 @@ intersections without gaps; overlapping road materials have a deterministic draw
 order. Polygons are split at terrain triangle edges and offset 3.5 cm to avoid
 terrain fighting. Wheels still contact the terrain collider; material presets
 modify grip and rolling resistance at wheel/track contact points. No bridge decks, kerbs, lane markings,
-road cutting/grading or traffic are provided. Mapped vegetation is approximate.
+road cutting/grading or traffic are provided. Mapped vegetation and water levels are approximate.
 
 Generated trees and rocks (including their colliders and crown clearance) are
 excluded from building footprints and road corridors. An absent or empty overlay
@@ -226,7 +226,7 @@ nodes split a row rather than connecting across a gap.
 Cover priority at overlaps is water, farmland, grass, scrub, then forest;
 same-kind ties use stable feature IDs. Mapped roads override land-cover contact
 materials. Forest, scrub and water-designated ground keep baseline physics;
-this phase adds no water surface, depth model or crossing hazard. Farmland's
+mapped water surfaces and crossings now follow the water model below. Farmland's
 dirt material is an inferred simulation default, not a measured soil condition.
 
 Placement is deterministic and capped at 512 trees/shrubs per patch, including
@@ -305,6 +305,78 @@ mapping to add barriers to an older location; saved favourites retain their
 original data. The bundled snapshots include barriers where mapped (Kyiv 122,
 Lviv 3, Lima 32, Cusco 0, Andes ravine 5 processed features).
 
+### Water surfaces and sinking
+
+New downloads include mapped ponds, lakes, reservoirs and river areas, including
+multipolygon islands. Linear rivers, streams, canals, drains and ditches use
+mapped widths where valid; fallback widths are 8, 2, 5, 1 and 0.6 m respectively.
+Covered/tunnel/culvert waterways, explicitly dry mapping and `landuse=basin`
+without water tags do not become surface water. Seasonal/intermittent water is
+assumed wet and labelled as an approximation; weather does not change its state.
+
+Ponds/lakes use a level inferred from the lowest in-patch shoreline terrain plus
+5 cm, with an interior fallback if the shore is outside the patch. Geometry stops
+where higher terrain intersects that plane. Rivers and narrow waterway ribbons
+follow the existing terrain plus 5 cm. Terrain is not excavated. Coarse elevation
+can underfill a mapped pond; the OSM status reports a water/terrain mismatch.
+Depth tags do not set the rendered elevation. Blue appearance and inferred
+levels do not imply surveyed bathymetry or live water conditions.
+
+The same wet triangles drive the renderer, map, vegetation exclusion and
+physics. Islands stay dry, even where a separately mapped river centreline
+crosses them. Polygon data overrides a coincident line. Roads never erase water
+or create an inferred bridge. Water is not a solid collision deck. Mapped trees
+and generated trees/rocks conflicting with the wet footprint are omitted.
+
+At supported terrain contacts, mapped depth up to **0.2 m** is shallow by default:
+contact grip is multiplied by 0.6 and rolling resistance by 4. Dry dust and tyre
+marks are suppressed; small contact ripples appear instead. Both wheeled and
+tracked vehicles use this rule. Positive depth in metres/feet up to 100 m is
+accepted; explicit zero is dry. Missing, invalid or greater depth is hazardous.
+Overlapping water uses unknown depth first, then greatest known depth, then ID.
+
+**Deep or unknown water sinks the rover.** Once triggered, all keyboard/SITL
+propulsion is ignored, driving controls are disabled, and the camera canvas
+switches to animated snow/static. MJPEG output receives the same lost-video
+image and retains attribution. A message beside the view explains recovery.
+This failure stays latched even if the last driven wheels leave the water.
+
+Sinking is an explicit animation/physics approximation: disable suspension and
+chassis collisions, descend at 0.4 m/s to two metres below the encountered
+surface, then stop. A rover already deeper is never lifted to that level. No
+underwater terrain, buoyancy, fluid dynamics, current or permanent motor damage
+is simulated. Airborne rays without supporting force and roof/obstacle contacts
+do not trigger sinking from a horizontal water overlap.
+
+Use **Reset vehicle** to restore solid collision, driving and normal video. In
+SITL mode retain the existing stop/reset/restart procedure; reset is not allowed
+under a live autopilot. A new world or vehicle load also clears the failure.
+
+Override the simulation threshold in backend configuration, for example:
+
+```json
+{"osm":{"water":{"maxCrossingDepth":0.1}}}
+```
+
+The threshold must be finite and between 0 and 2 m. It is a simulation setting,
+not a claim about a vehicle's real fording ability. The map legend discloses the
+active threshold, unknown-depth behavior and inferred levels before driving.
+New saved locations preserve their effective threshold and water data offline;
+loading them does not overwrite global backend settings.
+
+Schema-1 overlays remain compatible without a download. If `water` is absent,
+stored water land-cover polygons become unknown-depth legacy water, explicitly
+labelled in the legend. Original tags are unavailable in that older processed
+data, including whether a basin was dry. An explicit empty `water` array is
+always authoritative. Refresh mapping to replace that legacy assumption.
+
+Import limits are 1,024 features, 8,192 vertices per feature and 65,536 total
+vertices. Prepared geometry is capped at 200,000 triangles and four million
+preparation operations. Omit whole features that exceed budgets and report the
+count; never leave an invisible hazard larger than the rendered wet footprint.
+All five bundled presets include refreshed water fields as of 2026-11-27:
+Kyiv 4, Lviv 6, Lima 0, Cusco 4 and Andes ravine 16 mapped water features.
+
 ## Attribution and license
 
 Overlay data is **© OpenStreetMap contributors**, licensed under the
@@ -315,6 +387,14 @@ OSM databases under ODbL; preserve attribution and the applicable ODbL obligatio
 when sharing them. Generated scenery is separate from the OSM data.
 
 ## Checks
+
+`npm run test:water` drives a local stream-only fixture into unknown water,
+verifies backend control lockout and bounded sinking, confirms animated snow
+reaches actual video capture with OSM credit, resets back to normal video and
+checks mobile layout. Screenshots go to `.run/water/`. Unit/backend tests cover
+islands, incomplete relations, slopes, dry/seasonal mapping, thresholds,
+shallow resistance, multi-ray/tracked support, roof/airborne exclusions,
+vegetation/map agreement and saved-policy preservation across OSM retry.
 
 `npm run test:barriers` uses local fixtures to verify exact render/collider
 transforms, map vectors, browser/FPV credit, driving through a narrow gate,

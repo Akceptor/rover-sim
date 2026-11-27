@@ -1,9 +1,9 @@
 import {createLandcoverIndex} from './landcover.js';
 import {overlayOccupies} from './osm-footprints.js';
 
-export function mappedVegetation(terrain,overlay,objects,heightAt){
- if(!overlay?.landcover?.length&&!overlay?.trees?.length)return objects;
- const half=(terrain.size-1)*terrain.spacing/2,at=createLandcoverIndex(overlay.landcover,terrain),trees=[],cells=new Map();
+export function mappedVegetation(terrain,overlay,objects,heightAt,waterAt=()=>null){
+ if(!overlay?.landcover?.length&&!overlay?.trees?.length&&!overlay?.water?.length)return objects;
+ const half=(terrain.size-1)*terrain.spacing/2,coverAt=createLandcoverIndex(overlay.landcover,terrain),at=(x,z)=>{const c=coverAt(x,z);return c?.kind==='water'&&!waterAt(x,z)?null:c;},trees=[],cells=new Map();
  const key=(x,z)=>`${Math.floor(x/16)},${Math.floor(z/16)}`;
  const radius=o=>o.size[1]*.32;
  function nearby(x,z,r){
@@ -12,7 +12,7 @@ export function mappedVegetation(terrain,overlay,objects,heightAt){
   return result;
  }
  const collides=(x,z,r,mapped=false)=>nearby(x,z,r).some(o=>Math.hypot(x-o.position[0],z-o.position[2])<(mapped?.8:Math.max(.8,(r+radius(o))*.8)));
- const safe=(x,z,r)=>Math.abs(x)+r<half&&Math.abs(z)+r<half&&Math.hypot(x,z)>=8+r&&!overlayOccupies(overlay,x,z,r);
+ const safe=(x,z,r)=>Math.abs(x)+r<half&&Math.abs(z)+r<half&&Math.hypot(x,z)>=8+r&&!overlayOccupies(overlay,x,z,r)&&![0,1,2,3,4,5,6,7,8].some(i=>{const a=i*Math.PI/4;return waterAt(x+(i===8?0:Math.cos(a)*r),z+(i===8?0:Math.sin(a)*r));});
  function add(x,z,h,extra){
   const r=h*.32;if(trees.length>=512||!safe(x,z,r)||collides(x,z,r,!!extra.osmId))return;
   const o={kind:'tree',size:[h>10?.4:.22,h,h>10?.4:.22],position:[x,heightAt(x,z)+h/2,z],color:extra.vegetation==='scrub'?0x596841:0x655039,...extra};
@@ -34,7 +34,7 @@ export function mappedVegetation(terrain,overlay,objects,heightAt){
  const retained=objects.filter(o=>{
   if(!['tree','rock'].includes(o.kind))return true;
   const [x,,z]=o.position,r=o.kind==='tree'?radius(o):Math.max(...o.size);
-  if(at(x,z)||[0,1,2,3,4,5,6,7].some(i=>at(x+Math.cos(i*Math.PI/4)*r,z+Math.sin(i*Math.PI/4)*r)))return false;
+  if(waterAt(x,z)||[0,1,2,3,4,5,6,7].some(i=>waterAt(x+Math.cos(i*Math.PI/4)*r,z+Math.sin(i*Math.PI/4)*r))||at(x,z)||[0,1,2,3,4,5,6,7].some(i=>at(x+Math.cos(i*Math.PI/4)*r,z+Math.sin(i*Math.PI/4)*r)))return false;
   return !collides(x,z,r);
  });
  // Generic unmapped fallback is small (100 candidates); cap the combined trees.
