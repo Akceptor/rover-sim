@@ -21,7 +21,7 @@ open ground: the importer does not move a start that lies inside a building.
 All five existing terrain presets include matching OSM snapshots under
 `assets/osm/`: Kyiv, Lviv, Lima, Cusco and the Andes ravine. They load directly
 offline, even in a fresh checkout without `.run/`. All five were refreshed on
-2026-11-26 with detailed road tags, land cover and mapped tree/row points.
+2026-11-27 with detailed road tags, land cover, mapped tree/row points and barriers.
 See the [snapshot dates,
 feature counts and license](../assets/osm/README.md). Cusco has mapped roads but
 no mapped buildings in this snapshot.

@@ -15,7 +15,7 @@ part of this roadmap.
 | --- | --- | --- | --- |
 | 1 | Surface-aware driving and effects | Merged | [#9](https://github.com/Akceptor/rover-sim/pull/9) |
 | 2 | Mapped vegetation and land cover | Merged | [#11](https://github.com/Akceptor/rover-sim/pull/11) |
-| 3 | Mapped barriers and obstacles | In progress | Remote PR status unverified |
+| 3 | Mapped barriers and obstacles | Merged | [#12](https://github.com/Akceptor/rover-sim/pull/12) |
 | 4 | Richer building geometry and materials | Queued | Not opened |
 | 5 | Water features and crossing hazards | Queued | Not opened |
 | 6 | Road corridor grading | Queued | Not opened |
@@ -242,38 +242,39 @@ reapply deformation; saved locations reproduce the same world offline. Run
 
 ## Resume checkpoint
 
-- Last completed merged phase: phase 2, PR [#11](https://github.com/Akceptor/rover-sim/pull/11),
-  merge commit `5c43b2581ebef3aa4ef19a107e059c7d335a8bb8` (2026-11-26).
-- Bundled preset maintenance: all five OSM snapshots refreshed on 2026-11-26,
-  including road tags, land cover and mapped tree/row points. Source database
-  timestamp: `2026-11-24T21:21:23Z`; saved favourites remain unchanged.
-- Active phase: phase 3 (mapped barriers and obstacles); implemented locally,
-  review and validation completed, publication status unverified.
-- Current branch/worktree: `feat/osm-barriers` at `.worktrees/osm-barriers`.
-  `main` retains the phase 2 checkpoint until phase 3 is merged.
-- Base: `1b8f388` on `main`, including the five-preset surface/land-cover refresh.
-- Initial implementation commit: `dd174b2`; follow-up fixes/docs are on the same branch.
+- Last completed merged phase: phase 3, PR [#12](https://github.com/Akceptor/rover-sim/pull/12),
+  merge commit `63a1f44e4b4c54e7cf5f3fff3e1dc5d309098263` (2026-11-26).
+- Bundled preset maintenance: all five OSM snapshots refreshed on 2026-11-27,
+  using the current importer for road tags, land cover, mapped trees and barriers.
+  Source database timestamp: `2026-11-26T21:21:01Z`. Terrain/imagery remain tracked
+  and complete; saved favourites remain unchanged.
+- Active feature phase: none; phase 4 (richer building geometry and materials) is next.
+- Follow-up branch/worktree: `fix/osm-barrier-assets` at `.worktrees/osm-barriers`,
+  based on merged phase 3. Includes gate-way state precedence fix and fresh presets.
 - Validation (2026-11-27): `npm test` — 262 passed, 1 Windows-only skip;
-  `npm run test:osm` and `npm run test:barriers` passed. The 12 barrier tests
-  include actual wall/fence/bollard/block collision, open/closed narrow gates,
-  sloping foundations, offline saving and gate-state precedence.
+  `npm run test:osm` and `npm run test:barriers` passed for the gate fix.
+  The 12 barrier tests cover actual collisions, narrow gates, sloping foundations,
+  offline saving, spawn warnings and gate-state precedence.
 - Browser verification: exact shared render/collider transforms, map vectors,
   browser/FPV credit, narrow-gate driving, vehicle-dependent spawn feedback,
   world-replacement disposal, entrance-only attribution and mobile layout.
-  `.run/barriers/overview.png` and `open-gate.png` visually inspected.
+  Barrier overview and gate-driving screenshots visually inspected.
+  All five refreshed presets also passed offline Chrome loading with downloads
+  disabled; their overview screenshots were visually inspected. The full suite
+  passed again after the refresh (262 passed, one Windows-only skip).
 - Review: no important issues remain; gate-way state precedence was clarified
   and fixed with a failing-then-passing regression.
 - Design/plan: `docs/superpowers/specs/2026-11-26-osm-barriers-design.md` and
   `docs/superpowers/plans/2026-11-26-osm-barriers.md`.
 - Compatibility: schema 1 and legacy offline snapshots remain valid. Bundled
-  barrier feature counts: Kyiv 122, Lviv 3, Lima 32, Cusco 0, Andes ravine 5.
-  Existing runtime caches and saved favourites need a mapping refresh for barriers.
-- Next action: check GitHub for an existing phase 3 PR, publish the reviewed
-  follow-up and create/update that PR; record its URL here. Do not start phase 4
-  until phase 3 is merged.
-- External limitation: GitHub GraphQL and REST reads repeatedly returned `EOF`
-  on 2026-11-27, including after an approved elevated retry. Remote PR status
-  could not be verified. No merge performed; subsequent merges require authorization.
+  barrier counts: Kyiv 122, Lviv 3, Lima 32, Cusco 0, Andes ravine 5.
+  Existing runtime caches and saved favourites retain their stored mapping;
+  refresh them to adopt newly bundled data.
+- Next action: publish the preset/gate follow-up; then start phase 4 from updated
+  `main` in its own branch/PR.
+- Blocking decisions: none. GitHub connectivity verified on 2026-11-27;
+  the earlier `EOF` responses are resolved. No new merge performed; subsequent
+  merges require authorization.
 
 To resume in a new session: **“Continue the OSM roadmap in `docs/osm-roadmap.md`
 from its checkpoint, one feature PR at a time. Bridges remain excluded.”**
