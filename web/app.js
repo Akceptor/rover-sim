@@ -1,5 +1,7 @@
 import * as T from '/three.js';
 import {terrainHeight,terrainApproximationWarning} from '/terrain.js';
+import {createVideoLoss} from '/video-loss.js';
+import {updateWater} from '/water-view.js';
 import {CameraVideo} from '/video.js';
 import {createVehicle} from '/assets/vehicle.js';
 import {createWeatherView} from '/weather-view.js';
@@ -15,7 +17,7 @@ import {createSavedLocations} from '/saved-locations.js';
 import {createOsmSettings} from '/osm-settings.js';
 import {detectWebGLRendererName,formatQualityStatus,loadQualityPreference,resolveGraphicsProfile,saveQualityPreference} from '/graphics-quality.js';
 if(new URLSearchParams(location.search).has('camera-output'))document.documentElement.dataset.cameraOutput='true';
-const cameraVideo=new CameraVideo();
+const cameraVideo=new CameraVideo(),videoLoss=createVideoLoss();
 const $=id=>document.getElementById(id),canvas=$('view'),viewport=$('viewport'),settingsDialog=$('settingsDialog');
 const renderer=new T.WebGLRenderer({canvas,antialias:true});renderer.toneMapping=T.ACESFilmicToneMapping;renderer.toneMappingExposure=1;renderer.setClearColor(0xa4c8db);
 const rendererName=detectWebGLRendererName(renderer);
@@ -73,6 +75,7 @@ function setup(m){
   vehicleEffects=createVehicleEffects(world,{track:c.track,groundHeight:m.terrain?(x,z)=>terrainHeight(m.terrain,x,z):()=>0});
   $('landscape').textContent=m.terrain?`${m.terrain.name} · ${(m.terrain.size-1)*m.terrain.spacing} m`:'100 × 100 m playground';
   addOsmOverlay(world,m.overlay,m.terrain,graphicsProfile);$('osmAttribution').hidden=!hasOsmFeatures(m.overlay);
+  $('waterLegend').hidden=!(m.overlay?.water?.features?.length||m.overlay?.waterFeatureCount||m.overlay?.water?.legacyMapping);$('waterLegend').textContent=`Water simulation · inferred levels · shallow ≤ ${Math.round((m.overlay?.waterSettings?.maxCrossingDepth??.2)*100)} cm · deep/unknown: sinks rover and loses video · seasonal water assumed wet${m.overlay?.water?.legacyMapping?' · Legacy water mapping (original tags unavailable)':''}`;
   const approximation=terrainApproximationWarning(m.terrain);$('terrainWarning').textContent=approximation;$('terrainWarning').hidden=!approximation;
   $('terrainAttribution').textContent=m.terrain?.attribution??'';cameraVideo.attribution=[m.terrain?.attribution,hasOsmFeatures(m.overlay)?'© OpenStreetMap contributors · https://www.openstreetmap.org/copyright':null,'Weather: open-meteo.com (CC BY 4.0)'].filter(Boolean).join(' · ');
   const groundObj=m.world.find(o=>o.kind==='ground');if(groundObj)box(groundObj.size,groundObj.color,world).position.fromArray(groundObj.position);
@@ -133,9 +136,9 @@ $('fpv').onclick=()=>selectCamera('fpv');$('chase').onclick=()=>selectCamera('ch
 $('settings').onclick=()=>{release();cameraVideo.checkStatus?.();settingsDialog.showModal();};$('closeSettings').onclick=()=>settingsDialog.close();
 viewport.addEventListener('pointerdown',()=>viewport.focus());
 const keys=new Set(),valid=['w','a','s','d','arrowup','arrowdown','arrowleft','arrowright'];
-addEventListener('keydown',e=>{if(mode!=='standalone'||settingsDialog.open||document.activeElement!==viewport)return;const k=e.key.toLowerCase();if(valid.includes(k)){e.preventDefault();keys.add(k);}});addEventListener('keyup',e=>keys.delete(e.key.toLowerCase()));
+addEventListener('keydown',e=>{if(state?.water?.controlsDisabled||mode!=='standalone'||settingsDialog.open||document.activeElement!==viewport)return;const k=e.key.toLowerCase();if(valid.includes(k)){e.preventDefault();keys.add(k);}});addEventListener('keyup',e=>keys.delete(e.key.toLowerCase()));
 function release(){keys.clear();send({type:'keys',steering:0,throttle:0});}addEventListener('blur',release);viewport.addEventListener('blur',release);document.addEventListener('visibilitychange',()=>{if(document.hidden)release();});
-setInterval(()=>{if(mode==='standalone')send({type:'keys',throttle:Number(keys.has('w')||keys.has('arrowup'))-Number(keys.has('s')||keys.has('arrowdown')),steering:Number(keys.has('d')||keys.has('arrowright'))-Number(keys.has('a')||keys.has('arrowleft'))});},80);
+setInterval(()=>{if(mode==='standalone'&&!state?.water?.controlsDisabled)send({type:'keys',throttle:Number(keys.has('w')||keys.has('arrowup'))-Number(keys.has('s')||keys.has('arrowdown')),steering:Number(keys.has('d')||keys.has('arrowright'))-Number(keys.has('a')||keys.has('arrowleft'))});},80);
 const mount=new T.Vector3(),target=new T.Vector3(),chasePosition=new T.Vector3();let previousTime=0,previousWall=0,ratio=0;
 let effectsTime=performance.now();
 function render(){requestAnimationFrame(render);const now=performance.now(),effectsDt=(now-effectsTime)/1000;effectsTime=now;const width=viewport.clientWidth,height=viewport.clientHeight;if(canvas.width!==Math.floor(width*renderer.getPixelRatio())||canvas.height!==Math.floor(height*renderer.getPixelRatio())){renderer.setSize(width,height,false);for(const c of [camera,chase]){c.aspect=width/height;c.updateProjectionMatrix();}}
@@ -144,6 +147,7 @@ function render(){requestAnimationFrame(render);const now=performance.now(),effe
     vehicleEffects?.update(rover.position,rover.quaternion,s.speed,effectsDt,grounded&&now-lastReceive<500,scene.userData.terrain?s.groundContacts:undefined);
     mount.set(v.cameraMount?.x||0,v.cameraMount?.y||0,v.cameraMount?.z||0).applyQuaternion(rover.quaternion).add(rover.position);camera.position.copy(mount);const pan=(s.camera?.panDeg??0)*Math.PI/180,tilt=(s.camera?.tiltDeg??0)*Math.PI/180;target.set(Math.cos(tilt)*Math.cos(pan),Math.sin(tilt),Math.cos(tilt)*Math.sin(pan)).applyQuaternion(rover.quaternion).add(mount);camera.up.set(0,1,0).applyQuaternion(rover.quaternion);camera.lookAt(target);
     chasePosition.set(-Math.max(1.8,config.vehicle.length*3),Math.max(1.05,config.vehicle.length*1.5),Math.max(.5,config.vehicle.width*1.5)).applyQuaternion(rover.quaternion).add(rover.position);chase.position.lerp(chasePosition,.12);chase.lookAt(rover.position.clone().add(new T.Vector3(0,.1,0)));
+    const lost=!!s.water?.controlsDisabled;canvas.dataset.signal=lost?'lost':'ok';$('waterStatus').hidden=!lost;$('waterStatus').textContent=lost?`${s.water.reason} — Rover ${s.water.state==='submerged'?'submerged':'sinking'}. Controls disabled. Reset vehicle to recover${mode==='sitl'?' after stopping SITL':''}.`:'';viewport.querySelector('.osd').style.visibility=lost?'hidden':'';viewport.setAttribute('aria-disabled',String(lost));$('keyLegend').hidden=mode!=='standalone'||lost;if(lost)keys.clear();$('help').textContent=lost?'Driving disabled after water ingress. Reset vehicle to recover.':mode==='standalone'?'W/S or ↑/↓: forward / brake / reverse. A/D or ←/→: steer. Release to stop. Click the view to focus.':'Drive using Mission Planner or your MAVLink companion. Browser keys do not control physics.';
     $('speed').textContent=s.speed.toFixed(2);$('heading').textContent=`${Math.round(s.heading).toString().padStart(3,'0')}°`;$('time').textContent=s.simTime.toFixed(1);$('rate').textContent=s.rate;
     for(const [id,value,index]of [['steer',s.inputs.steering,config.steering.channel-1],['throttle',s.inputs.throttle,config.throttle.channel-1]]){$(id).textContent=`${value.toFixed(2)}${s.raw[index]?` · ${s.raw[index]} µs`:''}`;$(id+'Meter').value=value;}
     const online=performance.now()-lastReceive<2000;const connectionText=!online?'Backend offline':mode==='standalone'?'Standalone physics active':s.connected?'JSON connected':s.resetPending?'Restart SITL to continue':'Waiting for SITL · physics held';if($('connection').textContent!==connectionText)$('connection').textContent=connectionText;$('connection').dataset.state=!online?'offline':s.connected||mode==='standalone'?'online':'waiting';
@@ -160,5 +164,5 @@ function render(){requestAnimationFrame(render);const now=performance.now(),effe
     locationMap?.setPicking(baseLocations.length>0&&!$('locationSelect').disabled,unsafeSelection?'Disarm SITL before choosing a new start.':!baseLocations.length?'Use --choose-location or --mission-planner to pick a start.':mode==='standalone'&&s.running?'Stop physics before loading another location.':$('locationSelect').disabled?'Location selection is held while loading or while SITL is active.':'Click a start, then Load location.');locationMap?.update(s);
     $('terrainLoad').hidden=!s.startTerrain;$('retryTerrain').hidden=['ready','restart','verifying'].includes(s.startTerrain?.status)||(baseLocations.length>0&&s.startTerrain?.status==='selecting');$('retryTerrain').disabled=!online||!s.canRetryTerrain;$('retryTerrain').textContent=s.startTerrain?.status==='loading'?'Loading terrain…':'Retry terrain';
     $('run').textContent=s.running?'Stop physics':'Start physics';$('diagnostics').textContent=`RTF ${ratio.toFixed(2)} · packet age ${s.ageMs??'—'} ms · duplicates ${s.stats.duplicates} · skipped ${s.stats.skipped} · malformed ${s.stats.malformed}`;$('status').textContent=s.running?`${$('camera').value==='fpv'?'ONBOARD FPV':'CHASE'} · ${mode==='sitl'?'SITL actuator authority':'keyboard test mode'}`:'PHYSICS STOPPED · sensor time continues in SITL';
-  }const activeCamera=$('camera').value==='fpv'?camera:chase;weatherView.update(state?.weather,state?.home,activeCamera,lastReceive);fitFar();scenery.sky.position.copy(activeCamera.position);renderer.render(scene,activeCamera);cameraVideo.capture(canvas,performance.now());
+  }const activeCamera=$('camera').value==='fpv'?camera:chase;weatherView.update(state?.weather,state?.home,activeCamera,lastReceive);fitFar();scenery.sky.position.copy(activeCamera.position);updateWater(scene.userData.world,now,state?.groundContacts,state?.speed??0);if(state?.water?.controlsDisabled)videoLoss.render(renderer,now);else renderer.render(scene,activeCamera);cameraVideo.capture(canvas,performance.now());
 }render();

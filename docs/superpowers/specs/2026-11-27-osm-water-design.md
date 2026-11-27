@@ -1,8 +1,9 @@
-# Mapped water and crossing hazards — proposed design
+# Mapped water and crossing hazards — approved direction
 
 User request: implement water next, ahead of the queued building-detail phase.
 Base: `4887aaf` on `main`, after merged barrier/preset PR #13.
-This document proposes the behavior for review before implementation.
+User accepted water work and specified that deep or unknown water sinks the
+rover, replaces video with snow/static and disables driving controls.
 
 ## Approach
 
@@ -89,36 +90,31 @@ performance/Lambert mode supported. No real water level is inferred from colour.
 
 ## Crossing model and proposed defaults
 
-The proposed default for unknown depth is **hazardous**, pending user review.
-Display "Water depth unknown — hazardous in this simulation" at affected
-contacts and on the map legend. Mapped depth is labelled as OSM data, not a live
-measurement. The model does not claim that a crossing is safe in the real world.
+Unknown depth is hazardous. Add validated `osm.water.maxCrossingDepth`, default
+0.2 m and bounded to 0–2 m. Mapped depth at or below the threshold is shallow;
+missing/invalid/deeper depth causes a latched sinking failure at actual supported
+terrain wheel/track contacts. Depth zero is dry. Mapped depth is not live water data.
 
-Add validated `osm.water` settings:
+Shallow water multiplies contact grip by 0.6 and rolling resistance by 4;
+suppress dry dust/marks and emit bounded surface ripples/splashes. Apply the same
+policy to wheeled, multi-ray and tracked vehicles. Roads do not erase water.
+Airborne or roof/obstacle contacts receive no water force from horizontal overlap.
 
-- `unknownDepth`: `hazard` (default) or `shallow`.
-- `assumedDepth`: 0.1 m, used only for the explicitly selected shallow assumption.
-- `maxCrossingDepth`: 0.2 m, a simulation threshold shared by all vehicle types.
-  Both depths must be finite and within 0–2 m.
+On the first hazardous supported contact, latch the failure, clear drive demand
+and ignore all further keyboard/SITL actuator propulsion. Disable suspension
+support and chassis collisions for a controlled 0.4 m/s simulated descent, bounded
+to two metres below the encountered surface. This explicitly approximates sinking
+without carving bathymetry or claiming real underwater terrain. Keep position,
+velocity and sensor outputs finite and consistent. Stop downward motion at the
+bound. Preserve the failure until Reset vehicle or a new world/vehicle load.
+Existing SITL reset/restart safeguards remain enforced.
 
-At actual supported terrain wheel/track contacts inside the prepared wet
-footprint, mapped/assumed shallow depth multiplies grip by 0.6 and rolling
-resistance by 4. Suppress dry dust and ground marks and emit small bounded
-surface ripples/splashes at the prepared water elevation.
-
-Unknown/deeper-than-threshold water removes propulsion at submerged terrain
-contacts and applies bounded opposing resistance without reversing velocity.
-Dry contacts retain their drive budget; a vehicle partly on the bank may still
-back out. Do not disable suspension, teleport, auto-reset, invent motor damage,
-or globally pause SITL. A fully stranded rover can use the existing Reset
-vehicle action. Show a persistent hazard warning while contact persists.
-Unsupported airborne contacts and contacts on buildings/obstacles receive no
-water driving forces merely because they share horizontal coordinates.
-
-Apply the same classification to wheeled, multi-ray and tracked contacts.
-Wet contacts override ordinary road/land-cover materials, and dry contacts
-retain all existing surface behavior. Warning state is backend-owned and appears
-in browser and FPV output without changing sensor coordinate conventions.
+Replace the rendered camera view with animated monochrome snow/static while
+sinking/submerged. This must affect the actual captured canvas and MJPEG frames,
+not just a CSS overlay; preserve attribution. Display the failure and recovery
+action outside the lost video. Block driving keys and backend propulsion, but
+retain Stop physics, Reset vehicle and safe world/vehicle selection controls.
+Reset restores terrain collisions, clears the failure and restores normal video.
 
 ## Integration and persistence
 

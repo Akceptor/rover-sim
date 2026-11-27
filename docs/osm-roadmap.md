@@ -21,7 +21,7 @@ stays unchanged, and road grading remains last.
 | 2 | Mapped vegetation and land cover | Merged | [#11](https://github.com/Akceptor/rover-sim/pull/11) |
 | 3 | Mapped barriers and obstacles | Merged | [#12](https://github.com/Akceptor/rover-sim/pull/12) |
 | 4 | Richer building geometry and materials | Queued | Not opened |
-| 5 | Water features and crossing hazards | In progress (design) | Not opened |
+| 5 | Water features and crossing hazards | In progress | Not opened |
 | 6 | Road corridor grading | Queued | Not opened |
 
 Use `Queued`, `In progress`, `PR open`, `Merged`, or `Paused` for status. Record
@@ -252,37 +252,40 @@ reapply deformation; saved locations reproduce the same world offline. Run
   using the current importer for road tags, land cover, mapped trees and barriers.
   Source database timestamp: `2026-11-26T21:21:01Z`. Terrain/imagery remain tracked
   and complete; saved favourites remain unchanged.
-- Active feature phase: phase 5 (water), design prepared for user review on
-  `feat/osm-water` at `.worktrees/osm-water`. User requested water before buildings.
-  Proposed design: `docs/superpowers/specs/2026-11-27-osm-water-design.md`.
-  No water implementation or water validation has run yet.
-- Gate-state/preset follow-up: [#13](https://github.com/Akceptor/rover-sim/pull/13)
-  merged at `67e6993ac52c10052c98af3875157890fd408608` (2026-11-27).
-  Current branch: `main`; follow-up worktree retained at `.worktrees/osm-barriers`.
-- Validation (2026-11-27): `npm test` — 262 passed, 1 Windows-only skip;
-  `npm run test:osm` and `npm run test:barriers` passed for the gate fix.
-  The 12 barrier tests cover actual collisions, narrow gates, sloping foundations,
-  offline saving, spawn warnings and gate-state precedence.
-- Browser verification: exact shared render/collider transforms, map vectors,
-  browser/FPV credit, narrow-gate driving, vehicle-dependent spawn feedback,
-  world-replacement disposal, entrance-only attribution and mobile layout.
-  Barrier overview and gate-driving screenshots visually inspected.
-  All five refreshed presets also passed offline Chrome loading with downloads
-  disabled; their overview screenshots were visually inspected. The full suite
-  passed again after the refresh (262 passed, one Windows-only skip).
-- Review: no important issues remain; gate-way state precedence was clarified
-  and fixed with a failing-then-passing regression.
-- Design/plan: `docs/superpowers/specs/2026-11-26-osm-barriers-design.md` and
-  `docs/superpowers/plans/2026-11-26-osm-barriers.md`.
-- Compatibility: schema 1 and legacy offline snapshots remain valid. Bundled
-  barrier counts: Kyiv 122, Lviv 3, Lima 32, Cusco 0, Andes ravine 5.
-  Existing runtime caches and saved favourites retain their stored mapping;
-  refresh them to adopt newly bundled data.
-- Next action: review the water design and unknown-depth behavior, then write
-  the implementation plan and implement phase 5 in its own feature PR.
-- Blocking decisions: none. GitHub connectivity verified on 2026-11-27;
-  the earlier `EOF` responses are resolved. Follow-up #13 merge was authorized;
-  subsequent merges require authorization.
+- Active feature phase: phase 5 (water), implemented and verified on `feat/osm-water`
+  at `.worktrees/osm-water`. User requested water before phase 4 buildings.
+- User-selected behavior: deep/unknown water sinks the rover, replaces actual
+  camera/video capture with snow and disables propulsion until Reset vehicle
+  or a new world/vehicle. SITL reset safeguards remain in place.
+- Base: `4887aaf` on `main`, after merged barrier/preset follow-up #13.
+- Design/plan: `docs/superpowers/specs/2026-11-27-osm-water-design.md` and
+  `docs/superpowers/plans/2026-11-27-osm-water.md`.
+- Validation (2026-11-27): `npm test` — 293 passed, one Windows-only skip;
+  `npm run test:water`, `npm run test:osm`, `npm run test:terrain` and
+  `npm run test:saved-locations` passed. Water tests cover real wheeled/tracked
+  sinking, multi-ray and unsupported/roof exclusions, shallow resistance,
+  monotonic bounded descent, reset, island/overlap geometry, saved policies and
+  backend control lockout. Stream-only Chrome fixture confirms encoded snow,
+  credit, reset recovery, map legend and mobile layout.
+- Independent spec/code review: no important issues remain. Island-loss,
+  polygon precedence, zero-depth dryness, airborne tracked rays, upward sinking,
+  stream-only attribution and saved-policy retry regressions are fixed.
+- Presets: all five refreshed with current water importer/query; source timestamp
+  `2026-11-26T21:21:01Z`. Water counts: Kyiv 4, Lviv 6, Lima 0, Cusco 4,
+  Andes ravine 16. No water geometry was omitted from these presets. All five
+  load offline in Chrome; their overview images were inspected. Terrain/imagery,
+  origins and schema/cache keys are preserved; old saved favourites unchanged.
+- Compatibility: schema-1 data remains valid. Missing water fields use explicitly
+  labelled legacy water cover in memory; an empty water array stays authoritative.
+  New saved locations preserve their effective crossing threshold offline.
+- Separate follow-up: user reported standalone not opening a browser.
+  `fix/standalone-browser` at `.worktrees/standalone-browser`, commit `beec2b6`,
+  fixes npm standalone and opens the HUD before picker wait. Its independent
+  full suite passed (273 passed, one platform skip); review found no important issues.
+- Next action: publish/review the water feature and standalone startup PRs.
+  Do not mark phase 5 merged before its actual PR merge. Phase 4 buildings remains
+  queued and phase 6 grading last.
+- Blocking decisions: none; new merges require authorization.
 
 To resume in a new session: **“Continue the OSM roadmap in `docs/osm-roadmap.md`
 from its checkpoint, one feature PR at a time. Bridges remain excluded.”**

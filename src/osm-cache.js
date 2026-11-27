@@ -5,6 +5,7 @@ import {createHash,randomUUID} from 'node:crypto';
 import {processOsm,overlayKey,geographicBounds,OSM_SCHEMA} from './osm.js';
 import {validBarrierFields} from './osm-barriers.js';
 import {validLandcoverFields} from './osm-landcover.js';
+import {validWaterFields} from './osm-water.js';
 import {hasOsmFeatures} from './osm-features.js';
 import {validRoadTags} from './road-materials.js';
 const root=fileURLToPath(new URL('..',import.meta.url));
@@ -14,7 +15,7 @@ function overpassError(status){
  if([502,503,504].includes(status))return `Overpass temporarily unavailable (${status}); retry later`;
  return `Overpass HTTP ${status}`;
 }
-export function overpassQuery(t){const box=geographicBounds(t).join(',');return `[out:json][timeout:25];(way[building](${box});relation[building][type=multipolygon](${box});way[highway](${box});nwr[landuse~"^(forest|grass|meadow|farmland|reservoir|basin)$"](${box});nwr[natural~"^(wood|scrub|grassland|water)$"](${box});node[natural=tree](${box});way[natural=tree_row](${box});node[barrier~"^(gate|lift_gate|entrance|bollard|block)$"](${box});way[barrier~"^(wall|retaining_wall|fence|gate|lift_gate|entrance)$"](${box}););(._;>;);out body;`;}
+export function overpassQuery(t){const box=geographicBounds(t).join(',');return `[out:json][timeout:25];(way[building](${box});relation[building][type=multipolygon](${box});way[highway](${box});nwr[landuse~"^(forest|grass|meadow|farmland|reservoir|basin)$"](${box});nwr[natural~"^(wood|scrub|grassland|water)$"](${box});nwr[waterway~"^(riverbank|river|stream|canal|drain|ditch)$"](${box});node[natural=tree](${box});way[natural=tree_row](${box});node[barrier~"^(gate|lift_gate|entrance|bollard|block)$"](${box});way[barrier~"^(wall|retaining_wall|fence|gate|lift_gate|entrance)$"](${box}););(._;>;);out body;`;}
 export function validateOsmOverlay(o,t,{defaultHeight=6}={}){
  const key=overlayKey(t,OSM_SCHEMA,defaultHeight);
  if(o?.version!==OSM_SCHEMA||o.key!==key||!Array.isArray(o.buildings)||!Array.isArray(o.roads))throw Error('Invalid OSM cache');
@@ -22,6 +23,7 @@ export function validateOsmOverlay(o,t,{defaultHeight=6}={}){
  const ring=r=>Array.isArray(r)&&r.length>=3&&r.every(point);
  if(!o.buildings.every(b=>typeof b.id==='string'&&ring(b.outer)&&Array.isArray(b.holes)&&b.holes.every(ring)&&Number.isFinite(b.height)&&b.height>0&&b.height<=500)||!o.roads.every(r=>typeof r.id==='string'&&Array.isArray(r.points)&&r.points.length>=2&&r.points.every(point)&&Number.isFinite(r.width)&&r.width>0&&r.width<=500&&typeof r.paved==='boolean'))throw Error('Invalid OSM cache geometry');
  if(!validBarrierFields(o))throw Error('Invalid OSM cache barriers');
+ if(!validWaterFields(o))throw Error('Invalid OSM cache water');
  if(!validLandcoverFields(o))throw Error('Invalid OSM cache landcover/trees');
  if(!o.roads.every(validRoadTags))throw Error('Invalid OSM cache road tags');
  return o;

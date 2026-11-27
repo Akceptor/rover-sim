@@ -1,4 +1,5 @@
 import fs from 'node:fs';
+import {normalizeWaterSettings} from './water.js';
 import {resolveVehicleConfig} from './vehicles.js';
 export function loadConfig(path=new URL('../config/default.json',import.meta.url)) {
   const c=resolveVehicleConfig(JSON.parse(fs.readFileSync(path)));
@@ -10,6 +11,7 @@ export function loadConfig(path=new URL('../config/default.json',import.meta.url
   if(c.savedLocationsDir!==undefined&&(typeof c.savedLocationsDir!=='string'||!c.savedLocationsDir.trim()))throw Error('invalid saved locations directory');
   if(c.osm!==undefined&&c.osm!==false){
     const o=c.osm;if(!o||typeof o!=='object'||Array.isArray(o))throw Error('invalid osm configuration');
+    normalizeWaterSettings(o.water);
     if(o.defaultHeight!==undefined&&(!Number.isFinite(o.defaultHeight)||o.defaultHeight<=0||o.defaultHeight>500))throw Error('invalid osm default height');
     if(o.timeoutMs!==undefined&&(!Number.isInteger(o.timeoutMs)||o.timeoutMs<1||o.timeoutMs>120000))throw Error('invalid osm timeout');
     if(o.endpoint!==undefined){const url=new URL(o.endpoint);if(!['http:','https:'].includes(url.protocol))throw Error('invalid osm endpoint');}

@@ -41,7 +41,7 @@ if(locationPicker&&(externalStart||args.includes('--flat')||args.includes('--pla
 if(externalStart&&(args.includes('--standalone')||args.includes('--flat')||args.includes('--playground')||!config.mavlink))throw Error('--mission-planner needs MAVLink telemetry and cannot be combined with standalone/flat/playground');
 const mode=args.includes('--standalone')?'standalone':'sitl';
 let environment=loadEnvironment(pendingLocation?{...config,terrain:null}:config,configIndex>=0?args[configIndex+1]:undefined,{flat:pendingLocation||args.includes('--flat'),playground:args.includes('--playground')});
-let overlay=null,overlayMesh=null,worldRevision=0,worldStarted=false;
+let overlay=null,overlayMesh=null,worldRevision=0,worldStarted=false,waterSettings=config.osm?.water;
 let osmStatus={status:environment.terrain&&config.osm!==false?'loading':'disabled',hold:true};
 let physics=await Physics.create(config.vehicle,!pendingLocation&&!args.includes('--flat'),environment.terrain);
 const session=new Session(physics,config);
@@ -88,7 +88,7 @@ const server=http.createServer(async(req,res)=>{
   const url=new URL(req.url,'http://localhost');
   if(await profileApi(req,res,url))return;
   if(url.pathname==='/api/state'){res.setHeader('Content-Type','application/json');res.end(JSON.stringify(snapshot()));return;}
-  const files={'/barrier-view.js':'web/barrier-view.js','/landcover.js':'src/landcover.js','/osm-features.js':'src/osm-features.js','/vegetation.js':'src/vegetation.js','/road-materials.js':'src/road-materials.js','/profile-preview.js':'web/profile-preview.js','/profile-schema.js':'web/profile-schema.js','/vehicle-geometry.js':'src/vehicle-geometry.js','/OrbitControls.js':'node_modules/three/examples/jsm/controls/OrbitControls.js','/':'web/index.html','/profiles.html':'web/profiles.html','/profiles.js':'web/profiles.js','/profile-fields.js':'src/profile-fields.js','/app.js':'web/app.js','/assets/MN-168.js':'assets/MN-168.js','/assets/vehicle.js':'assets/vehicle.js','/assets/heavy-crawler.js':'assets/heavy-crawler.js','/assets/tracked-crawler.js':'assets/tracked-crawler.js','/style.css':'web/style.css','/video.js':'web/video.js','/scenery.js':'web/scenery.js','/road-textures.js':'web/road-textures.js','/road-surface.js':'web/road-surface.js','/sky-palette.js':'web/sky-palette.js','/weather-view.js':'web/weather-view.js','/weather-controls.js':'web/weather-controls.js','/weather-controls-model.js':'src/weather-controls-model.js','/weather-model.js':'src/weather-model.js','/instanced-scenery.js':'web/instanced-scenery.js','/vehicle-effects.js':'web/vehicle-effects.js','/terrain.js':'src/terrain.js','/terrain-shading.js':'web/terrain-shading.js','/terrain-view.js':'web/terrain-view.js','/location-map.js':'web/location-map.js','/saved-locations.js':'web/saved-locations.js','/leaflet.js':'node_modules/leaflet/dist/leaflet.js','/leaflet.css':'node_modules/leaflet/dist/leaflet.css','/osm-settings.js':'web/osm-settings.js','/osm-settings-model.js':'src/osm-settings-model.js','/osm-regions.js':'src/osm-regions.js','/osm-view.js':'web/osm-view.js','/graphics-quality.js':'web/graphics-quality.js','/building-surfaces.js':'web/building-surfaces.js','/building-textures.js':'web/building-textures.js','/assets/textures/building-materials.png':'assets/textures/building-materials.png','/osm-footprints.js':'src/osm-footprints.js','/three.js':'node_modules/three/build/three.module.js','/three.core.js':'node_modules/three/build/three.core.js'};
+  const files={'/water-view.js':'web/water-view.js','/video-loss.js':'web/video-loss.js','/barrier-view.js':'web/barrier-view.js','/landcover.js':'src/landcover.js','/osm-features.js':'src/osm-features.js','/vegetation.js':'src/vegetation.js','/road-materials.js':'src/road-materials.js','/profile-preview.js':'web/profile-preview.js','/profile-schema.js':'web/profile-schema.js','/vehicle-geometry.js':'src/vehicle-geometry.js','/OrbitControls.js':'node_modules/three/examples/jsm/controls/OrbitControls.js','/':'web/index.html','/profiles.html':'web/profiles.html','/profiles.js':'web/profiles.js','/profile-fields.js':'src/profile-fields.js','/app.js':'web/app.js','/assets/MN-168.js':'assets/MN-168.js','/assets/vehicle.js':'assets/vehicle.js','/assets/heavy-crawler.js':'assets/heavy-crawler.js','/assets/tracked-crawler.js':'assets/tracked-crawler.js','/style.css':'web/style.css','/video.js':'web/video.js','/scenery.js':'web/scenery.js','/road-textures.js':'web/road-textures.js','/road-surface.js':'web/road-surface.js','/sky-palette.js':'web/sky-palette.js','/weather-view.js':'web/weather-view.js','/weather-controls.js':'web/weather-controls.js','/weather-controls-model.js':'src/weather-controls-model.js','/weather-model.js':'src/weather-model.js','/instanced-scenery.js':'web/instanced-scenery.js','/vehicle-effects.js':'web/vehicle-effects.js','/terrain.js':'src/terrain-grid.js','/terrain-shading.js':'web/terrain-shading.js','/terrain-view.js':'web/terrain-view.js','/location-map.js':'web/location-map.js','/saved-locations.js':'web/saved-locations.js','/leaflet.js':'node_modules/leaflet/dist/leaflet.js','/leaflet.css':'node_modules/leaflet/dist/leaflet.css','/osm-settings.js':'web/osm-settings.js','/osm-settings-model.js':'src/osm-settings-model.js','/osm-regions.js':'src/osm-regions.js','/osm-view.js':'web/osm-view.js','/graphics-quality.js':'web/graphics-quality.js','/building-surfaces.js':'web/building-surfaces.js','/building-textures.js':'web/building-textures.js','/assets/textures/building-materials.png':'assets/textures/building-materials.png','/osm-footprints.js':'src/osm-footprints.js','/three.js':'node_modules/three/build/three.module.js','/three.core.js':'node_modules/three/build/three.core.js'};
   try{const file=files[url.pathname];if(!file){res.writeHead(404);res.end();return;}res.setHeader('Content-Type',file.endsWith('.js')?'text/javascript':file.endsWith('.css')?'text/css':file.endsWith('.png')?'image/png':'text/html');res.end(await fs.readFile(path.join(root,file)));}catch(error){log('asset-error',{asset:url.pathname,code:error.code,message:error.message});res.writeHead(500);res.end('asset unavailable');}
 });
 // Browser control is local, same-origin only; no MAVLink proxy on this socket.
@@ -112,6 +112,7 @@ wss.on('connection',ws=>{
         for(const client of wss.clients)if(client.readyState===WebSocket.OPEN)client.send(message);
       }
     } else if(m.type==='keys'&&mode==='standalone'){
+      if(physics.waterFailure)return;
       if(keyboard.owner&&keyboard.owner!==ws&&performance.now()-keyboard.time<300)return;
       const steering=Math.max(-1,Math.min(1,Number(m.steering)||0)),throttle=Math.max(-1,Math.min(1,Number(m.throttle)||0));
       keyboard={steering,throttle,time:performance.now(),owner:steering||throttle?ws:null};
@@ -208,7 +209,7 @@ wss.on('error',e=>{log('websocket-error',{message:e.message});process.exitCode=1
 server.on('error',e=>{log('http-error',{message:e.message});process.exitCode=1;shutdown();});
 server.listen(config.httpPort,config.httpHost,()=>{log('ready',{url:`http://${config.httpHost}:${config.httpPort}`,mode});if(environment.terrain&&osmStatus.status==='loading')void loadInitialOverlay();});
 let shuttingDown=false;
-function initialState(){return {type:'init',environmentPreferences,osmSettings:osmSettingsSnapshot(),mode,config,favorites,worldRevision,vehicles:choices,selectedVehicle,vehicleRevision,vehicleStatus,missionPlannerCommand:plannerCommand,locations:externalStart?[...locationPresets,{id:'custom',name:'Custom · Mission Planner',description:'Fetch terrain at Mission Planner’s selected start'},{id:'map',name:'Custom · browser map',description:'Click the map, then Load location'}]:locationPicker?[...locationPresets,{id:'map',name:'Custom · browser map',description:'Click the map, then Load location'}]:[],selectedLocation,mapSelection:selectedMapLocation,map:worldMap,locationMode:externalStart?'mission-planner':locationPicker?'launcher':null,world:environment.world,terrain:environment.terrain,overlay:overlayMesh?{buildings:overlayMesh.buildings.map(({prisms,...b})=>b),roads:overlayMesh.roads,landcover:overlayMesh.landcover,trees:overlayMesh.trees,barriers:overlayMesh.barriers,barrierFeatures:overlay?.barriers??[]}:null};}
+function initialState(){return {type:'init',environmentPreferences,osmSettings:osmSettingsSnapshot(),mode,config,favorites,worldRevision,vehicles:choices,selectedVehicle,vehicleRevision,vehicleStatus,missionPlannerCommand:plannerCommand,locations:externalStart?[...locationPresets,{id:'custom',name:'Custom · Mission Planner',description:'Fetch terrain at Mission Planner’s selected start'},{id:'map',name:'Custom · browser map',description:'Click the map, then Load location'}]:locationPicker?[...locationPresets,{id:'map',name:'Custom · browser map',description:'Click the map, then Load location'}]:[],selectedLocation,mapSelection:selectedMapLocation,map:worldMap,locationMode:externalStart?'mission-planner':locationPicker?'launcher':null,world:environment.world,terrain:environment.terrain,overlay:overlayMesh?{buildings:overlayMesh.buildings.map(({prisms,...b})=>b),roads:overlayMesh.roads,landcover:overlayMesh.landcover,trees:overlayMesh.trees,barriers:overlayMesh.barriers,barrierFeatures:overlay?.barriers??[],water:{...overlayMesh.water,legacyMapping:overlay?.water===undefined&&!!overlay?.landcover?.some(a=>a.kind==='water')},waterFeatureCount:overlay?.water?.length??0,waterSettings:physics.waterSettings}:null};}
 async function selectVehicle(id){
  const transition=++vehicleTransition,revision=++worldRevision;
  running=false;session.running=false;keyboard={steering:0,throttle:0,time:0,owner:null};
@@ -217,7 +218,7 @@ async function selectVehicle(id){
   const next=id==='custom'?initialConfig:resolveVehicleConfig(config,id);
   const defaults=await startupDefaults(next);
   if(shuttingDown||transition!==vehicleTransition||revision!==worldRevision)return;
-  const replacement=await Physics.create(next.vehicle,!pendingLocation&&!args.includes('--flat')||!!environment.terrain,environment.terrain,overlay,overlayMesh);
+  const replacement=await Physics.create(next.vehicle,!pendingLocation&&!args.includes('--flat')||!!environment.terrain,environment.terrain,overlay,overlayMesh,waterSettings);
   if(shuttingDown||transition!==vehicleTransition||revision!==worldRevision){replacement.free();return;}
   const activate=()=>{
    const old=physics;physics=replacement;config=next;session.physics=physics;session.config=config;
@@ -312,16 +313,16 @@ async function loadPreset(preset){
   if(externalStart&&sitlActive()&&telemetry.snapshot(performance.now()).armed!==false)throw Error('Disarm SITL before retrying the location selection.');
   const prepared=saved?(config.osm===false?{overlay:null,mesh:null,status:{status:'disabled'}}:prepareOverlayResult(terrain,{overlay:saved.overlay,status:hasOsmFeatures(saved.overlay)?'ready':'empty',cached:true})):await prepareOverlay(terrain,true);
   if(shuttingDown||revision!==worldRevision)return;
-  const replacement=await Physics.create(config.vehicle,true,terrain,prepared.overlay,prepared.mesh);
+  const replacement=await Physics.create(config.vehicle,true,terrain,prepared.overlay,prepared.mesh,saved?.manifest.waterSettings??config.osm?.water);
   if(shuttingDown||revision!==worldRevision){replacement.free();return;}
   if(mode==='sitl'&&sitlActive()&&(locationPicker||telemetry.snapshot(performance.now()).armed!==false)){replacement.free();throw Error('Stop or disarm SITL before retrying the location selection.');}
   physics.free();physics=replacement;session.physics=physics;
-  overlay=prepared.overlay;overlayMesh=prepared.mesh;osmStatus=prepared.status;worldStarted=false;
+  overlay=prepared.overlay;overlayMesh=prepared.mesh;osmStatus=prepared.status;worldStarted=false;waterSettings=replacement.waterSettings;
   loadedFavorite=saved?{...preset,name:saved.manifest.name,timeZone:saved.manifest.timeZone}:null;
   overlayDefaultHeight=saved?.manifest.defaultHeight??config.osm?.defaultHeight??6;
   const timeZone=saved?saved.manifest.timeZone:preset.timeZone;
-  environment={terrain,world:terrainObjects(terrain,overlay),home:terrain.home,timeZone};
-  worldMap=mapData(terrain,overlay,environment.home);
+  environment={terrain,world:terrainObjects(terrain,overlay,overlayMesh?.water),home:terrain.home,timeZone};
+  worldMap=mapData(terrain,overlay,environment.home,overlayMesh?.water);
   weather.close();weather=new LiveWeather(terrain.home,{timeZone});weather.start();
   startTerrain={status:'ready',message:`${preset.name} ready · ${preset.reliefM??Math.round(Math.max(...terrain.heights)-Math.min(...terrain.heights))} m elevation range`,home:terrain.home,cached};
   if(externalStart){
@@ -347,13 +348,13 @@ async function loadPickedStart(){
   if(!safe())throw Error('Start changed or disarmed telemetry lost during loading. Disarm and retry.');
   const prepared=await prepareOverlay(terrain,true);
   if(shuttingDown||revision!==worldRevision)return;
-  const replacement=await Physics.create(config.vehicle,true,terrain,prepared.overlay,prepared.mesh);
+  const replacement=await Physics.create(config.vehicle,true,terrain,prepared.overlay,prepared.mesh,config.osm?.water);
   if(shuttingDown||revision!==worldRevision||!safe()){replacement.free();if(shuttingDown||revision!==worldRevision)return;throw Error('Disarm and retry loading terrain.');}
   physics.free();physics=replacement;session.physics=physics;
-  overlay=prepared.overlay;overlayMesh=prepared.mesh;osmStatus=prepared.status;worldStarted=false;
+  overlay=prepared.overlay;overlayMesh=prepared.mesh;osmStatus=prepared.status;worldStarted=false;waterSettings=replacement.waterSettings;
   loadedFavorite=null;overlayDefaultHeight=config.osm?.defaultHeight??6;
-  environment={terrain,world:terrainObjects(terrain,overlay),home,timeZone:config.timeZone??terrain.timeZone??null};
-  worldMap=mapData(terrain,overlay,environment.home);
+  environment={terrain,world:terrainObjects(terrain,overlay,overlayMesh?.water),home,timeZone:config.timeZone??terrain.timeZone??null};
+  worldMap=mapData(terrain,overlay,environment.home,overlayMesh?.water);
   weather.close();weather=new LiveWeather(home,{timeZone:environment.timeZone});weather.start();
   startTerrain={status:'ready',message:'Terrain ready · start physics when ready',home,cached};
   const init=JSON.stringify(initialState());for(const ws of wss.clients)if(ws.readyState===WebSocket.OPEN)ws.send(init);
@@ -382,7 +383,7 @@ async function saveLocation(ws,message){
   const eligibility=saveEligibility();if(!eligibility.canSaveLocation)throw Error(eligibility.saveLocationHint);
   // Save clones synchronously before its first await, while this installed pair still matches.
   const currentWeather=weather.snapshot();
-  const saved=savedLocations.save({name:message.name,terrain:environment.terrain,overlay,timeZone:currentWeather.timeZoneKnown?currentWeather.timeZone:environment.timeZone??null,defaultHeight:overlayDefaultHeight});
+  const saved=savedLocations.save({name:message.name,terrain:environment.terrain,overlay,timeZone:currentWeather.timeZoneKnown?currentWeather.timeZone:environment.timeZone??null,defaultHeight:overlayDefaultHeight,waterSettings:physics.waterSettings});
   // List operations are ordered independently of world selection and never rebuild physics.
   const operation=favoriteOperations.then(async()=>{const summary=await saved;favorites=[...favorites,summary];broadcastFavorites({savedId:summary.id,...correlation});});
   saved.catch(()=>{});favoriteOperations=operation.catch(()=>{});await operation;
@@ -429,7 +430,7 @@ async function prepareOverlay(terrain,worldLoad=false){
 }
 function prepareOverlayResult(terrain,result){
  if(result.overlay){
-  try{const mesh=overlayGeometry(result.overlay,terrain),spawnWarning=barrierSpawnWarning(mesh.barriers,config.vehicle);return {overlay:result.overlay,mesh,status:{status:result.status,cached:result.cached,spawnWarning,message:result.status==='empty'?'No supported OpenStreetMap features in this patch':`OpenStreetMap · ${result.overlay.buildings.length} buildings · ${result.overlay.roads.length} roads${result.overlay.landcover?.length||result.overlay.trees?.length?` · ${result.overlay.landcover?.length??0} land-cover areas · ${result.overlay.trees?.length??0} mapped trees`:""}${result.overlay.barriers?.length?` · ${result.overlay.barriers.length} barriers`:''}${result.cached?' · cached offline data':''}${spawnWarning?` · Warning: ${spawnWarning}`:''}`}};}
+  try{const mesh=overlayGeometry(result.overlay,terrain),spawnWarning=barrierSpawnWarning(mesh.barriers,config.vehicle);return {overlay:result.overlay,mesh,status:{status:result.status,cached:result.cached,spawnWarning,message:result.status==='empty'?'No supported OpenStreetMap features in this patch':`OpenStreetMap · ${result.overlay.buildings.length} buildings · ${result.overlay.roads.length} roads${result.overlay.landcover?.length||result.overlay.trees?.length?` · ${result.overlay.landcover?.length??0} land-cover areas · ${result.overlay.trees?.length??0} mapped trees`:""}${result.overlay.barriers?.length?` · ${result.overlay.barriers.length} barriers`:''}${mesh.water?.features.length?` · ${mesh.water.features.length} water features`:''}${mesh.water?.omitted?` · ${mesh.water.omitted} water features omitted`:''}${mesh.water?.mismatched?` · Water/terrain mismatch (${mesh.water.mismatched})`:''}${result.cached?' · cached offline data':''}${spawnWarning?` · Warning: ${spawnWarning}`:''}`}};}
   catch(error){return {overlay:null,mesh:null,status:{status:'error',message:`OSM geometry failed: ${error.message}. Terrain remains usable · Retry OSM.`}};}
  }
  return {overlay:null,mesh:null,status:{status:'error',message:`OSM unavailable: ${result.message}. Terrain remains usable · Retry OSM.`}};
@@ -439,11 +440,11 @@ async function loadInitialOverlay(){
  try{
   const prepared=await prepareOverlay(environment.terrain,true);
   if(shuttingDown||revision!==worldRevision)return;
-  const replacement=await Physics.create(config.vehicle,!args.includes('--flat'),environment.terrain,prepared.overlay,prepared.mesh);
+  const replacement=await Physics.create(config.vehicle,!args.includes('--flat'),environment.terrain,prepared.overlay,prepared.mesh,config.osm?.water);
   if(shuttingDown||revision!==worldRevision){replacement.free();return;}
   physics.free();physics=replacement;session.physics=physics;
-  overlay=prepared.overlay;overlayMesh=prepared.mesh;osmStatus=prepared.status;overlayDefaultHeight=config.osm?.defaultHeight??6;
-  environment.world=terrainObjects(environment.terrain,overlay);worldMap=mapData(environment.terrain,overlay,environment.home);
+  overlay=prepared.overlay;overlayMesh=prepared.mesh;osmStatus=prepared.status;overlayDefaultHeight=config.osm?.defaultHeight??6;waterSettings=replacement.waterSettings;
+  environment.world=terrainObjects(environment.terrain,overlay,overlayMesh?.water);worldMap=mapData(environment.terrain,overlay,environment.home,overlayMesh?.water);
   running=vehicleStatus.status==='ready';worldStarted=running;session.running=running;broadcastWorld();
  }catch(error){if(!shuttingDown){osmStatus={status:'error',message:`OSM unavailable: ${error.message}. Terrain remains usable · Retry OSM.`};running=vehicleStatus.status==='ready';worldStarted=running;session.running=running;}}
 }
@@ -456,11 +457,11 @@ async function retryOsm(){
   if(!prepared.overlay){osmStatus=prepared.status;return;}
   // Stopping or resetting after driving is not a safe world load. Never insert an obstacle into an existing drive.
   if(worldStarted||running||externalStart&&sitlActive()&&telemetry.snapshot(performance.now()).armed!==false){osmStatus={status:'deferred',message:'OSM cached · applies on next location load or backend restart'};return;}
-  const replacement=await Physics.create(config.vehicle,true,terrain,prepared.overlay,prepared.mesh);
+  const replacement=await Physics.create(config.vehicle,true,terrain,prepared.overlay,prepared.mesh,waterSettings);
   if(shuttingDown||revision!==worldRevision||worldStarted||running){replacement.free();return;}
   physics.free();physics=replacement;session.physics=physics;
-  overlay=prepared.overlay;overlayMesh=prepared.mesh;osmStatus=prepared.status;overlayDefaultHeight=config.osm?.defaultHeight??6;
-  environment.world=terrainObjects(terrain,overlay);worldMap=mapData(terrain,overlay,environment.home);broadcastWorld();
+  overlay=prepared.overlay;overlayMesh=prepared.mesh;osmStatus=prepared.status;overlayDefaultHeight=config.osm?.defaultHeight??6;waterSettings=replacement.waterSettings;
+  environment.world=terrainObjects(terrain,overlay,overlayMesh?.water);worldMap=mapData(terrain,overlay,environment.home,overlayMesh?.water);broadcastWorld();
  }catch(error){if(!shuttingDown&&revision===worldRevision)osmStatus={status:'error',message:`OSM unavailable: ${error.message}. Terrain remains usable · Retry OSM.`};}
 }
 

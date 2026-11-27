@@ -43,6 +43,7 @@ function buildLocationMap({onPick}){
  return {
   setWorld(data){
    if(!data)return;home=data.home;features.clearLayers();
+   for(const water of data.water??[])L.polygon(water.triangles.map(tri=>[tri]),{renderer,color:'#29758f',weight:0,fillColor:'#4694ae',fillOpacity:.55,interactive:false}).addTo(features);
    for(const rings of data.buildings)L.polygon(rings,{renderer,stroke:true,color:'#5b6974',weight:1,fillColor:'#778794',fillOpacity:.6,interactive:false}).addTo(features);
    for(const barrier of data.barriers??[]){
     const style={renderer,color:barrier.open?'#42815d':'#9d5946',weight:2,interactive:false,...(barrier.open?{dashArray:'3 4'}:{})};
