@@ -251,6 +251,7 @@ reapply deformation; saved locations reproduce the same world offline. Run
 - Active feature phase: none; phase 4 (richer building geometry and materials) is next.
 - Follow-up branch/worktree: `fix/osm-barrier-assets` at `.worktrees/osm-barriers`,
   based on merged phase 3. Includes gate-way state precedence fix and fresh presets.
+  Follow-up PR: [#13](https://github.com/Akceptor/rover-sim/pull/13) (open).
 - Validation (2026-11-27): `npm test` — 262 passed, 1 Windows-only skip;
   `npm run test:osm` and `npm run test:barriers` passed for the gate fix.
   The 12 barrier tests cover actual collisions, narrow gates, sloping foundations,
@@ -270,7 +271,7 @@ reapply deformation; saved locations reproduce the same world offline. Run
   barrier counts: Kyiv 122, Lviv 3, Lima 32, Cusco 0, Andes ravine 5.
   Existing runtime caches and saved favourites retain their stored mapping;
   refresh them to adopt newly bundled data.
-- Next action: publish the preset/gate follow-up; then start phase 4 from updated
+- Next action: review/merge the preset/gate follow-up #13; then start phase 4 from updated
   `main` in its own branch/PR.
 - Blocking decisions: none. GitHub connectivity verified on 2026-11-27;
   the earlier `EOF` responses are resolved. No new merge performed; subsequent

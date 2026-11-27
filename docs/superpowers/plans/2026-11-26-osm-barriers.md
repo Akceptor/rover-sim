@@ -9,7 +9,8 @@
   representative visuals; review and resolve findings.
 - [x] Update user docs and roadmap checkpoint.
 - [x] Initial phase 3 PR #12 merged at `63a1f44` (2026-11-26).
-- [ ] Publish reviewed gate-state/preset follow-up on `fix/osm-barrier-assets`.
+- [x] Publish reviewed gate-state/preset follow-up on `fix/osm-barrier-assets`:
+  [PR #13](https://github.com/Akceptor/rover-sim/pull/13).
 
 Resume verification, 2026-11-27: 262 tests passed, one Windows-only skip;
 OSM and barriers Chrome checks passed. Overview and gate-driving screenshots
