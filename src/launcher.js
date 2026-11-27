@@ -9,9 +9,10 @@ export function loadLauncherConfig(file){
  try{config=JSON.parse(fs.readFileSync(file,'utf8'));}
  catch(error){throw Error(`Cannot read launcher config ${file}: ${error.message}. Copy config/launcher.example.json to config/launcher.local.json and set sitlExe.`);}
  if(!config||typeof config!=='object'||Array.isArray(config))throw Error('Launcher config must be an object');
- for(const key of Object.keys(config))if(!['sitlExe','backendConfig'].includes(key))throw Error(`Unknown launcher setting: ${key}. --wipe is only allowed on the command line.`);
+ for(const key of Object.keys(config))if(!['sitlExe','backendConfig','openBrowser'].includes(key))throw Error(`Unknown launcher setting: ${key}. --wipe is only allowed on the command line.`);
  for(const key of ['sitlExe','backendConfig'])if(config[key]!==undefined&&(typeof config[key]!=='string'||!config[key].trim()))throw Error(`Launcher ${key} must be a nonempty path`);
- return Object.fromEntries(Object.entries(config).map(([key,value])=>[key,path.resolve(path.dirname(file),value)]));
+ if(config.openBrowser!==undefined&&typeof config.openBrowser!=='boolean')throw Error('Launcher openBrowser must be a boolean');
+ return Object.fromEntries(Object.entries(config).map(([key,value])=>[key,key==='openBrowser'?value:path.resolve(path.dirname(file),value)]));
 }
 export const localHost=host=>['0.0.0.0','::'].includes(host)?'127.0.0.1':host;
 export function sitlArguments(config,{defaults,mavlinkPort=5760,wipe=false,home={lat:50.4501,lon:30.5234,alt:100}}={}){

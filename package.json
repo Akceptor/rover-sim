@@ -6,7 +6,7 @@
   "scripts": {
     "start": "node src/server.js",
     "sim": "node scripts/launch.mjs",
-    "standalone": "node src/server.js --standalone --location-picker",
+    "standalone": "node scripts/launch.mjs --standalone --choose-location --no-video",
     "video": "node scripts/camera-stream.mjs",
     "terrain:import": "node scripts/import-terrain.mjs",
     "test": "node --test test/*.test.js",

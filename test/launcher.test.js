@@ -67,3 +67,12 @@ test('vehicleDefaults sees sitl.parm added after import',async()=>{
   assert.ok(launcher.vehicleDefaults(config,{root:'/sim'}).includes(path.join(dir,'test-rig','sitl.parm')));
  }finally{if(old===undefined)delete process.env.ROVER_VEHICLES_DIR;else process.env.ROVER_VEHICLES_DIR=old;rmSync(dir,{recursive:true,force:true});}
 });
+
+test('launcher config accepts only boolean openBrowser and preserves it without treating it as a path',async()=>{
+ const {mkdtemp,writeFile,rm}=await import('node:fs/promises'),{tmpdir}=await import('node:os'),path=await import('node:path');
+ const dir=await mkdtemp(path.join(tmpdir(),'launcher-browser-')),file=path.join(dir,'launcher.json');
+ try{
+  for(const openBrowser of [false,true]){await writeFile(file,JSON.stringify({backendConfig:'backend.json',openBrowser}));assert.deepEqual(launcher.loadLauncherConfig(file),{backendConfig:path.join(dir,'backend.json'),openBrowser});}
+  for(const openBrowser of ['false',0,null,{}]){await writeFile(file,JSON.stringify({openBrowser}));assert.throws(()=>launcher.loadLauncherConfig(file),/openBrowser.*boolean/);}
+ }finally{await rm(dir,{recursive:true,force:true});}
+});
