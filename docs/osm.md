@@ -1,4 +1,4 @@
-# OpenStreetMap roads and buildings
+# OpenStreetMap world features
 
 Planned enhancements and resumable PR checkpoints are tracked in the
 [OSM enhancement roadmap](osm-roadmap.md).
@@ -21,13 +21,13 @@ open ground: the importer does not move a start that lies inside a building.
 All five existing terrain presets include matching OSM snapshots under
 `assets/osm/`: Kyiv, Lviv, Lima, Cusco and the Andes ravine. They load directly
 offline, even in a fresh checkout without `.run/`. All five were refreshed on
-2026-11-26 with detailed road tags, land cover and mapped tree/row points.
+2026-11-27 with detailed road tags, land cover, mapped tree/row points and barriers.
 See the [snapshot dates,
 feature counts and license](../assets/osm/README.md). Cusco has mapped roads but
 no mapped buildings in this snapshot.
 
 For other starts, the backend queries Overpass for buildings, highways, supported
-land-cover areas, mapped trees and tree rows over the terrain patch. Requests have a 30-second default client timeout and a
+land-cover areas, mapped trees, tree rows and barriers over the terrain patch. Requests have a 30-second default client timeout and a
 25-second Overpass execution timeout. Server errors, rate limits, malformed or
 partial responses produce a visible error and **Retry OSM**; there is no automatic
 retry loop. A valid empty response is displayed and cached as an empty patch.
@@ -258,6 +258,53 @@ refresh. The five bundled presets include this data as of 2026-11-26. New saved
 locations preserve additional fields for offline reuse. Land-cover-only and tree-only patches show OSM credit in the
 browser and video, and count as complete nonempty OSM data.
 
+### Mapped barriers and obstacles
+
+Supported barrier ways are walls, retaining walls, fences, gates, lift gates and
+entrances. Supported standalone nodes are bollards, blocks, gates, lift gates
+and entrances. Walls and fences stop vehicles; their visible sections and
+colliders use the same terrain-following geometry. Foundations extend 5 cm below
+the lowest surrounding terrain sample and tops sit above the highest sample,
+so steep slopes can exaggerate wall height. Retaining walls do not reshape terrain.
+Fence mesh holes are decorative; the collision envelope is solid.
+
+| Type | Default height | Default thickness or point width |
+| --- | ---: | ---: |
+| Wall / retaining wall | 2 m | 0.2 m |
+| Fence | 1.5 m | 0.06 m |
+| Gate / lift gate | 1.2 m | 0.08 m |
+| Bollard | 0.8 m | 0.15 m |
+| Block | 0.6 m | 0.6 m |
+
+Positive mapped measurements in metres or feet override these defaults. Heights
+above 10 m, thicknesses/point widths above 2 m and opening widths above 20 m
+fall back to defaults. These are simulation approximations, not surveyed dimensions.
+
+Gate and entrance nodes cut openings along parent walls/fences, including across
+short segments and closed-way seams. Opening width uses `width`, then
+`maxwidth:physical`, otherwise 3 m. Gate ways retain their mapped span. A gate
+node represented by a gate way is deduplicated. Node gates align with their
+parent barrier, otherwise across their road, otherwise east–west. Gates are
+static panels: `open=yes` leaves only posts, while unknown state is closed.
+An explicit gate-way `open` tag takes precedence over member-node tags; when
+absent, a member gate/lift-gate node with `open=yes` can open the way.
+`locked=no` and legal access do not imply an open gate. Entrances have no solid
+geometry. There is no gate interaction or opening-hours simulation.
+
+Processed barriers are clipped to the terrain patch and capped at 2,048 point
+obstacles/line segments. Terrain sections use an adaptive length of at least
+one metre to bound geometry. Missing nodes split ways instead of joining across
+unmapped gaps. Generated vegetation avoids mapped obstacles. Map vectors,
+feature counts, browser/FPV credit and saved offline locations include barriers,
+even in patches containing only an entrance. Existing world-edge barriers are
+independent. A persistent start-intersection warning appears when the selected
+vehicle overlaps a mapped barrier; the geographic origin is never moved.
+
+Older schema-1 snapshots remain valid offline without barrier fields. Refresh
+mapping to add barriers to an older location; saved favourites retain their
+original data. The bundled snapshots include barriers where mapped (Kyiv 122,
+Lviv 3, Lima 32, Cusco 0, Andes ravine 5 processed features).
+
 ## Attribution and license
 
 Overlay data is **© OpenStreetMap contributors**, licensed under the
@@ -268,6 +315,11 @@ OSM databases under ODbL; preserve attribution and the applicable ODbL obligatio
 when sharing them. Generated scenery is separate from the OSM data.
 
 ## Checks
+
+`npm run test:barriers` uses local fixtures to verify exact render/collider
+transforms, map vectors, browser/FPV credit, driving through a narrow gate,
+vehicle-dependent spawn warnings, disposal on world replacement, entrance-only
+attribution and mobile layout. Screenshots go to `.run/barriers/`.
 
 `npm run test:landcover` uses a local land-cover-only fixture to verify shared
 tree instances, preserved terrain/imagery, browser and video attribution,

@@ -5,22 +5,27 @@
 See [OpenStreetMap copyright and attribution](https://www.openstreetmap.org/copyright).
 The surrounding simulator code is separate from these derived databases.
 
-All five snapshots were refreshed on **2026-11-26 UTC** from the public
+All five snapshots were refreshed on **2026-11-27 UTC** from the public
 [Dresel Overpass instances](https://ovp.dresel.systems/), using Europe
 (`/api/interpreter`) and South America (`/api-sa/interpreter`) as appropriate.
-Source database timestamp: **2026-11-24T21:21:23Z**. Each JSON records the exact
+Source database timestamp: **2026-11-26T21:21:01Z**. Each JSON records the exact
 endpoint, download time, database timestamp, license and attribution.
 
 The refresh includes detailed road surface/smoothness/tracktype tags, supported
-land-cover polygons and mapped tree/row points using the current importer.
+land-cover polygons, mapped tree/row points and barriers using the current importer.
 Terrain elevations, imagery, geographic origins, schema and cache filenames are
 unchanged. The five presets therefore include the new vegetation/land-cover and
 surface behavior offline in a fresh checkout.
 
+The refresh uses the current barrier importer, including gate-state precedence.
+Processed barrier counts are Kyiv 122, Lviv 3, Lima 32, Cusco 0 and Andes ravine 5.
+Counts include clipped wall/fence segments and point obstacles; an empty barrier
+list does not imply that a real-world route is clear.
+
 | Preset | JSON filename | Buildings | Roads | Tagged roads | Cover areas | Mapped tree/row points |
 | --- | --- | ---: | ---: | ---: | ---: | ---: |
 | Kyiv · Feofaniya | `79192726180d74dc7a89719cf33c7feb2a5f344dc0e60df2707e0e6ccaa0d30c.json` | 242 | 120 | 43 | 18 | 2 |
-| Lviv · northern hills | `1cc287a2a26119411238fb1112e9cf7d48d08cd0cbc0f01b4fe205f513cc8960.json` | 258 | 82 | 40 | 6 | 0 |
+| Lviv · northern hills | `1cc287a2a26119411238fb1112e9cf7d48d08cd0cbc0f01b4fe205f513cc8960.json` | 259 | 82 | 40 | 6 | 0 |
 | Lima · Rímac hills | `9154fcc2645f6faed840953435bd9c723b6a3909bdd893865256ec1c8f45db3f.json` | 460 | 384 | 142 | 14 | 54 |
 | Cusco · Andes | `8ce6767b1da190e449d143e26ee83c8f8900d13a392f2f38f1fbcbacebfbe865.json` | 0 | 20 | 2 | 8 | 0 |
 | Andes · mountain ravine | `e0cf8b4ced3814b1aa6babadf45b5285e8224e2320f08a95bb5f17c7bb0e4233.json` | 35 | 23 | 9 | 1 | 0 |

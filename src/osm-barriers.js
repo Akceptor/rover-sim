@@ -69,7 +69,9 @@ export function processBarriers(data,terrain,nodes,ways){
    }
    gaps.sort((a,b)=>a[0]-b[0]);
    const merged=[];for(const gap of gaps){const last=merged.at(-1);if(last&&last[1]>=gap[0])last[1]=Math.max(last[1],gap[1]);else merged.push([...gap]);}
-   const effective={...props,open:props.open||(gateType(type)&&points.some(p=>raw.get(p.id)?.tags?.open==='yes'))};
+   const effective={...props,open:props.open||(gateType(type)&&way.tags.open===undefined&&points.some(p=>{
+    const tags=raw.get(p.id)?.tags;return ['gate','lift_gate'].includes(tags?.barrier)&&String(tags.open).trim().toLowerCase()==='yes';
+   }))};
    for(let i=1;i<points.length;i++){
     const start=distances[i-1],end=distances[i],length=end-start;if(length<.001)continue;
     let cursor=start,part=0;
