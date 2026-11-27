@@ -23,7 +23,11 @@ try{
  }
  await start(0);browser=await chromium.launch({channel:'chrome',headless:true});const page=await browser.newPage({viewport:{width:1440,height:900}}),errors=[];
  page.on('pageerror',e=>errors.push(e.message));await page.route('https://**/*',route=>route.abort());
- await page.addInitScript(()=>{const Original=WebSocket;window.WebSocket=class extends Original{constructor(...args){super(...args);this.addEventListener('message',e=>{try{const m=JSON.parse(e.data);if(m.type==='init')window.worldInit=m;}catch{}});}};});
+ await page.addInitScript(()=>{
+  const Original=WebSocket;window.WebSocket=class extends Original{constructor(...args){super(...args);this.addEventListener('message',e=>{try{const m=JSON.parse(e.data);if(m.type==='init')window.worldInit=m;}catch{}});}};
+  const fill=CanvasRenderingContext2D.prototype.fillText;window.capturedCredits=[];
+  CanvasRenderingContext2D.prototype.fillText=function(text,...args){if(String(text).includes('OpenStreetMap'))window.capturedCredits.push(text);return fill.call(this,text,...args);};
+ });
  await page.goto(url);await page.waitForFunction(()=>window.worldInit?.overlay?.barriers?.length&&!document.querySelector('#osmAttribution').hidden);
  const shared=await page.evaluate(async()=>{
   const {fpvOutput:f}=await import('/app.js'),T=await import('/three.js'),matrix=new T.Matrix4(),actual=[];
@@ -32,6 +36,14 @@ try{
   const expected=window.worldInit.overlay.barriers.map(b=>{const q=new T.Quaternion().setFromAxisAngle(new T.Vector3(0,1,0),-b.angle);return Array.from(new T.Matrix4().compose(new T.Vector3(...b.position),q,new T.Vector3(...b.size)).elements).map(round);});
   return {actual:actual.sort(),expected:expected.sort(),map:window.worldInit.map.barriers.length};
  });assert.deepEqual(shared.actual,shared.expected,'barrier meshes use exact collider transforms');assert.ok(shared.map>5);
+ assert.equal(await page.locator('#osmAttribution a').getAttribute('href'),'https://www.openstreetmap.org/copyright');
+ await page.locator('#settings').click();await page.locator('#videoToggle').click();await page.waitForFunction(()=>window.capturedCredits.length>0);assert.match(await page.evaluate(()=>window.capturedCredits[0]),/OpenStreetMap.*copyright/);await page.locator('#videoToggle').click();await page.locator('#closeSettings').click();
+ await fs.mkdir('.run/barriers',{recursive:true});
+ const overview=await page.evaluate(async()=>{
+  const {fpvOutput:f}=await import('/app.js'),T=await import('/three.js'),camera=new T.PerspectiveCamera(50,16/9,.1,1000);
+  camera.position.set(-32,24,38);camera.lookAt(0,0,0);const fog=f.scene.fog;f.scene.fog=null;
+  const light=new T.AmbientLight(0xffffff,2);f.scene.add(light);f.renderer.render(f.scene,camera);const png=f.canvas.toDataURL().split(',')[1];f.scene.remove(light);f.scene.fog=fog;return png;
+ });await fs.writeFile('.run/barriers/overview.png',Buffer.from(overview,'base64'));
  await page.locator('#viewport').click();await page.keyboard.down('w');await delay(9000);await page.keyboard.up('w');assert.ok((await state()).position.x>5.3,'rover passes through rendered narrow open gate');
  await fs.mkdir('.run/barriers',{recursive:true});await page.getByRole('button',{name:'Chase',exact:true}).click();await page.screenshot({path:'.run/barriers/open-gate.png'});
  await group.stopChild(backend);data.elements.push(node(999,0,.22,{barrier:'bollard'}));await start(1);

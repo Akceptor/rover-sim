@@ -12,10 +12,15 @@ Source database timestamp: **2026-11-24T21:21:23Z**. Each JSON records the exact
 endpoint, download time, database timestamp, license and attribution.
 
 The refresh includes detailed road surface/smoothness/tracktype tags, supported
-land-cover polygons and mapped tree/row points using the current importer.
+land-cover polygons, mapped tree/row points and barriers using the current importer.
 Terrain elevations, imagery, geographic origins, schema and cache filenames are
 unchanged. The five presets therefore include the new vegetation/land-cover and
 surface behavior offline in a fresh checkout.
+
+Barrier data was added on the phase 3 branch from the same source snapshot.
+Processed barrier counts are Kyiv 122, Lviv 3, Lima 32, Cusco 0 and Andes ravine 5.
+Counts include clipped wall/fence segments and point obstacles; an empty barrier
+list does not imply that a real-world route is clear.
 
 | Preset | JSON filename | Buildings | Roads | Tagged roads | Cover areas | Mapped tree/row points |
 | --- | --- | ---: | ---: | ---: | ---: | ---: |

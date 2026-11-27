@@ -10,7 +10,9 @@ including gaps that cross multiple short segments. Infer a node gate's direction
 from its parent barrier, otherwise perpendicular to its road, otherwise east/west.
 Deduplicate a gate node already represented by a gate way. Gate ways preserve
 their actual span. `open=yes` gates have posts only; unknown gate state is closed.
-`locked=no` and legal access never imply open. Entrances have no colliders.
+`locked=no` and legal access never imply open. An explicit gate-way `open` tag
+takes precedence; only when absent may an open gate/lift-gate member node open
+the way. Unrelated nodes' `open` tags have no effect. Entrances have no colliders.
 
 Generate one set of oriented boxes/cylinders for physics and rendering. Walls and
 fences follow terrain in sections with embedded foundations and conservative

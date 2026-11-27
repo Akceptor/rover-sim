@@ -15,7 +15,7 @@ part of this roadmap.
 | --- | --- | --- | --- |
 | 1 | Surface-aware driving and effects | Merged | [#9](https://github.com/Akceptor/rover-sim/pull/9) |
 | 2 | Mapped vegetation and land cover | Merged | [#11](https://github.com/Akceptor/rover-sim/pull/11) |
-| 3 | Mapped barriers and obstacles | Queued | Not opened |
+| 3 | Mapped barriers and obstacles | In progress | Remote PR status unverified |
 | 4 | Richer building geometry and materials | Queued | Not opened |
 | 5 | Water features and crossing hazards | Queued | Not opened |
 | 6 | Road corridor grading | Queued | Not opened |
@@ -247,23 +247,33 @@ reapply deformation; saved locations reproduce the same world offline. Run
 - Bundled preset maintenance: all five OSM snapshots refreshed on 2026-11-26,
   including road tags, land cover and mapped tree/row points. Source database
   timestamp: `2026-11-24T21:21:23Z`; saved favourites remain unchanged.
-- Active phase: none; phase 3 (mapped barriers and obstacles) is next.
-- Current branch: `main`. Phase 2 worktree retained at `.worktrees/osm-vegetation`.
-- Base: `2afafcc` on `main`, including the standalone location-reload fix in PR #10.
-- Completed phase 2 PR: [#11](https://github.com/Akceptor/rover-sim/pull/11).
-- Implementation commit: `fc093f2`.
-- Validation (2026-11-26): `npm test` — 250 passed, 1 Windows-only skip;
-  `npm run test:landcover`, `npm run test:osm`, `npm run test:terrain` and
-  `npm run test:vehicle-effects` passed. Land-cover overview visually inspected.
-  Review findings fixed with failing regressions and re-reviewed; none remain important.
-- Design/plan: `docs/superpowers/specs/2026-11-26-osm-vegetation-design.md` and
-  `docs/superpowers/plans/2026-11-26-osm-vegetation.md`.
-- Compatibility: schema 1 and legacy offline snapshots remain valid. New cover/tree
-  data applies to new downloads; previous processed snapshots require a mapping refresh.
-- Next action: start phase 3 (mapped barriers and obstacles) from updated `main`
-  in its own branch/PR.
-- Blocking decisions: none for starting phase 3. Phase 2 merge was authorized;
-  subsequent merges require authorization.
+- Active phase: phase 3 (mapped barriers and obstacles); implemented locally,
+  review and validation completed, publication status unverified.
+- Current branch/worktree: `feat/osm-barriers` at `.worktrees/osm-barriers`.
+  `main` retains the phase 2 checkpoint until phase 3 is merged.
+- Base: `1b8f388` on `main`, including the five-preset surface/land-cover refresh.
+- Initial implementation commit: `dd174b2`; follow-up fixes/docs are on the same branch.
+- Validation (2026-11-27): `npm test` — 262 passed, 1 Windows-only skip;
+  `npm run test:osm` and `npm run test:barriers` passed. The 12 barrier tests
+  include actual wall/fence/bollard/block collision, open/closed narrow gates,
+  sloping foundations, offline saving and gate-state precedence.
+- Browser verification: exact shared render/collider transforms, map vectors,
+  browser/FPV credit, narrow-gate driving, vehicle-dependent spawn feedback,
+  world-replacement disposal, entrance-only attribution and mobile layout.
+  `.run/barriers/overview.png` and `open-gate.png` visually inspected.
+- Review: no important issues remain; gate-way state precedence was clarified
+  and fixed with a failing-then-passing regression.
+- Design/plan: `docs/superpowers/specs/2026-11-26-osm-barriers-design.md` and
+  `docs/superpowers/plans/2026-11-26-osm-barriers.md`.
+- Compatibility: schema 1 and legacy offline snapshots remain valid. Bundled
+  barrier feature counts: Kyiv 122, Lviv 3, Lima 32, Cusco 0, Andes ravine 5.
+  Existing runtime caches and saved favourites need a mapping refresh for barriers.
+- Next action: check GitHub for an existing phase 3 PR, publish the reviewed
+  follow-up and create/update that PR; record its URL here. Do not start phase 4
+  until phase 3 is merged.
+- External limitation: GitHub GraphQL and REST reads repeatedly returned `EOF`
+  on 2026-11-27, including after an approved elevated retry. Remote PR status
+  could not be verified. No merge performed; subsequent merges require authorization.
 
 To resume in a new session: **“Continue the OSM roadmap in `docs/osm-roadmap.md`
 from its checkpoint, one feature PR at a time. Bridges remain excluded.”**

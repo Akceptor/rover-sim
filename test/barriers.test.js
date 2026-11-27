@@ -107,3 +107,17 @@ test('entrance ways preserve a closed gate node',()=>{
  const elements=[node(1,10,-3),node(2,10,0,{barrier:'gate',width:'2'}),node(3,10,3),{type:'way',id:1,nodes:[1,2,3],tags:{barrier:'entrance'}}];
  const o=processOsm({elements},terrain);assert.ok(o.barriers.some(b=>b.type==='gate'));assert.equal(overlayOccupies(o,10,0,.1),true);assert.ok(overlayGeometry(o,terrain).barriers.length>0);
 });
+
+test('explicit gate-way state overrides member nodes and unrelated open tags are ignored',()=>{
+ const fixture=(wayOpen,nodeTags)=>({elements:[node(1,10,-2,nodeTags),node(2,10,2),{type:'way',id:10,nodes:[1,2],tags:{barrier:'gate',...(wayOpen===undefined?{}:{open:wayOpen})}}]});
+ for(const [wayOpen,nodeTags,expected]of [
+  ['no',{barrier:'gate',open:'yes'},false],
+  [undefined,{open:'yes'},false],
+  [undefined,{barrier:'gate',open:' YES '},true],
+  ['yes',{barrier:'gate',open:'no'},true],
+ ]){
+  const o=processOsm(fixture(wayOpen,nodeTags),terrain);
+  assert.equal(o.barriers.find(b=>b.id.startsWith('way/10/')).open,expected);
+  assert.equal(overlayOccupies(o,10,0,.1),!expected,'gate panel matches resolved state');
+ }
+});
