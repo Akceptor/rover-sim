@@ -9,6 +9,10 @@ Bridges are excluded. Road grading remains in scope as its own final phase.
 Tunnel construction, traffic simulation and surveyed building interiors are not
 part of this roadmap.
 
+Execution-order update (2026-11-27): the user requested water next. Proceed
+with phase 5 before phase 4; building detail remains queued. Phase numbering
+stays unchanged, and road grading remains last.
+
 ## Progress and PR sequence
 
 | Phase | Feature PR | Status | PR link |
@@ -17,7 +21,7 @@ part of this roadmap.
 | 2 | Mapped vegetation and land cover | Merged | [#11](https://github.com/Akceptor/rover-sim/pull/11) |
 | 3 | Mapped barriers and obstacles | Merged | [#12](https://github.com/Akceptor/rover-sim/pull/12) |
 | 4 | Richer building geometry and materials | Queued | Not opened |
-| 5 | Water features and crossing hazards | Queued | Not opened |
+| 5 | Water features and crossing hazards | In progress (design) | Not opened |
 | 6 | Road corridor grading | Queued | Not opened |
 
 Use `Queued`, `In progress`, `PR open`, `Merged`, or `Paused` for status. Record
@@ -248,7 +252,10 @@ reapply deformation; saved locations reproduce the same world offline. Run
   using the current importer for road tags, land cover, mapped trees and barriers.
   Source database timestamp: `2026-11-26T21:21:01Z`. Terrain/imagery remain tracked
   and complete; saved favourites remain unchanged.
-- Active feature phase: none; phase 4 (richer building geometry and materials) is next.
+- Active feature phase: phase 5 (water), design prepared for user review on
+  `feat/osm-water` at `.worktrees/osm-water`. User requested water before buildings.
+  Proposed design: `docs/superpowers/specs/2026-11-27-osm-water-design.md`.
+  No water implementation or water validation has run yet.
 - Gate-state/preset follow-up: [#13](https://github.com/Akceptor/rover-sim/pull/13)
   merged at `67e6993ac52c10052c98af3875157890fd408608` (2026-11-27).
   Current branch: `main`; follow-up worktree retained at `.worktrees/osm-barriers`.
@@ -271,7 +278,8 @@ reapply deformation; saved locations reproduce the same world offline. Run
   barrier counts: Kyiv 122, Lviv 3, Lima 32, Cusco 0, Andes ravine 5.
   Existing runtime caches and saved favourites retain their stored mapping;
   refresh them to adopt newly bundled data.
-- Next action: start phase 4 from updated `main` in its own branch/PR.
+- Next action: review the water design and unknown-depth behavior, then write
+  the implementation plan and implement phase 5 in its own feature PR.
 - Blocking decisions: none. GitHub connectivity verified on 2026-11-27;
   the earlier `EOF` responses are resolved. Follow-up #13 merge was authorized;
   subsequent merges require authorization.
