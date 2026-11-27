@@ -21,7 +21,7 @@ stays unchanged, and road grading remains last.
 | 2 | Mapped vegetation and land cover | Merged | [#11](https://github.com/Akceptor/rover-sim/pull/11) |
 | 3 | Mapped barriers and obstacles | Merged | [#12](https://github.com/Akceptor/rover-sim/pull/12) |
 | 4 | Richer building geometry and materials | Queued | Not opened |
-| 5 | Water features and crossing hazards | In progress | Not opened |
+| 5 | Water features and crossing hazards | PR open | [#14](https://github.com/Akceptor/rover-sim/pull/14) |
 | 6 | Road corridor grading | Queued | Not opened |
 
 Use `Queued`, `In progress`, `PR open`, `Merged`, or `Paused` for status. Record
@@ -254,6 +254,7 @@ reapply deformation; saved locations reproduce the same world offline. Run
   and complete; saved favourites remain unchanged.
 - Active feature phase: phase 5 (water), implemented and verified on `feat/osm-water`
   at `.worktrees/osm-water`. User requested water before phase 4 buildings.
+  PR: [#14](https://github.com/Akceptor/rover-sim/pull/14), implementation `9397baf`.
 - User-selected behavior: deep/unknown water sinks the rover, replaces actual
   camera/video capture with snow and disables propulsion until Reset vehicle
   or a new world/vehicle. SITL reset safeguards remain in place.
@@ -282,7 +283,8 @@ reapply deformation; saved locations reproduce the same world offline. Run
   `fix/standalone-browser` at `.worktrees/standalone-browser`, commit `beec2b6`,
   fixes npm standalone and opens the HUD before picker wait. Its independent
   full suite passed (273 passed, one platform skip); review found no important issues.
-- Next action: publish/review the water feature and standalone startup PRs.
+  PR: [#15](https://github.com/Akceptor/rover-sim/pull/15).
+- Next action: review the water feature #14 and standalone startup #15 PRs.
   Do not mark phase 5 merged before its actual PR merge. Phase 4 buildings remains
   queued and phase 6 grading last.
 - Blocking decisions: none; new merges require authorization.
