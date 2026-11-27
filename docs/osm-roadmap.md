@@ -249,9 +249,9 @@ reapply deformation; saved locations reproduce the same world offline. Run
   Source database timestamp: `2026-11-26T21:21:01Z`. Terrain/imagery remain tracked
   and complete; saved favourites remain unchanged.
 - Active feature phase: none; phase 4 (richer building geometry and materials) is next.
-- Follow-up branch/worktree: `fix/osm-barrier-assets` at `.worktrees/osm-barriers`,
-  based on merged phase 3. Includes gate-way state precedence fix and fresh presets.
-  Follow-up PR: [#13](https://github.com/Akceptor/rover-sim/pull/13) (open).
+- Gate-state/preset follow-up: [#13](https://github.com/Akceptor/rover-sim/pull/13)
+  merged at `67e6993ac52c10052c98af3875157890fd408608` (2026-11-27).
+  Current branch: `main`; follow-up worktree retained at `.worktrees/osm-barriers`.
 - Validation (2026-11-27): `npm test` — 262 passed, 1 Windows-only skip;
   `npm run test:osm` and `npm run test:barriers` passed for the gate fix.
   The 12 barrier tests cover actual collisions, narrow gates, sloping foundations,
@@ -271,11 +271,10 @@ reapply deformation; saved locations reproduce the same world offline. Run
   barrier counts: Kyiv 122, Lviv 3, Lima 32, Cusco 0, Andes ravine 5.
   Existing runtime caches and saved favourites retain their stored mapping;
   refresh them to adopt newly bundled data.
-- Next action: review/merge the preset/gate follow-up #13; then start phase 4 from updated
-  `main` in its own branch/PR.
+- Next action: start phase 4 from updated `main` in its own branch/PR.
 - Blocking decisions: none. GitHub connectivity verified on 2026-11-27;
-  the earlier `EOF` responses are resolved. No new merge performed; subsequent
-  merges require authorization.
+  the earlier `EOF` responses are resolved. Follow-up #13 merge was authorized;
+  subsequent merges require authorization.
 
 To resume in a new session: **“Continue the OSM roadmap in `docs/osm-roadmap.md`
 from its checkpoint, one feature PR at a time. Bridges remain excluded.”**
